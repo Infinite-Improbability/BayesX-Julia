@@ -10,7 +10,7 @@ include("utils.jl")
 
 """An integral over radius that is equal to the gas
     density to a proportionality constant"""
-function gnfw_gas_volume_integral(
+function gnfw_gas_mass_integrand(
     r::Unitful.Length,
     r_s::Unitful.Length, # NFW
     r_p::Unitful.Length, # GNFW
@@ -18,16 +18,16 @@ function gnfw_gas_volume_integral(
     b,
     c
 )
-    (r / (log(1 + r / r_s) - (1 + r_s / r)^(-1))) *
+    r^3 / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
     (r / r_p)^(-c) *
     (1 + (r / r_p)^a)^(-(a + b - c) / a) *
     (b * (r / r_p)^a + c)
 end
-function gnfw_gas_volume_integral(
+function gnfw_gas_mass_integrand(
     r::Unitful.Length,
     p
 )
-    gnfw_gas_volume_integral(r, p...)
+    gnfw_gas_mass_integrand(r, p...)
 end
 
 function Model_NFW_GNFW(
@@ -90,7 +90,7 @@ function Model_NFW_GNFW(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     # Find source or verify this equation
-    integral = IntegralProblem(gnfw_gas_volume_integral, 0, r_200, p=(r_s, ρ_s, r_p, a, b, c))
+    integral = IntegralProblem(gnfw_gas_mass_integrand, 0, r_200, p=(r_s, ρ_s, r_p, a, b, c))
     vol_int_200 = solve(integral, QuadGKJL).u
     Pei_GNFW::Unitful.Pressure = (μ / μ_e) * 4π * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
 
@@ -105,5 +105,9 @@ function Model_NFW_GNFW(
     @argcheck energy_limits[1] >= 0u"keV"
 
     energy_bins = LinRange(energy_limits..., energy_bins)
+
+    # DO ABSORPTION CALCULATIONS
+
+    # DO XRAY_FLUX_COEFF CALCULATIONS
 
 end
