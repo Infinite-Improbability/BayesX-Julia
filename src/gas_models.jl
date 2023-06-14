@@ -2,6 +2,7 @@ using ArgCheck
 using Unitful, UnitfulAstro
 using PhysicalConstants.CODATA2018: G
 using Integrals
+using SpectralFitting: PhotoelectricAbsorption
 
 include("params.jl")
 include("utils.jl")
@@ -30,6 +31,9 @@ function gnfw_gas_mass_integrand(
     gnfw_gas_mass_integrand(r, p...)
 end
 
+"""Calculate predicted counts using a physical model based NFW-GNFW profiles
+as described in Olamaie 2012.
+"""
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
     fg_200,
@@ -86,13 +90,11 @@ function Model_NFW_GNFW(
     # Set GNFW scale radius
     r_p = r_500 / c_500_GNFW
 
-
-
     # Calculate Pei, normalisation coefficent for GNFW pressure
     # Find source or verify this equation
     integral = IntegralProblem(gnfw_gas_mass_integrand, 0, r_200, p=(r_s, ρ_s, r_p, a, b, c))
     vol_int_200 = solve(integral, QuadGKJL).u
-    Pei_GNFW::Unitful.Pressure = (μ / μ_e) * 4π * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
+    Pei_GNFW::Unitful.Pressure = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
 
     @assert Pei_GNFW > 0
 
@@ -107,7 +109,12 @@ function Model_NFW_GNFW(
     energy_bins = LinRange(energy_limits..., energy_bins)
 
     # DO ABSORPTION CALCULATIONS
+    model = PhotoelectricAbsorption()
 
     # DO XRAY_FLUX_COEFF CALCULATIONS
+
+end
+
+function xray_flux_coefficent()
 
 end
