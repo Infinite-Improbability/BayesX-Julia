@@ -1,3 +1,5 @@
+import Base.TwicePrecision, Base.length
+
 # LogRange function taken from https://github.com/JuliaLang/julia/pull/39071
 """
     logrange(start, stop, length)

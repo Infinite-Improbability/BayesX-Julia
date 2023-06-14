@@ -2,7 +2,7 @@ using ArgCheck
 using Unitful, UnitfulAstro
 using PhysicalConstants.CODATA2018: G
 using Integrals
-using SpectralFitting: PhotoelectricAbsorption
+using SpectralFitting
 
 include("params.jl")
 include("utils.jl")
@@ -19,16 +19,28 @@ function gnfw_gas_mass_integrand(
     b,
     c
 )
-    r^3 / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
-    (r / r_p)^(-c) *
-    (1 + (r / r_p)^a)^(-(a + b - c) / a) *
-    (b * (r / r_p)^a + c)
+    r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
 end
 function gnfw_gas_mass_integrand(
     r::Unitful.Length,
     p
 )
     gnfw_gas_mass_integrand(r, p...)
+end
+
+"""The radius dependent part of the gas density function"""
+function gnfw_gas_radial_term(
+    r::Unitful.Length,
+    r_s::Unitful.Length, # NFW
+    r_p::Unitful.Length, # GNFW
+    a,
+    b,
+    c
+)
+    r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
+    (r / r_p)^(-c) *
+    (1 + (r / r_p)^a)^(-(a + b - c) / a) *
+    (b * (r / r_p)^a + c)
 end
 
 """Calculate predicted counts using a physical model based NFW-GNFW profiles
@@ -42,17 +54,18 @@ function Model_NFW_GNFW(
     c_GNFW,
     c_500_GNFW,
     z;
-    radius_steps <: Integer=10,
-    radius_limits::Tuple{Unitful.Length{T}},
+    radius_steps::Integer=10,
+    radius_limits::Tuple{Unitful.Length},
     energy_limits::Tuple{Unitful.Energy},
-    energy_bins <: Integer
+    n_energy_bins::Integer
 )
     # Move some parameters into an object?
 
     @argcheck MT_200 > 0
     @argcheck fg_200 > 0
     @argcheck a_GNFW > 0
-    @argcheck >= 0
+    # @argcheck c_500_GNFW > 0
+    # @argcheck (b_GNFW - c_500_GNFW) > 0
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -106,15 +119,57 @@ function Model_NFW_GNFW(
     @argcheck energy_limits[1] < energy_limits[2]
     @argcheck energy_limits[1] >= 0u"keV"
 
-    energy_bins = LinRange(energy_limits..., energy_bins)
+    energy_bins = LinRange(energy_limits..., n_energy_bins)
 
-    # DO ABSORPTION CALCULATIONS
-    model = PhotoelectricAbsorption()
+    # Calculate absorption
+    # TODO: Confirm this is transmission
+    absorption_model = PhotoelectricAbsorption()
+    transmission = invokemodel(energy_bins, absorption_model)
 
-    # DO XRAY_FLUX_COEFF CALCULATIONS
+    # TODO: Better model
+    ρg_200 = (μ_e / μ) * (1 / (4π * G)) *
+             (Pei_GNFW / ρ_s) * (1 / r_s^3) *
+             gnfw_gas_radial_term(r_200, r_s, r_p, a, b, c)
+    Tg_200 = 4π * μ * G * ρ_s * (r_s^3) *
+             ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
+             (1 + (r / r_p)^a) * (b * (r / r_p)^a + c)^(-1)
+
+
+
 
 end
 
-function xray_flux_coefficent()
+# function xray_flux_coefficent()
 
-end
+# end
+
+# @xspecmodel :C_mekal struct XS_Mekal{T,F} <: AbstractSpectralModel{T,Additive}
+#     "Normalisation"
+#     K::T
+#     "Plasma Temperature"
+#     t::T
+#     "Hydrogen Density"
+#     ρ::T
+#     "Metal Abundances"
+#     a::T
+#     "Redshift"
+#     z::T
+#     "Switch"
+#     s::Int
+# end
+# function XS_Mekal(;
+#     K=FitParam(1.0),
+#     t=FitParam(8.0),
+#     ρ=FitParam(10.0),
+#     a=FitParam(1.0),
+#     z=FitParam(0.1),
+#     s=0
+# )
+#     XS_Mekal{typeof(K),SpectralFitting.FreeParameters{(:K, :t)}}(
+#         K, t, ρ, a, z, s
+#     )
+# end
+# SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat")
+
+# model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
+# invokemodel(collect(0.1:0.1:2), model)
