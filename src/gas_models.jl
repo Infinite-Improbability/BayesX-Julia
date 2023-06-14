@@ -1,5 +1,5 @@
 using ArgCheck
-using Unitful, UnitfulAstro
+using Unitful, UnitfulAstro, UnitfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
 using SpectralFitting
@@ -22,7 +22,7 @@ function surface_brightness(
     @argcheck limit > 0
 
     function integrand(l, p)
-        s, ener, temp = p...
+        s, ener, temp = p
         r::Unitful.Length = hypot(s, l)
         T::Unitful.Energy = temp(r)
 
@@ -42,22 +42,24 @@ end
 """Calculate predicted counts using a physical model based NFW-GNFW profiles
 as described in Olamaie 2012.
 """
-function Model_NFW_GNFW(
+function Model_NFW_GNFW(;
     MT_200::Unitful.Mass,
     fg_200,
     a_GNFW,
     b_GNFW,
     c_GNFW,
     c_500_GNFW,
-    z;
+    z,
     radius_steps::Integer=10,
-    radius_limits::Tuple{Unitful.Length},
-    energy_limits::Tuple{Unitful.Energy},
-    n_energy_bins::Integer
-)
+    # radius_limits::Tuple{Unitful.Length},
+    energy_limits::Vector{T},
+    n_energy_bins::Integer,
+    shape::Vector{N}=[12, 12],
+    pixel_edge_angle
+) where {T<:Unitful.Energy,N<:Integer}
     # Move some parameters into an object?
 
-    @argcheck MT_200 > 0
+    @argcheck MT_200 > 0u"Msun"
     @argcheck fg_200 > 0
     @argcheck a_GNFW > 0
     # @argcheck c_500_GNFW > 0
@@ -77,8 +79,12 @@ function Model_NFW_GNFW(
     # Calculate critical density at current redshift
     ρ_crit_z = ρ_crit(z)
 
+    # And get R200 and NFW scale radius
+    r_200 = uconvert(u"Mpc", cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z)))
+    r_s = r_200 / c_200
+
     # Calculate radius where mean density enclosed is@argcheck limit >
-    radii = LogRange(radius_limits..., radius_steps)
+    # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
     ρ_s = (200 / 3) * c_200 / (log(1 + c_200) - c_200 / (1 + c_200))
@@ -86,7 +92,7 @@ function Model_NFW_GNFW(
     # Sketchy way to get R500 from r200
     # TODO: Do better
     r_500 = r_200 / 1.5
-    c_500 = r_500 / r_s
+    # c_500 = r_500 / r_s
 
     # Set GNFW scale radius
     r_p = r_500 / c_500_GNFW
@@ -130,7 +136,7 @@ function Model_NFW_GNFW(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     # Find source or verify this equation
-    integral = IntegralProblem(gnfw_gas_mass_integrand, 0, r_200, p=(r_s, ρ_s, r_p, a, b, c))
+    integral = IntegralProblem(gnfw_gas_mass_integrand, 0.0u"Mpc", r_200, p=(r_s, ρ_s, r_p, a_GNFW, b_GNFW, c_GNFW))
     vol_int_200 = solve(integral, QuadGKJL).u
     Pei_GNFW::Unitful.Pressure = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
 
@@ -155,23 +161,41 @@ function Model_NFW_GNFW(
     function gas_density(r::Unitful.Length)::Unitful.Density
         (μ_e / μ) * (1 / (4π * G)) *
         (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-        gnfw_gas_radial_term(r_200, r_s, r_p, a, b, c)
+        gnfw_gas_radial_term(r_200, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
     end
 
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length)::Unitful.Temperature
         4π * μ * G * ρ_s * (r_s^3) *
         ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
-        (1 + (r / r_p)^a) * (b * (r / r_p)^a + c)^(-1)
+        (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
     end
 
     # ρg_200::Unitful.Density = gas_density(r_200)
     # Tg_200::Unitful.Temperature = gas_temperature(r_200)
 
+    # Calculate source brightness at various points
+    # TODO: Moving center
+    pixel_edge_length = uconvert(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    radii_x, radii_y = ceil.(shape ./ 2)
 
-    """"""
+    radius_at_cell = zeros(Float64, (radii_x, radii_y))
+    counts = zeros(Float64, (radii_x, radii_y))
 
+    # TODO: Are we transposing?
+    for y in 1:radii_y
+        for x in 1:radii_x
+            radius_at_cell[x, y] = hypot(x, y)
+        end
+    end
+    radius_at_cell *= pixel_edge_length
 
+    counts = surface_brightness.(
+        radius_at_cell,
+        Ref(energy),
+        gas_temperature,
+        20 * max(radii_x, radii_y) * pixel_edge_length
+    )
 end
 
 # function xray_flux_coefficent()
@@ -208,3 +232,18 @@ end
 
 # model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
 # invokemodel(collect(0.1:0.1:2), model)
+
+Model_NFW_GNFW(
+    MT_200=5e14u"Msun",
+    fg_200=0.13,
+    a_GNFW=1.0620,
+    b_GNFW=5.4807,
+    c_GNFW=0.3292,
+    c_500_GNFW=1.156,
+    z=0.1,
+    radius_steps=10,
+    energy_limits=[0.3u"keV", 3u"keV"],
+    n_energy_bins=27,
+    shape=[12, 12],
+    pixel_edge_angle=0.492u"arcsecond"
+)
