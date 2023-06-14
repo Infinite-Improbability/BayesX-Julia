@@ -3,6 +3,7 @@ using Unitful, UnitfulAstro, UnitfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
 using SpectralFitting
+using ProgressMeter
 
 
 include("params.jl")
@@ -14,25 +15,31 @@ include("utils.jl")
 """Observed surface brightness"""
 function surface_brightness(
     projected_radius::Unitful.Length,
-    energy::Unitful.Energy,
+    energy::Vector{T},
     temperature::Function,
     z,
     limit::Unitful.Length,
-)
-    @argcheck limit > 0
+) where {T<:Unitful.Energy}
+    @argcheck limit > 0u"Mpc"
 
     function integrand(l, p)
         s, ener, temp = p
         r::Unitful.Length = hypot(s, l)
-        T::Unitful.Energy = temp(r)
+        kbT = FitParam(ustrip(u"keV", temp(r)))
 
         # TODO: Better emission model
-        model = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=T) + BlackBody(kT=T))
-        invokemodel([ener], model)
+        model = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=kbT) + BlackBody(kT=kbT))
+        f = invokemodel(ener, model)
+
+        display(f)
+        @assert length(f) == 1
+
+        return f[1]
     end
 
-    problem = IntegralProblem(integrand, -limit, limit, p=(projected_radius, energy, temperature))
-    sol = solve(problem, QuadGKJL)
+    # TODO: Try infinite bounds
+    problem = IntegralProblem(integrand, -limit, limit, [projected_radius, energy, temperature])
+    sol = solve(problem, QuadGKJL())
 
     (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * sol.u
 
@@ -81,13 +88,13 @@ function Model_NFW_GNFW(;
 
     # And get R200 and NFW scale radius
     r_200 = uconvert(u"Mpc", cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z)))
-    r_s = r_200 / c_200
+    r_s = uconvert(u"Mpc", r_200 / c_200)
 
     # Calculate radius where mean density enclosed is@argcheck limit >
     # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = (200 / 3) * c_200 / (log(1 + c_200) - c_200 / (1 + c_200))
+    ρ_s = ρ_crit_z * (200 / 3) * c_200 / (log(1 + c_200) - c_200 / (1 + c_200))
 
     # Sketchy way to get R500 from r200
     # TODO: Do better
@@ -95,7 +102,7 @@ function Model_NFW_GNFW(;
     # c_500 = r_500 / r_s
 
     # Set GNFW scale radius
-    r_p = r_500 / c_500_GNFW
+    r_p = uconvert(u"Mpc", r_500 / c_500_GNFW)
 
     # Some helper functions
 
@@ -136,15 +143,23 @@ function Model_NFW_GNFW(;
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     # Find source or verify this equation
-    integral = IntegralProblem(gnfw_gas_mass_integrand, 0.0u"Mpc", r_200, p=(r_s, ρ_s, r_p, a_GNFW, b_GNFW, c_GNFW))
-    vol_int_200 = solve(integral, QuadGKJL).u
-    Pei_GNFW::Unitful.Pressure = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
 
-    @assert Pei_GNFW > 0
+    @info "Integrating to find Pei"
+    integral = IntegralProblem(
+        gnfw_gas_mass_integrand,
+        0.0u"Mpc",
+        r_200,
+        [r_s, r_p, a_GNFW, b_GNFW, c_GNFW]
+    )
+    vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4")
+    Pei_GNFW = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200.u
+    @info "Pei calculation complete"
+
+    @assert Pei_GNFW > 0u"Pa"
 
     # Coeffient to integral for surface brightness in Olamaie 2015 Eq8
     # Called xfluxsec1 in BayesX-Fortran
-    sx_coefficent = 1 / (4π * (1 + z)^4)
+    # sx_coefficent = 1 / (4π * (1 + z)^4)
 
     # Create energy bins
     @argcheck energy_limits[1] < energy_limits[2]
@@ -155,7 +170,7 @@ function Model_NFW_GNFW(;
     # Calculate absorption
     # TODO: Confirm this is transmission
     # absorption_model = PhotoelectricAbsorption()
-    transmission = invokemodel(energy_bins, absorption_model)
+    # transmission = invokemodel(energy_bins, absorption_model)
 
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length)::Unitful.Density
@@ -165,7 +180,7 @@ function Model_NFW_GNFW(;
     end
 
     """Calculate gas temperature at some radius"""
-    function gas_temperature(r::Unitful.Length)::Unitful.Temperature
+    function gas_temperature(r::Unitful.Length)::Unitful.Energy
         4π * μ * G * ρ_s * (r_s^3) *
         ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
         (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
@@ -176,26 +191,37 @@ function Model_NFW_GNFW(;
 
     # Calculate source brightness at various points
     # TODO: Moving center
-    pixel_edge_length = uconvert(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
-    radii_x, radii_y = ceil.(shape ./ 2)
+    pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    radii_x, radii_y = ceil.(Int64, shape ./ 2)
 
-    radius_at_cell = zeros(Float64, (radii_x, radii_y))
-    counts = zeros(Float64, (radii_x, radii_y))
+    radius_at_cell = zeros(Float64, (n_energy_bins - 1, radii_x, radii_y))
+    counts = zeros(Float64, (n_energy_bins - 1, radii_x, radii_y))
 
     # TODO: Are we transposing?
     for y in 1:radii_y
         for x in 1:radii_x
-            radius_at_cell[x, y] = hypot(x, y)
+            radius_at_cell[:, x, y] .= hypot(x, y)
         end
     end
     radius_at_cell *= pixel_edge_length
 
+    energy_pairs = [[energy_bins[i], energy_bins[i+1]] for i in 1:(n_energy_bins-1)]
+
+    @info "Generating counts"
     counts = surface_brightness.(
         radius_at_cell,
-        Ref(energy),
+        energy_pairs,
         gas_temperature,
+        z,
         20 * max(radii_x, radii_y) * pixel_edge_length
     )
+    @info "Done"
+
+    # Potential optimisations
+    # Supply integrals as Vector
+    # Eliminate duplicate radii
+
+    return counts
 end
 
 # function xray_flux_coefficent()
