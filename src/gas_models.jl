@@ -4,44 +4,40 @@ using PhysicalConstants.CODATA2018: G
 using Integrals
 using SpectralFitting
 
+
 include("params.jl")
 include("utils.jl")
 
+
 ρ_crit(z) = 3 * H(cosmo, z)^2 / (8π * G)
 
-"""An integral over radius that is equal to the gas
-    density to a proportionality constant"""
-function gnfw_gas_mass_integrand(
-    r::Unitful.Length,
-    r_s::Unitful.Length, # NFW
-    r_p::Unitful.Length, # GNFW
-    a,
-    b,
-    c
+"""Observed surface brightness"""
+function surface_brightness(
+    projected_radius::Unitful.Length,
+    energy::Unitful.Energy,
+    temperature::Function,
+    z,
+    limit::Unitful.Length,
 )
-    r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
-end
-function gnfw_gas_mass_integrand(
-    r::Unitful.Length,
-    p
-)
-    gnfw_gas_mass_integrand(r, p...)
+    @argcheck limit > 0
+
+    function integrand(l, p)
+        s, ener, temp = p...
+        r::Unitful.Length = hypot(s, l)
+        T::Unitful.Energy = temp(r)
+
+        # TODO: Better emission model
+        model = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=T) + BlackBody(kT=T))
+        invokemodel([ener], model)
+    end
+
+    problem = IntegralProblem(integrand, -limit, limit, p=(projected_radius, energy, temperature))
+    sol = solve(problem, QuadGKJL)
+
+    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * sol.u
+
 end
 
-"""The radius dependent part of the gas density function"""
-function gnfw_gas_radial_term(
-    r::Unitful.Length,
-    r_s::Unitful.Length, # NFW
-    r_p::Unitful.Length, # GNFW
-    a,
-    b,
-    c
-)
-    r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
-    (r / r_p)^(-c) *
-    (1 + (r / r_p)^a)^(-(a + b - c) / a) *
-    (b * (r / r_p)^a + c)
-end
 
 """Calculate predicted counts using a physical model based NFW-GNFW profiles
 as described in Olamaie 2012.
@@ -81,15 +77,7 @@ function Model_NFW_GNFW(
     # Calculate critical density at current redshift
     ρ_crit_z = ρ_crit(z)
 
-    # Calculate radius where mean density enclosed is 200 times the critical density
-    r_200 = cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z))
-
-    # Calculate NFW scale radius
-    r_s = r_200 / c_200
-
-    # Discretize r
-    @argcheck radius_limits[1] < radius_limits[2]
-    @argcheck radius_limits[1] >= 0u"Mpc"
+    # Calculate radius where mean density enclosed is@argcheck limit >
     radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
@@ -102,6 +90,43 @@ function Model_NFW_GNFW(
 
     # Set GNFW scale radius
     r_p = r_500 / c_500_GNFW
+
+    # Some helper functions
+
+    """An integral over radius that is equal to the gas
+    density to a proportionality constant"""
+    function gnfw_gas_mass_integrand(
+        r::Unitful.Length,
+        r_s::Unitful.Length, # NFW
+        r_p::Unitful.Length, # GNFW
+        a,
+        b,
+        c
+    )
+        r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+    end
+    function gnfw_gas_mass_integrand(
+        r::Unitful.Length,
+        p
+    )
+        gnfw_gas_mass_integrand(r, p...)
+    end
+
+
+    """The radius dependent part of the gas density function"""
+    function gnfw_gas_radial_term(
+        r::Unitful.Length,
+        r_s::Unitful.Length, # NFW
+        r_p::Unitful.Length, # GNFW
+        a,
+        b,
+        c
+    )
+        r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
+        (r / r_p)^(-c) *
+        (1 + (r / r_p)^a)^(-(a + b - c) / a) *
+        (b * (r / r_p)^a + c)
+    end
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     # Find source or verify this equation
@@ -123,18 +148,28 @@ function Model_NFW_GNFW(
 
     # Calculate absorption
     # TODO: Confirm this is transmission
-    absorption_model = PhotoelectricAbsorption()
+    # absorption_model = PhotoelectricAbsorption()
     transmission = invokemodel(energy_bins, absorption_model)
 
-    # TODO: Better model
-    ρg_200 = (μ_e / μ) * (1 / (4π * G)) *
-             (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-             gnfw_gas_radial_term(r_200, r_s, r_p, a, b, c)
-    Tg_200 = 4π * μ * G * ρ_s * (r_s^3) *
-             ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
-             (1 + (r / r_p)^a) * (b * (r / r_p)^a + c)^(-1)
+    """Calculate gas density at some radius"""
+    function gas_density(r::Unitful.Length)::Unitful.Density
+        (μ_e / μ) * (1 / (4π * G)) *
+        (Pei_GNFW / ρ_s) * (1 / r_s^3) *
+        gnfw_gas_radial_term(r_200, r_s, r_p, a, b, c)
+    end
+
+    """Calculate gas temperature at some radius"""
+    function gas_temperature(r::Unitful.Length)::Unitful.Temperature
+        4π * μ * G * ρ_s * (r_s^3) *
+        ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
+        (1 + (r / r_p)^a) * (b * (r / r_p)^a + c)^(-1)
+    end
+
+    # ρg_200::Unitful.Density = gas_density(r_200)
+    # Tg_200::Unitful.Temperature = gas_temperature(r_200)
 
 
+    """"""
 
 
 end
