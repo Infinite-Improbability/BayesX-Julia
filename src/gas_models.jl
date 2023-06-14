@@ -29,9 +29,8 @@ function surface_brightness(
 
         # TODO: Better emission model
         model = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=kbT) + BlackBody(kT=kbT))
-        f = invokemodel(ener, model)
+        f = invokemodel(ustrip.(u"keV", ener), model)
 
-        display(f)
         @assert length(f) == 1
 
         return f[1]
@@ -39,9 +38,9 @@ function surface_brightness(
 
     # TODO: Try infinite bounds
     problem = IntegralProblem(integrand, -limit, limit, [projected_radius, energy, temperature])
-    sol = solve(problem, QuadGKJL())
+    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc")
 
-    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * sol.u
+    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * ustrip(u"Mpc", sol.u)
 
 end
 
