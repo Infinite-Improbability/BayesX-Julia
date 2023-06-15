@@ -8,8 +8,6 @@ using Interpolations
 
 
 include("params.jl")
-include("utils.jl")
-
 
 ρ_crit(z) = 3 * H(cosmo, z)^2 / (8π * G)
 
@@ -49,7 +47,7 @@ end
 """Calculate predicted counts using a physical model based NFW-GNFW profiles
 as described in Olamaie 2012.
 """
-function Model_NFW_GNFW(;
+function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
     fg_200,
     a_GNFW,
@@ -57,13 +55,9 @@ function Model_NFW_GNFW(;
     c_GNFW,
     c_500_GNFW,
     z,
-    radius_steps::Integer=10,
-    # radius_limits::Tuple{Unitful.Length},
-    energy_limits::Vector{T},
-    n_energy_bins::Integer,
-    shape::Vector{N}=[12, 12],
-    pixel_edge_angle
-) where {T<:Unitful.Energy,N<:Integer}
+    shape::Vector{N},
+    pixel_edge_angle::Quantity{T,NoDims}
+) where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
     @argcheck MT_200 > 0u"Msun"
@@ -142,7 +136,6 @@ function Model_NFW_GNFW(;
     end
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
-    # Find source or verify this equation
 
     @info "Integrating to find Pei"
     integral = IntegralProblem(
@@ -157,21 +150,6 @@ function Model_NFW_GNFW(;
 
     @assert Pei_GNFW > 0u"Pa"
 
-    # Coeffient to integral for surface brightness in Olamaie 2015 Eq8
-    # Called xfluxsec1 in BayesX-Fortran
-    # sx_coefficent = 1 / (4π * (1 + z)^4)
-
-    # Create energy bins
-    # @argcheck energy_limits[1] < energy_limits[2]
-    # @argcheck energy_limits[1] >= 0u"keV"
-
-    # energy_bins = LinRange(energy_limits..., n_energy_bins)
-
-    # Calculate absorption
-    # TODO: Confirm this is transmission
-    # absorption_model = PhotoelectricAbsorption()
-    # transmission = invokemodel(energy_bins, absorption_model)
-
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length)::Unitful.Density
         (μ_e / μ) * (1 / (4π * G)) *
@@ -185,9 +163,6 @@ function Model_NFW_GNFW(;
         ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
         (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
     end
-
-    # ρg_200::Unitful.Density = gas_density(r_200)
-    # Tg_200::Unitful.Temperature = gas_temperature(r_200)
 
     # Calculate source brightness at various points
     # TODO: Moving center
@@ -266,31 +241,25 @@ const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
 const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
 @time Model_NFW_GNFW(
-    MT_200=5e14u"Msun",
-    fg_200=0.13,
-    a_GNFW=1.0620,
-    b_GNFW=5.4807,
-    c_GNFW=0.3292,
-    c_500_GNFW=1.156,
-    z=0.1,
-    radius_steps=10,
-    energy_limits=[0.3u"keV", 3u"keV"],
-    n_energy_bins=27,
-    shape=[12, 12],
-    pixel_edge_angle=0.492u"arcsecond"
+    5e14u"Msun",
+    0.13,
+    1.0620,
+    5.4807,
+    0.3292,
+    1.156,
+    0.1,
+    [12, 12],
+    0.492u"arcsecond"
 )
 
 @time Model_NFW_GNFW(
-    MT_200=5e14u"Msun",
-    fg_200=0.13,
-    a_GNFW=1.0620,
-    b_GNFW=5.4807,
-    c_GNFW=0.3292,
-    c_500_GNFW=1.156,
-    z=0.1,
-    radius_steps=10,
-    energy_limits=[0.3u"keV", 3u"keV"],
-    n_energy_bins=27,
-    shape=[12, 12],
-    pixel_edge_angle=0.492u"arcsecond"
+    5e14u"Msun",
+    0.13,
+    1.0620,
+    5.4807,
+    0.3292,
+    1.156,
+    0.1,
+    [12, 12],
+    0.492u"arcsecond"
 )
