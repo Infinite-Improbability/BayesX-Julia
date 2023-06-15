@@ -20,7 +20,7 @@ function surface_brightness(
     z,
     limit::Unitful.Length,
     model
-) where {T<:Unitful.Energy}
+)
     @argcheck limit > 0u"Mpc"
 
     function integrand(l, p)
@@ -194,13 +194,13 @@ function Model_NFW_GNFW(;
     pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     radii_x, radii_y = ceil.(Int64, shape ./ 2)
 
-    radius_at_cell = zeros(Float64, (n_energy_bins - 1, radii_x, radii_y))
-    counts = zeros(Float64, (n_energy_bins - 1, radii_x, radii_y))
+    radius_at_cell = zeros(Float64, (radii_x, radii_y))
+    counts = zeros(Float64, (radii_x, radii_y))
 
     # TODO: Are we transposing?
     for y in 1:radii_y
         for x in 1:radii_x
-            radius_at_cell[:, x, y] .= hypot(x, y)
+            radius_at_cell[x, y] = hypot(x, y)
         end
     end
     radius_at_cell *= pixel_edge_length
