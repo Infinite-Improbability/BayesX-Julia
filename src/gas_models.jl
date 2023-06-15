@@ -162,10 +162,10 @@ function Model_NFW_GNFW(;
     # sx_coefficent = 1 / (4π * (1 + z)^4)
 
     # Create energy bins
-    @argcheck energy_limits[1] < energy_limits[2]
-    @argcheck energy_limits[1] >= 0u"keV"
+    # @argcheck energy_limits[1] < energy_limits[2]
+    # @argcheck energy_limits[1] >= 0u"keV"
 
-    energy_bins = LinRange(energy_limits..., n_energy_bins)
+    # energy_bins = LinRange(energy_limits..., n_energy_bins)
 
     # Calculate absorption
     # TODO: Confirm this is transmission
@@ -205,10 +205,6 @@ function Model_NFW_GNFW(;
     end
     radius_at_cell *= pixel_edge_length
 
-    @info "Preparing model"
-    model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
-    temps = 0:0.01:3
-    surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
     @info "Generating counts"
 
@@ -262,6 +258,12 @@ end
 
 # model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
 # invokemodel(collect(0.1:0.1:2), model)
+
+@info "Preparing model"
+model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
+const temps = 0:0.01:3
+const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
+const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
 @time Model_NFW_GNFW(
     MT_200=5e14u"Msun",
