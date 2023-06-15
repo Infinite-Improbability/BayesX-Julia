@@ -4,6 +4,7 @@ using PhysicalConstants.CODATA2018: G
 using Integrals
 using SpectralFitting
 using ProgressMeter
+using Interpolations
 
 
 include("params.jl")
@@ -19,28 +20,29 @@ function surface_brightness(
     temperature::Function,
     z,
     limit::Unitful.Length,
+    model
 ) where {T<:Unitful.Energy}
     @argcheck limit > 0u"Mpc"
 
     function integrand(l, p)
         s, ener, temp = p
         r::Unitful.Length = hypot(s, l)
-        kbT = FitParam(ustrip(u"keV", temp(r)))
+        kbT = ustrip(u"keV", temp(r))
 
         # TODO: Better emission model
-        model = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=kbT) + BlackBody(kT=kbT))
-        f = invokemodel(ustrip.(u"keV", ener), model)
 
-        @assert length(f) == 1
+        f = model(kbT)
 
-        return f[1]
+        @assert !any(isnan, f)
+
+        return f
     end
 
     # TODO: Try infinite bounds
-    problem = IntegralProblem(integrand, -limit, limit, [projected_radius, energy, temperature])
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, energy, temperature])
     sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc")
 
-    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * ustrip(u"Mpc", sol.u)
+    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * 2 * ustrip.(u"Mpc", sol.u)
 
 end
 
@@ -206,13 +208,20 @@ function Model_NFW_GNFW(;
 
     energy_pairs = [[energy_bins[i], energy_bins[i+1]] for i in 1:(n_energy_bins-1)]
 
+    @info "Preparing model"
+    model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
+    temps = 0:0.01:3
+    surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
+
     @info "Generating counts"
+
     counts = surface_brightness.(
         radius_at_cell,
         energy_pairs,
         gas_temperature,
         z,
-        20 * max(radii_x, radii_y) * pixel_edge_length
+        20 * max(radii_x, radii_y) * pixel_edge_length,
+        Ref(surrogate)
     )
     @info "Done"
 
@@ -220,7 +229,7 @@ function Model_NFW_GNFW(;
     # Supply integrals as Vector
     # Eliminate duplicate radii
 
-    return counts
+    # return counts
 end
 
 # function xray_flux_coefficent()
@@ -258,7 +267,7 @@ end
 # model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
 # invokemodel(collect(0.1:0.1:2), model)
 
-Model_NFW_GNFW(
+@time Model_NFW_GNFW(
     MT_200=5e14u"Msun",
     fg_200=0.13,
     a_GNFW=1.0620,
