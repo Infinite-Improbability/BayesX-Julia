@@ -16,7 +16,6 @@ include("utils.jl")
 """Observed surface brightness"""
 function surface_brightness(
     projected_radius::Unitful.Length,
-    energy::Vector{T},
     temperature::Function,
     z,
     limit::Unitful.Length,
@@ -25,7 +24,7 @@ function surface_brightness(
     @argcheck limit > 0u"Mpc"
 
     function integrand(l, p)
-        s, ener, temp = p
+        s, temp = p
         r::Unitful.Length = hypot(s, l)
         kbT = ustrip(u"keV", temp(r))
 
@@ -39,7 +38,7 @@ function surface_brightness(
     end
 
     # TODO: Try infinite bounds
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, energy, temperature])
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
     sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc")
 
     (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * 2 * ustrip.(u"Mpc", sol.u)
@@ -206,8 +205,6 @@ function Model_NFW_GNFW(;
     end
     radius_at_cell *= pixel_edge_length
 
-    energy_pairs = [[energy_bins[i], energy_bins[i+1]] for i in 1:(n_energy_bins-1)]
-
     @info "Preparing model"
     model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
     temps = 0:0.01:3
@@ -217,7 +214,6 @@ function Model_NFW_GNFW(;
 
     counts = surface_brightness.(
         radius_at_cell,
-        energy_pairs,
         gas_temperature,
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
@@ -266,6 +262,21 @@ end
 
 # model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
 # invokemodel(collect(0.1:0.1:2), model)
+
+@time Model_NFW_GNFW(
+    MT_200=5e14u"Msun",
+    fg_200=0.13,
+    a_GNFW=1.0620,
+    b_GNFW=5.4807,
+    c_GNFW=0.3292,
+    c_500_GNFW=1.156,
+    z=0.1,
+    radius_steps=10,
+    energy_limits=[0.3u"keV", 3u"keV"],
+    n_energy_bins=27,
+    shape=[12, 12],
+    pixel_edge_angle=0.492u"arcsecond"
+)
 
 @time Model_NFW_GNFW(
     MT_200=5e14u"Msun",
