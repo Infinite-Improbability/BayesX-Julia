@@ -27,14 +27,6 @@ function transform(cube)
     cube[1] = cube[1] * (1e15 - 1e14) + 1e14
     # fg_200
     cube[2] = cube[2] * (0.2 - 0.05) + 0.05
-    # a_GNFW
-    cube[3] = 1.062
-    # b_GNFW
-    cube[4] = 5.4807
-    # c_GNFW
-    cube[5] = 0.3292
-    # c_500_GNFW
-    cube[6] = 1.156
 
     @debug "Transform done"
 
@@ -66,6 +58,10 @@ function likelihood_wrapper(params)
     end
     # display(params_rows)
     predicted = complete_matrix.([Model_NFW_GNFW(params_rows[i]...,
+            1.062,
+            5.4807,
+            0.3292,
+            1.156,
             0.1,
             dshape,
             0.492u"arcsecond"
@@ -75,7 +71,7 @@ function likelihood_wrapper(params)
 end
 
 function run_ultranest()
-    paramnames = ["MT_200", "fg_200", "a", "b", "c", "c_500_GNFW"]
+    paramnames = ["MT_200", "fg_200"]
     sampler = ultranest.ReactiveNestedSampler(paramnames, likelihood_wrapper, transform=transform, vectorized=true)
     @debug "Sampler starting"
     results = sampler.run()

@@ -68,6 +68,8 @@ function Model_NFW_GNFW(
     # @argcheck c_500_GNFW > 0
     # @argcheck (b_GNFW - c_500_GNFW) > 0
 
+    # @info "a: $a_GNFW, b: $b_GNFW, c: $c_GNFW"
+
     MT_200 *= 1u"Msun"
 
     # Calculate NFW concentration parameter
