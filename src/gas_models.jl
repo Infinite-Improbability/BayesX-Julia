@@ -169,16 +169,17 @@ function Model_NFW_GNFW(
     pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     radii_x, radii_y = ceil.(Int64, shape ./ 2)
 
-    radius_at_cell = zeros(Float64, (radii_x, radii_y))
-    counts = zeros(Float64, (radii_x, radii_y))
+    radius_at_coords(x, y) = hypot(x - radii_x, y - radii_y) * pixel_edge_length
+
+    radius_at_cell = Matrix{typeof(0.0u"Mpc")}(undef, radii_x, radii_y)
+    counts = Matrix{Float64}(undef, radii_x, radii_y)
 
     # TODO: Are we transposing?
     for y in 1:radii_y
         for x in 1:radii_x
-            radius_at_cell[x, y] = hypot(x, y)
+            radius_at_cell[x, y] = radius_at_coords(x, y)
         end
     end
-    radius_at_cell *= pixel_edge_length
 
 
     @info "Generating counts"
@@ -196,12 +197,34 @@ function Model_NFW_GNFW(
     # Supply integrals as Vector
     # Eliminate duplicate radii
 
-    # return counts
+    return counts
 end
 
-# function xray_flux_coefficent()
-
-# end
+function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
+    new = Array{Float64}(undef, length(energy_bins) - 1, shape...)
+    radii = ceil.(Int8, shape / 2)
+    for y in 1:radii[2]
+        for x in 1:radii[1]
+            new[:, radii[1]+1-x, radii[2]+1-y] = m[x, y]
+        end
+    end
+    for y in 1:radii[2]
+        for x in 1:radii[1]
+            new[:, radii[1]+x, radii[2]+1-y] = m[x, y]
+        end
+    end
+    for y in 1:radii[2]
+        for x in 1:radii[1]
+            new[:, radii[1]+1-x, radii[2]+y] = m[x, y]
+        end
+    end
+    for y in 1:radii[2]
+        for x in 1:radii[1]
+            new[:, radii[1]+x, radii[2]+y] = m[x, y]
+        end
+    end
+    return new
+end
 
 # @xspecmodel :C_mekal struct XS_Mekal{T,F} <: AbstractSpectralModel{T,Additive}
 #     "Normalisation"
@@ -236,7 +259,7 @@ end
 
 @info "Preparing model"
 model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
-const temps = 0:0.01:3
+const temps = 0:0.001:3
 const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
 const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
