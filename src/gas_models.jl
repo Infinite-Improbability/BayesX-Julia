@@ -48,7 +48,7 @@ end
 as described in Olamaie 2012.
 """
 function Model_NFW_GNFW(
-    MT_200::Unitful.Mass,
+    MT_200,
     fg_200,
     a_GNFW,
     b_GNFW,
@@ -60,11 +60,15 @@ function Model_NFW_GNFW(
 ) where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
-    @argcheck MT_200 > 0u"Msun"
+    @debug "Model called"
+
+    @argcheck MT_200 > 0
     @argcheck fg_200 > 0
     @argcheck a_GNFW > 0
     # @argcheck c_500_GNFW > 0
     # @argcheck (b_GNFW - c_500_GNFW) > 0
+
+    MT_200 *= 1u"Msun"
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -137,7 +141,7 @@ function Model_NFW_GNFW(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
 
-    @info "Integrating to find Pei"
+    @debug "Integrating to find Pei"
     integral = IntegralProblem(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
@@ -146,7 +150,7 @@ function Model_NFW_GNFW(
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4")
     Pei_GNFW = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200.u
-    @info "Pei calculation complete"
+    @debug "Pei calculation complete"
 
     @assert Pei_GNFW > 0u"Pa"
 
@@ -182,7 +186,7 @@ function Model_NFW_GNFW(
     end
 
 
-    @info "Generating counts"
+    @debug "Generating counts"
 
     counts = surface_brightness.(
         radius_at_cell,
@@ -191,13 +195,39 @@ function Model_NFW_GNFW(
         20 * max(radii_x, radii_y) * pixel_edge_length,
         Ref(surrogate)
     )
-    @info "Done"
+    @debug "Count generation done"
 
     # Potential optimisations
     # Supply integrals as Vector
     # Eliminate duplicate radii
 
-    return counts
+    # TODO: Conversion from rate to counts
+    # For now we handwave it with a fixed factor
+
+    return counts * 1e13
+end
+function Model_NFW_GNFW(
+    MT_200::Unitful.Mass,
+    fg_200,
+    a_GNFW,
+    b_GNFW,
+    c_GNFW,
+    c_500_GNFW,
+    z,
+    shape::Vector{N},
+    pixel_edge_angle::Quantity{T,NoDims}
+) where {N<:Integer,T<:AbstractFloat}
+    Model_NFW_GNFW(
+        ustrip(u"Msun", MT_200),
+        fg_200,
+        a_GNFW,
+        b_GNFW,
+        c_GNFW,
+        c_500_GNFW,
+        z,
+        shape,
+        pixel_edge_angle
+    )
 end
 
 function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
@@ -223,6 +253,7 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
             new[:, radii[1]+x, radii[2]+y] = m[x, y]
         end
     end
+    @debug "Matrix reshaped"
     return new
 end
 
@@ -259,30 +290,30 @@ end
 
 @info "Preparing model"
 model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
-const temps = 0:0.001:3
+const temps = 1.e-30:0.001:3
 const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
 const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
-@time Model_NFW_GNFW(
-    5e14u"Msun",
-    0.13,
-    1.0620,
-    5.4807,
-    0.3292,
-    1.156,
-    0.1,
-    [12, 12],
-    0.492u"arcsecond"
-)
+# @time Model_NFW_GNFW(
+#     5e14u"Msun",
+#     0.13,
+#     1.0620,
+#     5.4807,
+#     0.3292,
+#     1.156,
+#     0.1,
+#     [12, 12],
+#     0.492u"arcsecond"
+# )
 
-@time Model_NFW_GNFW(
-    5e14u"Msun",
-    0.13,
-    1.0620,
-    5.4807,
-    0.3292,
-    1.156,
-    0.1,
-    [12, 12],
-    0.492u"arcsecond"
-)
+# @time Model_NFW_GNFW(
+#     5e14u"Msun",
+#     0.13,
+#     1.0620,
+#     5.4807,
+#     0.3292,
+#     1.156,
+#     0.1,
+#     [12, 12],
+#     0.492u"arcsecond"
+# )
