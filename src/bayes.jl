@@ -7,6 +7,9 @@ include("gas_models.jl")
 function log_likelihood(observed::Array{T}, predicted::Array{N}) where {T<:Real,N<:Real}
     t1 = observed .* log.(predicted) - predicted - logCobs_factorial
     # TODO: Background
+
+    replace!(t1, -Inf => 0)
+
     return sum(t1)
 end
 
@@ -61,7 +64,7 @@ function likelihood_wrapper(params)
     for i in 1:n
         params_rows[i] = params[i, :]
     end
-    display(params_rows)
+    # display(params_rows)
     predicted = complete_matrix.([Model_NFW_GNFW(params_rows[i]...,
             0.1,
             dshape,
