@@ -30,7 +30,7 @@ function surface_brightness(
 
         f = model(kbT)
 
-        @assert !any(isnan, f)
+        @assert all(isfinite, f)
 
         return f
     end
@@ -114,7 +114,11 @@ function Model_NFW_GNFW(
         b,
         c
     )
-        r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+
+        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $a, $b, $c"
+
+        return s
     end
     function gnfw_gas_mass_integrand(
         r::Unitful.Length,
@@ -290,7 +294,7 @@ end
 
 @info "Preparing model"
 model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
-const temps = 1.e-30:0.001:3
+const temps = 1.e-30:0.001:15
 const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
 const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
 
