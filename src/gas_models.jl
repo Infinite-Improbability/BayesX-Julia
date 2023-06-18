@@ -238,7 +238,7 @@ end
 
 function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     new = Array{Float64}(undef, length(energy_bins) - 1, shape...)
-    radii = ceil.(Int8, shape / 2)
+    radii = ceil.(Int16, shape / 2)
     for y in 1:radii[2]
         for x in 1:radii[1]
             new[:, radii[1]+1-x, radii[2]+1-y] = m[x, y]
@@ -295,7 +295,7 @@ end
 # invokemodel(collect(0.1:0.1:2), model)
 
 @info "Preparing model"
-model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)) + BlackBody(kT=FitParam(kbT)))
+model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)))
 const temps = 1.e-30:0.001:15
 const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
 const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
