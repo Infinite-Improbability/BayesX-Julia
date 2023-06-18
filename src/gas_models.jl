@@ -179,7 +179,7 @@ function Model_NFW_GNFW(
     pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     radii_x, radii_y = ceil.(Int64, shape ./ 2)
 
-    radius_at_coords(x, y) = hypot(x - radii_x, y - radii_y) * pixel_edge_length
+    radius_at_coords(x, y) = hypot(x, y) * pixel_edge_length
 
     radius_at_cell = Matrix{typeof(0.0u"Mpc")}(undef, radii_x, radii_y)
     counts = Matrix{Float64}(undef, radii_x, radii_y)
@@ -190,7 +190,6 @@ function Model_NFW_GNFW(
             radius_at_cell[x, y] = radius_at_coords(x, y)
         end
     end
-
 
     @debug "Generating counts"
 
@@ -209,6 +208,13 @@ function Model_NFW_GNFW(
 
     # TODO: Conversion from rate to counts
     # For now we handwave it with a fixed factor
+
+    # Debug code for verifing matrix completion and radius calculation
+    # for y in 1:radii_y
+    #     for x in 1:radii_x
+    #         counts[x, y] = repeat([ustrip(u"Mpc", radius_at_coords(x, y))], 26)
+    #     end
+    # end
 
     return counts * 1e13
 end
@@ -238,22 +244,34 @@ end
 
 function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     new = Array{Float64}(undef, length(energy_bins) - 1, shape...)
+
+    # increasing row is increasing x
+    # increasing column is increasing y
+
     radii = ceil.(Int16, shape / 2)
+
+    # top left
     for y in 1:radii[2]
         for x in 1:radii[1]
             new[:, radii[1]+1-x, radii[2]+1-y] = m[x, y]
         end
     end
+
+    # bottom left
     for y in 1:radii[2]
         for x in 1:radii[1]
             new[:, radii[1]+x, radii[2]+1-y] = m[x, y]
         end
     end
+
+    # top right
     for y in 1:radii[2]
         for x in 1:radii[1]
             new[:, radii[1]+1-x, radii[2]+y] = m[x, y]
         end
     end
+
+    # bottom right
     for y in 1:radii[2]
         for x in 1:radii[1]
             new[:, radii[1]+x, radii[2]+y] = m[x, y]
