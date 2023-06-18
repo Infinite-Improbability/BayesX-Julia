@@ -27,13 +27,13 @@ function surface_brightness(
         s, temp = p
         r::Unitful.Length = hypot(s, l)
         kbT = ustrip(u"keV", temp(r))
-        ρ = ustrip(u"cm^-3", density(r) / μe)
+        ρ = ustrip(u"cm^-3", density(r) / μ_e)
 
         # TODO: Better emission model
 
         f = model(kbT, ρ)
 
-        @assert all(isfinite, f)
+        @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
 
         return f
     end
@@ -287,54 +287,3 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     @debug "Matrix reshaped"
     return new
 end
-
-function prepare_model(
-    nHcol,
-    redshift,
-    energy_bins;
-    temperatures=1e-30:0.01:15,
-    densities=1.0:100.0:1000,
-    normalisation=1.0
-)
-    @info "Preparing model"
-
-    energy_bins = collect(energy_bins)
-
-    # TODO: Figure out normalisation
-
-    # Generate transmission fractions
-    absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
-    absorption = invokemodel(energy_bins, absorption_model)
-
-    # Generate source flux
-    # TODO: unit?!
-    emission_model = absorption_model * XS_Mekal(t=FitParam(4.0), ρ=FitParam(8.0), z=FitParam(redshift))
-    points = [[normalisation, t, d] for t in temperatures, d in densities]
-    emission = invokemodel.(
-        Ref(energy_bins),
-        Ref(emission_model),
-        points
-    )
-
-    # Apply absorption
-    flux = [absorption .* emission[index] for index in eachindex(IndexCartesian(), emission)]
-
-
-    return linear_interpolation(
-        (temperatures, densities),
-        flux
-    )
-end
-# const surrogate = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
-
-# @time Model_NFW_GNFW(
-#     5e14u"Msun",
-#     0.13,
-#     1.0620,
-#     5.4807,
-#     0.3292,
-#     1.156,
-#     0.1,
-#     [12, 12],
-#     0.492u"arcsecond"
-# )

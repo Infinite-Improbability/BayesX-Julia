@@ -68,8 +68,8 @@ function likelihood_wrapper(params)
                 1.156,
                 0.1,
                 dshape,
-                surrogate_model,
                 0.492u"arcsecond",
+                surrogate_model,
             ) for i in 1:n
         ],
         Ref(dshape)
