@@ -16,6 +16,7 @@ include("mekal.jl")
 function surface_brightness(
     projected_radius::Unitful.Length,
     temperature::Function,
+    density::Function,
     z,
     limit::Unitful.Length,
     model
@@ -26,10 +27,11 @@ function surface_brightness(
         s, temp = p
         r::Unitful.Length = hypot(s, l)
         kbT = ustrip(u"keV", temp(r))
+        ρ = ustrip(u"cm^-3", density(r) / μe)
 
         # TODO: Better emission model
 
-        f = model(kbT)
+        f = model(kbT, ρ)
 
         @assert all(isfinite, f)
 
@@ -57,7 +59,8 @@ function Model_NFW_GNFW(
     c_500_GNFW,
     z,
     shape::Vector{N},
-    pixel_edge_angle::Quantity{T,NoDims}
+    pixel_edge_angle::Quantity{T,NoDims},
+    emission_model
 ) where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
@@ -165,7 +168,7 @@ function Model_NFW_GNFW(
     function gas_density(r::Unitful.Length)::Unitful.Density
         (μ_e / μ) * (1 / (4π * G)) *
         (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-        gnfw_gas_radial_term(r_200, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
+        gnfw_gas_radial_term(r, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
     end
 
     """Calculate gas temperature at some radius"""
@@ -197,9 +200,10 @@ function Model_NFW_GNFW(
     counts = surface_brightness.(
         radius_at_cell,
         gas_temperature,
+        gas_density, # TODO: Calculate nH instead of using ne
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
-        Ref(surrogate)
+        Ref(emission_model)
     )
     @debug "Count generation done"
 
@@ -228,7 +232,8 @@ function Model_NFW_GNFW(
     c_500_GNFW,
     z,
     shape::Vector{N},
-    pixel_edge_angle::Quantity{T,NoDims}
+    pixel_edge_angle::Quantity{T,NoDims},
+    emission_model
 ) where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
@@ -239,7 +244,8 @@ function Model_NFW_GNFW(
         c_500_GNFW,
         z,
         shape,
-        pixel_edge_angle
+        pixel_edge_angle,
+        emission_model
     )
 end
 
@@ -282,60 +288,44 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     return new
 end
 
-function prepare_model(nHcol=2.2)
+function prepare_model(
+    nHcol,
+    redshift,
+    energy_bins;
+    temperatures=1e-30:0.01:15,
+    densities=1.0:100.0:1000,
+    normalisation=1.0
+)
     @info "Preparing model"
-    # model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)))
-    # temps = 1.e-30:0.001:15
-    # energy_bins = collect(LinRange(0.3, 3.0, 27))
 
-    # return linear_interpolation(
-    #     temps,
-    #     invokemodel.(
-    #         Ref(energy_bins),
-    #         model.(temps)
-    #     )
-    # )
+    energy_bins = collect(energy_bins)
 
-    energy_bins = collect(LinRange(0.3, 3, 27))
+    # TODO: Figure out normalisation
 
-    # XS_Mekal(t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(0.1)) 
+    # Generate transmission fractions
     absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
     absorption = invokemodel(energy_bins, absorption_model)
 
-    emission_model = absorption_model * XS_Mekal(t=FitParam(4.0), ρ=FitParam(8.0), z=FitParam(0.1))
-
-    temps = 1:0.01:15
-    densities = 1.0:100.0:1000
-    # points = [model(t, d) for t in temps, d in densities]
-    points = [[1.0, t, d] for t in temps, d in densities]
-
+    # Generate source flux
+    # TODO: unit?!
+    emission_model = absorption_model * XS_Mekal(t=FitParam(4.0), ρ=FitParam(8.0), z=FitParam(redshift))
+    points = [[normalisation, t, d] for t in temperatures, d in densities]
     emission = invokemodel.(
         Ref(energy_bins),
         Ref(emission_model),
         points
     )
 
+    # Apply absorption
     flux = [absorption .* emission[index] for index in eachindex(IndexCartesian(), emission)]
 
 
     return linear_interpolation(
-        (temps, densities),
+        (temperatures, densities),
         flux
     )
 end
-const surrogate = prepare_model()
-
-# @time Model_NFW_GNFW(
-#     5e14u"Msun",
-#     0.13,
-#     1.0620,
-#     5.4807,
-#     0.3292,
-#     1.156,
-#     0.1,
-#     [12, 12],
-#     0.492u"arcsecond"
-# )
+# const surrogate = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
 
 # @time Model_NFW_GNFW(
 #     5e14u"Msun",

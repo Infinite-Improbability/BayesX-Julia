@@ -33,7 +33,8 @@ function transform(cube)
     return cube
 end
 
-const dshape = [12, 12]
+const surrogate_model = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
+const dshape = [128, 128]
 const observed = ceil.(Int64, complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
@@ -43,7 +44,8 @@ const observed = ceil.(Int64, complete_matrix(Model_NFW_GNFW(
         1.156,
         0.1,
         dshape,
-        0.492u"arcsecond"
+        0.492u"arcsecond",
+        surrogate_model
     ), dshape
 ))
 log_fact(n::Integer) = sum(log.(1:n))
@@ -57,15 +59,21 @@ function likelihood_wrapper(params)
         params_rows[i] = params[i, :]
     end
     # display(params_rows)
-    predicted = complete_matrix.([Model_NFW_GNFW(params_rows[i]...,
-            1.062,
-            5.4807,
-            0.3292,
-            1.156,
-            0.1,
-            dshape,
-            0.492u"arcsecond"
-        ) for i in 1:n], Ref(dshape))
+    predicted = complete_matrix.(
+        [
+            Model_NFW_GNFW(params_rows[i]...,
+                1.062,
+                5.4807,
+                0.3292,
+                1.156,
+                0.1,
+                dshape,
+                surrogate_model,
+                0.492u"arcsecond",
+            ) for i in 1:n
+        ],
+        Ref(dshape)
+    )
     @debug "Predicted results generated"
     return log_likelihood.(Ref(observed), predicted)
 end
