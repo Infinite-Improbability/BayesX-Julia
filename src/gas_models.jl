@@ -2,12 +2,13 @@ using ArgCheck
 using Unitful, UnitfulAstro, UnitfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
-using SpectralFitting
+# using SpectralFitting
 using ProgressMeter
 using Interpolations
 
 
 include("params.jl")
+include("mekal.jl")
 
 ρ_crit(z) = 3 * H(cosmo, z)^2 / (8π * G)
 
@@ -243,7 +244,7 @@ function Model_NFW_GNFW(
 end
 
 function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
-    new = Array{Float64}(undef, length(energy_bins) - 1, shape...)
+    new = Array{Float64}(undef, length(m[1]), shape...)
 
     # increasing row is increasing x
     # increasing column is increasing y
@@ -281,42 +282,48 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     return new
 end
 
-# @xspecmodel :C_mekal struct XS_Mekal{T,F} <: AbstractSpectralModel{T,Additive}
-#     "Normalisation"
-#     K::T
-#     "Plasma Temperature"
-#     t::T
-#     "Hydrogen Density"
-#     ρ::T
-#     "Metal Abundances"
-#     a::T
-#     "Redshift"
-#     z::T
-#     "Switch"
-#     s::Int
-# end
-# function XS_Mekal(;
-#     K=FitParam(1.0),
-#     t=FitParam(8.0),
-#     ρ=FitParam(10.0),
-#     a=FitParam(1.0),
-#     z=FitParam(0.1),
-#     s=0
-# )
-#     XS_Mekal{typeof(K),SpectralFitting.FreeParameters{(:K, :t)}}(
-#         K, t, ρ, a, z, s
-#     )
-# end
-# SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat")
+function prepare_model(nHcol=2.2)
+    @info "Preparing model"
+    # model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)))
+    # temps = 1.e-30:0.001:15
+    # energy_bins = collect(LinRange(0.3, 3.0, 27))
 
-# model = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
-# invokemodel(collect(0.1:0.1:2), model)
+    # return linear_interpolation(
+    #     temps,
+    #     invokemodel.(
+    #         Ref(energy_bins),
+    #         model.(temps)
+    #     )
+    # )
 
-@info "Preparing model"
-model(kbT) = PhotoelectricAbsorption() * (XS_BremsStrahlung(T=FitParam(kbT)))
-const temps = 1.e-30:0.001:15
-const energy_bins = LinRange(0.3u"keV", 3u"keV", 27)
-const surrogate = linear_interpolation(temps, invokemodel.(Ref(ustrip.(u"keV", energy_bins)), model.(temps)))
+    energy_bins = collect(LinRange(0.3, 3, 27))
+
+    # XS_Mekal(t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(0.1)) 
+    absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
+    absorption = invokemodel(energy_bins, absorption_model)
+
+    emission_model = absorption_model * XS_Mekal(t=FitParam(4.0), ρ=FitParam(8.0), z=FitParam(0.1))
+
+    temps = 1:0.01:15
+    densities = 1.0:100.0:1000
+    # points = [model(t, d) for t in temps, d in densities]
+    points = [[1.0, t, d] for t in temps, d in densities]
+
+    emission = invokemodel.(
+        Ref(energy_bins),
+        Ref(emission_model),
+        points
+    )
+
+    flux = [absorption .* emission[index] for index in eachindex(IndexCartesian(), emission)]
+
+
+    return linear_interpolation(
+        (temps, densities),
+        flux
+    )
+end
+const surrogate = prepare_model()
 
 # @time Model_NFW_GNFW(
 #     5e14u"Msun",
