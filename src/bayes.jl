@@ -1,6 +1,6 @@
 using PyCall
 
-ultranest = pyimport_conda("ultranest", "ultranest")
+ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
 
 include("gas_models.jl")
 
@@ -24,9 +24,9 @@ function transform(cube)
     @debug "Transform started"
 
     # MT_200
-    cube[1] = cube[1] * (1e15 - 1e14) + 1e14
+    @. cube[:, 1] = cube[:, 1] * (1e15 - 1e14) + 1e14
     # fg_200
-    cube[2] = cube[2] * (0.2 - 0.05) + 0.05
+    @. cube[:, 2] = cube[:, 2] * (0.2 - 0.05) + 0.05
 
     @debug "Transform done"
 
@@ -79,6 +79,7 @@ function run_ultranest()
     print("result has these keys:", keys(results), "\n")
     sampler.print_results()
     sampler.plot()
+    return (sampler, results)
 end
 
-run_ultranest()
+s, r = run_ultranest()
