@@ -13,21 +13,28 @@ Log factorial is calculated as `ln(observed) + ln(observed_background)`.
 We require it to be supplied to improve performance - no need to calculate it every time.
 """
 function log_likelihood(
-    observed::T,
-    observed_background::T,
-    predicted::T,
-    predicted_background::T,
+    observed,
+    observed_background,
+    predicted,
+    predicted_background,
     observed_log_factorial
-) where {T<:AbstractArray}
-    @. t1 = observed * log(predicted) - predicted +
-            observed_background .* log(predicted_background) - predicted_background -
-            observed_log_factorial
+)
+    t1 = @. observed * log(predicted) - predicted
+    t2 = @. observed_background * log(predicted_background) - predicted_background
+
+    replace!(t2, NaN => 0) # for some reason log(0) sometimes produces NaN not -Inf
+
+    t = @. t1 + t2 - observed_log_factorial
 
     # If we have zero counts we can't take the log so
     # we'll just skip over it.
-    replace!(t1, -Inf => 0)
+    replace!(t, -Inf => 0, NaN => 0)
 
-    return sum(t1)
+    # For some reason 
+
+    @assert all(isfinite, t) display(t)
+
+    return sum(t)
 end
 
 """
@@ -67,6 +74,8 @@ Finds the natural logarithm of the factorial of `n`.
 
 `n` rapidly gets to large to quickly and directly calculate the factorial
 so we exploit logarithm rules to expand it out to a series of sums.
+
+It is intended to be broadcast across all values of the data array.
 """
 log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
 
@@ -84,13 +93,22 @@ function run_ultranest(
 ) where {T<:AbstractArray}
 
     # shape of the data
-    dshape = size(observed)
+    # dshape = [i for i in size(observed)][1:2]
 
     # fake a background
     # TODO: actual background predictions
-    predicted_bg = observed_background
+    predicted_bg = observed_background * 1.0
 
-    log_obs_factorial = log_factorial.(observed)
+    log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
+
+    @assert all(isfinite, observed)
+    @assert all(isfinite, observed_background)
+    @assert all(isfinite, log_obs_factorial)
+
+    @assert size(observed) == size(observed_background)
+
+    dshape = [i for i in size(observed)][2:3]
+
 
     # a wrapper to handle running the gas model and likelihood calculation
     function likelihood_wrapper(params)
@@ -126,13 +144,18 @@ function run_ultranest(
             Ref(observed_background),
             predicted,
             Ref(predicted_bg),
-            log_obs_factorial
+            Ref(log_obs_factorial)
         )
     end
 
     # ultranest setup
     paramnames = ["MT_200", "fg_200"]
-    sampler = ultranest.ReactiveNestedSampler(paramnames, likelihood_wrapper, transform=transform, vectorized=true)
+    sampler = ultranest.ReactiveNestedSampler(
+        paramnames,
+        likelihood_wrapper,
+        transform=transform,
+        vectorized=true
+    )
 
     # run Ultranest
     @info "Sampler starting"
@@ -150,7 +173,7 @@ end
 
 const sh = [12, 12]
 const m = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
-const obs = complete_matrix(Model_NFW_GNFW(
+const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
         1.0620,
@@ -162,9 +185,9 @@ const obs = complete_matrix(Model_NFW_GNFW(
         0.492u"arcsecond",
         m
     ), sh
-)
+))
 
 s, r = run_ultranest(
     obs,
-    obs * 0
+    obs * 0,
 );
