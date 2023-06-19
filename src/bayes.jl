@@ -1,19 +1,47 @@
 using PyCall
-
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
 
 include("gas_models.jl")
 
-function log_likelihood(observed::Array{T}, predicted::Array{N}) where {T<:Real,N<:Real}
-    t1 = observed .* log.(predicted) - predicted - logCobs_factorial
-    # TODO: Background
+"""
+    log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
 
+Calculate the log-likelihood of the prediction given an observation.
+
+The observed and predicted arrays include background events.
+Log factorial is calculated as `ln(observed) + ln(observed_background)`.
+We require it to be supplied to improve performance - no need to calculate it every time.
+
+"""
+function log_likelihood(
+    observed::A{N},
+    observed_background::A{N},
+    predicted::A{T},
+    predicted_background::A{T},
+    observed_log_factorial
+) where {A<:AbstractArray,T<:Real,N<:Integer}
+    @. t1 = observed * log(predicted) - predicted +
+            observed_background .* log(predicted_background) - predicted_background -
+            observed_log_factorial
+
+    # If we have zero counts we can't take the log so
+    # we'll just skip over it.
     replace!(t1, -Inf => 0)
 
     return sum(t1)
 end
 
-function transform(cube)
+"""
+    transform(cube)
+
+Transforms the hypercube used by ultranest into physical prior values.
+
+Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
+distribution. The transform function converts values on these uniform distributions
+to values on the physical prior distribution. Each column is a specific prior, so each
+row is a complete sample of the set of priors.
+"""
+function transform(cube::A) where {A<:AbstractArray}
     # MT_200::Unitful.Mass,
     # fg_200,
     # a_GNFW,
@@ -48,8 +76,18 @@ const observed = round.(Int64, complete_matrix(Model_NFW_GNFW(
         surrogate_model
     ), dshape
 ))
-log_fact(n::Integer) = sum(log.(1:n))
-logCobs_factorial = log_fact.(observed)
+
+"""
+    log_factorial(n)
+
+    Finds the natural logarithm of the factorial of `n`.
+
+    `n` rapidly gets to large to quickly and directly calculate the factorial
+    so we exploit logarithm rules to expand it out to a series of sums.
+"""
+log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
+
+const logCobs_factorial = log_factorial.(observed)
 
 function likelihood_wrapper(params)
     @debug "Likelihood started"
