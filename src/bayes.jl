@@ -89,7 +89,7 @@ the background. The model is an interpolation over a true emission model.
 function run_ultranest(
     observed::T,
     observed_background::T,
-    model=prepare_model(2.2, 0.1, 0.3:0.1:3.0),
+    model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
 ) where {T<:AbstractArray}
 
     # shape of the data
@@ -108,7 +108,6 @@ function run_ultranest(
     @assert size(observed) == size(observed_background)
 
     dshape = [i for i in size(observed)][2:3]
-
 
     # a wrapper to handle running the gas model and likelihood calculation
     function likelihood_wrapper(params)
@@ -172,7 +171,7 @@ function run_ultranest(
 end
 
 const sh = [12, 12]
-const m = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
+const m = prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0)
 const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
         0.13,

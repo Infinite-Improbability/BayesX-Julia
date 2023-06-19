@@ -2,49 +2,20 @@ using ArgCheck
 using Unitful, UnitfulAstro, UnitfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
-# using SpectralFitting
 using ProgressMeter
 using Interpolations
 
 
 include("params.jl")
-include("mekal.jl")
+include("emission.jl")
 
+
+"""
+    p_crit(z)
+
+Calculate the critical density at some redshift `z`.
+"""
 ρ_crit(z) = 3 * H(cosmo, z)^2 / (8π * G)
-
-"""Observed surface brightness"""
-function surface_brightness(
-    projected_radius::Unitful.Length,
-    temperature::Function,
-    density::Function,
-    z,
-    limit::Unitful.Length,
-    model
-)
-    @argcheck limit > 0u"Mpc"
-
-    function integrand(l, p)
-        s, temp = p
-        r::Unitful.Length = hypot(s, l)
-        kbT = ustrip(u"keV", temp(r))
-        ρ = ustrip(u"cm^-3", density(r) / μ_e)
-
-        # TODO: Better emission model
-
-        f = model(kbT, ρ)
-
-        @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
-
-        return f
-    end
-
-    # TODO: Try infinite bounds
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
-    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc")
-
-    (1 / (4π * (1 + z)^4)) * (π^2 / (60^2 * 180^2)) * 2 * ustrip.(u"Mpc", sol.u)
-
-end
 
 
 """Calculate predicted counts using a physical model based NFW-GNFW profiles
@@ -203,7 +174,8 @@ function Model_NFW_GNFW(
         gas_density, # TODO: Calculate nH instead of using ne
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
-        Ref(emission_model)
+        Ref(emission_model),
+        pixel_edge_length
     )
     @debug "Count generation done"
 
@@ -221,7 +193,11 @@ function Model_NFW_GNFW(
     #     end
     # end
 
-    return counts / (sum(minimum(counts)) / length(minimum(counts)))
+    scaling_factor = (sum(minimum(counts)) / length(minimum(counts)))
+    if scaling_factor == 0
+        scaling_factor = 1
+    end
+    return counts / scaling_factor
 end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
@@ -284,6 +260,9 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
             new[:, radii[1]+x, radii[2]+y] = m[x, y]
         end
     end
+
+    @assert all(isfinite, new)
+
     @debug "Matrix reshaped"
     return new
 end

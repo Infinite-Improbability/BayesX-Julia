@@ -33,7 +33,7 @@ SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal
 # invokemodel(collect(0.1:0.1:2), mekal)
 # invokemodel(collect(0.1:0.1:2), mekal, [1.0, 6.0, 4.0])
 
-function prepare_model(
+function prepare_model_mekal(
     nHcol,
     redshift,
     energy_bins;
