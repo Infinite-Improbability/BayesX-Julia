@@ -11,15 +11,14 @@ Calculate the log-likelihood of the prediction given an observation.
 The observed and predicted arrays include background events.
 Log factorial is calculated as `ln(observed) + ln(observed_background)`.
 We require it to be supplied to improve performance - no need to calculate it every time.
-
 """
 function log_likelihood(
-    observed::A{N},
-    observed_background::A{N},
-    predicted::A{T},
-    predicted_background::A{T},
+    observed::T,
+    observed_background::T,
+    predicted::T,
+    predicted_background::T,
     observed_log_factorial
-) where {A<:AbstractArray,T<:Real,N<:Integer}
+) where {T<:AbstractArray}
     @. t1 = observed * log(predicted) - predicted +
             observed_background .* log(predicted_background) - predicted_background -
             observed_log_factorial
@@ -61,9 +60,97 @@ function transform(cube::A) where {A<:AbstractArray}
     return cube
 end
 
-const surrogate_model = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
-const dshape = [24, 24]
-const observed = round.(Int64, complete_matrix(Model_NFW_GNFW(
+"""
+    log_factorial(n)
+
+Finds the natural logarithm of the factorial of `n`.
+
+`n` rapidly gets to large to quickly and directly calculate the factorial
+so we exploit logarithm rules to expand it out to a series of sums.
+"""
+log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
+
+
+"""
+    run_ultranest(observed, observed_background, model)
+
+Configure some necessary variables and launch ultranest. The observed array includes
+the background. The model is an interpolation over a true emission model.
+"""
+function run_ultranest(
+    observed::T,
+    observed_background::T,
+    model=prepare_model(2.2, 0.1, 0.3:0.1:3.0),
+) where {T<:AbstractArray}
+
+    # shape of the data
+    dshape = size(observed)
+
+    # fake a background
+    # TODO: actual background predictions
+    predicted_bg = observed_background
+
+    log_obs_factorial = log_factorial.(observed)
+
+    # a wrapper to handle running the gas model and likelihood calculation
+    function likelihood_wrapper(params)
+        @debug "Likelihood started"
+
+        n, _ = size(params)
+
+        params_rows = Vector{Vector{eltype(params)}}(undef, n)
+        for i in 1:n
+            params_rows[i] = params[i, :]
+        end
+
+        predicted = complete_matrix.(
+            [
+                Model_NFW_GNFW(params_rows[i]...,
+                    1.062,
+                    5.4807,
+                    0.3292,
+                    1.156,
+                    0.1,
+                    dshape,
+                    0.492u"arcsecond",
+                    model,
+                ) for i in 1:n
+            ],
+            Ref(dshape)
+        )
+
+        @debug "Predicted results generated"
+
+        return log_likelihood.(
+            Ref(observed),
+            Ref(observed_background),
+            predicted,
+            Ref(predicted_bg),
+            log_obs_factorial
+        )
+    end
+
+    # ultranest setup
+    paramnames = ["MT_200", "fg_200"]
+    sampler = ultranest.ReactiveNestedSampler(paramnames, likelihood_wrapper, transform=transform, vectorized=true)
+
+    # run Ultranest
+    @info "Sampler starting"
+    results = sampler.run()
+    @info "Sampler done"
+
+    # print("result has these keys:", keys(results), "\n")
+
+    # output data
+    sampler.print_results()
+    sampler.plot()
+
+    return (sampler, results)
+end
+
+const sh = [12, 12]
+const m = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
+const obs = complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
         1.0620,
@@ -71,61 +158,13 @@ const observed = round.(Int64, complete_matrix(Model_NFW_GNFW(
         0.3292,
         1.156,
         0.1,
-        dshape,
+        sh,
         0.492u"arcsecond",
-        surrogate_model
-    ), dshape
-))
+        m
+    ), sh
+)
 
-"""
-    log_factorial(n)
-
-    Finds the natural logarithm of the factorial of `n`.
-
-    `n` rapidly gets to large to quickly and directly calculate the factorial
-    so we exploit logarithm rules to expand it out to a series of sums.
-"""
-log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
-
-const logCobs_factorial = log_factorial.(observed)
-
-function likelihood_wrapper(params)
-    @debug "Likelihood started"
-    n, _ = size(params)
-    params_rows = Vector{Vector{eltype(params)}}(undef, n)
-    for i in 1:n
-        params_rows[i] = params[i, :]
-    end
-    # display(params_rows)
-    predicted = complete_matrix.(
-        [
-            Model_NFW_GNFW(params_rows[i]...,
-                1.062,
-                5.4807,
-                0.3292,
-                1.156,
-                0.1,
-                dshape,
-                0.492u"arcsecond",
-                surrogate_model,
-            ) for i in 1:n
-        ],
-        Ref(dshape)
-    )
-    @debug "Predicted results generated"
-    return log_likelihood.(Ref(observed), predicted)
-end
-
-function run_ultranest()
-    paramnames = ["MT_200", "fg_200"]
-    sampler = ultranest.ReactiveNestedSampler(paramnames, likelihood_wrapper, transform=transform, vectorized=true)
-    @debug "Sampler starting"
-    results = sampler.run()
-    @debug "Sampler done"
-    print("result has these keys:", keys(results), "\n")
-    sampler.print_results()
-    sampler.plot()
-    return (sampler, results)
-end
-
-s, r = run_ultranest()
+s, r = run_ultranest(
+    obs,
+    obs * 0
+);
