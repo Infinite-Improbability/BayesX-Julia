@@ -38,7 +38,7 @@ function prepare_model(
     redshift,
     energy_bins;
     temperatures=1e-30:0.01:15,
-    densities=0:100.0:1000,
+    densities=0:10.0:100,
     normalisation=1.0
 )
     @info "Preparing model"

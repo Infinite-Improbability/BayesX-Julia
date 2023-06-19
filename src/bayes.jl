@@ -34,8 +34,8 @@ function transform(cube)
 end
 
 const surrogate_model = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
-const dshape = [128, 128]
-const observed = ceil.(Int64, complete_matrix(Model_NFW_GNFW(
+const dshape = [24, 24]
+const observed = round.(Int64, complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
         1.0620,
@@ -53,7 +53,7 @@ logCobs_factorial = log_fact.(observed)
 
 function likelihood_wrapper(params)
     @debug "Likelihood started"
-    n, d = size(params)
+    n, _ = size(params)
     params_rows = Vector{Vector{eltype(params)}}(undef, n)
     for i in 1:n
         params_rows[i] = params[i, :]

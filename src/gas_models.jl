@@ -64,7 +64,7 @@ function Model_NFW_GNFW(
 ) where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
-    @debug "Model called"
+    @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
 
     @argcheck MT_200 > 0
     @argcheck fg_200 > 0
@@ -221,7 +221,7 @@ function Model_NFW_GNFW(
     #     end
     # end
 
-    return counts * 1e13
+    return counts / (sum(minimum(counts)) / length(minimum(counts)))
 end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
