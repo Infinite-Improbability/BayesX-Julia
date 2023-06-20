@@ -2,7 +2,7 @@
 
 Using Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/) run
 
-```julia
+```
 (@v1.8) pkg> activate .
   Activating project at `~/git/BayesX-Julia`
 
