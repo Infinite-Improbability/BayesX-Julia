@@ -41,7 +41,7 @@ function prepare_model_mekal(
     densities=0:10.0:100,
     normalisation=1.0
 )
-    @info "Preparing model"
+    @debug "Preparing model"
 
     energy_bins = collect(energy_bins)
 

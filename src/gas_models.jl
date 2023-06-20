@@ -43,9 +43,7 @@ function Model_NFW_GNFW(
     # @argcheck c_500_GNFW > 0
     # @argcheck (b_GNFW - c_500_GNFW) > 0
 
-    # @info "a: $a_GNFW, b: $b_GNFW, c: $c_GNFW"
-
-    MT_200 *= 1u"Msun"
+    MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.

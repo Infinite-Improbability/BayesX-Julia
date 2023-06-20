@@ -157,9 +157,9 @@ function run_ultranest(
     )
 
     # run Ultranest
-    @info "Sampler starting"
+    @debug "Sampler starting"
     results = sampler.run()
-    @info "Sampler done"
+    @debug "Sampler done"
 
     # print("result has these keys:", keys(results), "\n")
 
@@ -186,7 +186,14 @@ const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
     ), sh
 ))
 
-s, r = run_ultranest(
+@time run_ultranest(
     obs,
     obs * 0,
-);
+    m
+)
+
+@time run_ultranest(
+    obs,
+    obs * 0,
+    m
+)
