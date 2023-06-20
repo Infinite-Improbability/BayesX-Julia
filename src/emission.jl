@@ -14,18 +14,11 @@ function surface_brightness(
 )
     @argcheck limit > 0u"Mpc"
 
-    projected_radius = ustrip(u"Mpc", projected_radius)
-    pixel_edge_length = ustrip(u"Mpc", pixel_edge_length)
-    limit = ustrip(u"Mpc", limit)
-
-    function integrand(vars, params)
+    function integrand(l, params)
         s, temp = params
-        l, x, y = vars
-        r = hypot(x + y, l) * 1u"Mpc"
+        r = hypot(s, l)
         kbT = ustrip(u"keV", temp(r))
         ρ = ustrip(u"cm^-3", density(r) / μ_e)
-
-        # TODO: Better emission model
 
         f = model(kbT, ρ)
 
@@ -34,12 +27,8 @@ function surface_brightness(
         return f
     end
 
-    # TODO: Try infinite bounds
-    upper_bounds = [Inf, hypot(projected_radius, pixel_edge_length), hypot(projected_radius, pixel_edge_length)]
-    lower_bounds = [-Inf, projected_radius, projected_radius]
-
-    problem = IntegralProblem(integrand, lower_bounds, upper_bounds, [projected_radius, temperature])
-    sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1e-3)
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
+    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc")
 
     @assert all(isfinite, sol.u)
 
