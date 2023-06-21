@@ -2,8 +2,6 @@ using ArgCheck
 using Unitful, UnitfulAstro, UnitfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
-using ProgressMeter
-using Interpolations
 
 
 include("params.jl")
@@ -22,17 +20,17 @@ Calculate the critical density at some redshift `z`.
 as described in Olamaie 2012.
 """
 function Model_NFW_GNFW(
-    MT_200,
-    fg_200,
-    a_GNFW,
-    b_GNFW,
-    c_GNFW,
-    c_500_GNFW,
-    z,
+    MT_200::T,
+    fg_200::T,
+    a_GNFW::T,
+    b_GNFW::T,
+    c_GNFW::T,
+    c_500_GNFW::T,
+    z::T,
     shape::Vector{N},
     pixel_edge_angle::Quantity{T,NoDims},
     emission_model
-) where {N<:Integer,T<:AbstractFloat}
+)::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
     @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
@@ -78,17 +76,31 @@ function Model_NFW_GNFW(
     r_p = uconvert(u"Mpc", r_500 / c_500_GNFW)
 
     # Some helper functions
+    """The radius dependent part of the gas density function"""
+    function gnfw_gas_radial_term(
+        r::Unitful.Length{T},
+        r_s::Unitful.Length{T}, # NFW
+        r_p::Unitful.Length{T}, # GNFW
+        a,
+        b,
+        c
+    ) where {T<:AbstractFloat}
+        r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
+        (r / r_p)^(-c) *
+        (1 + (r / r_p)^a)^(-(a + b - c) / a) *
+        (b * (r / r_p)^a + c)
+    end
 
     """An integral over radius that is equal to the gas
     density to a proportionality constant"""
     function gnfw_gas_mass_integrand(
-        r::Unitful.Length,
-        r_s::Unitful.Length, # NFW
-        r_p::Unitful.Length, # GNFW
+        r::Unitful.Length{T},
+        r_s::Unitful.Length{T}, # NFW
+        r_p::Unitful.Length{T}, # GNFW
         a,
         b,
         c
-    )
+    ) where {T<:AbstractFloat}
         s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
 
         @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $a, $b, $c"
@@ -96,26 +108,10 @@ function Model_NFW_GNFW(
         return s
     end
     function gnfw_gas_mass_integrand(
-        r::Unitful.Length,
-        p
-    )
+        r::Unitful.Length{T},
+        p::Vector{Quantity{T}}
+    ) where {T<:AbstractFloat}
         gnfw_gas_mass_integrand(r, p...)
-    end
-
-
-    """The radius dependent part of the gas density function"""
-    function gnfw_gas_radial_term(
-        r::Unitful.Length,
-        r_s::Unitful.Length, # NFW
-        r_p::Unitful.Length, # GNFW
-        a,
-        b,
-        c
-    )
-        r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
-        (r / r_p)^(-c) *
-        (1 + (r / r_p)^a)^(-(a + b - c) / a) *
-        (b * (r / r_p)^a + c)
     end
 
     # Calculate Pei, normalisation coefficent for GNFW pressure

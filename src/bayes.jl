@@ -165,12 +165,12 @@ function run_ultranest(
 
     # output data
     sampler.print_results()
-    sampler.plot()
+    # sampler.plot()
 
     return (sampler, results)
 end
 
-const sh = [12, 12]
+const sh = [24, 24]
 const m = prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0)
 const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
         5e14u"Msun",
@@ -190,10 +190,4 @@ const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
     obs,
     obs * 0,
     m
-)
-
-@time run_ultranest(
-    obs,
-    obs * 0,
-    m
-)
+);
