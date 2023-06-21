@@ -229,7 +229,7 @@ function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
     # increasing row is increasing x
     # increasing column is increasing y
 
-    radii = ceil.(Int16, shape / 2)
+    radii = ceil.(Int64, shape / 2)
 
     # top left
     for y in 1:radii[2]
