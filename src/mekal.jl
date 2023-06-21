@@ -1,4 +1,5 @@
 using SpectralFitting
+using Interpolations
 
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
     "Normalisation"
@@ -69,9 +70,5 @@ function prepare_model_mekal(
 
     @assert all(all.(isfinite, flux))
 
-    return linear_interpolation(
-        (temperatures, densities),
-        flux
-    )
+    return scale(interpolate(flux, BSpline(Linear())), (temperatures, densities))
 end
-# const surrogate = prepare_model(2.2, 0.1, 0.3:0.1:3.0)
