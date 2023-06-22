@@ -30,7 +30,7 @@ function Model_NFW_GNFW(
     shape::Vector{N},
     pixel_edge_angle::Quantity{T,NoDims},
     emission_model
-)::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
+)::Matrix{Vector{Float64}} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
     @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
@@ -151,7 +151,7 @@ function Model_NFW_GNFW(
     radius_at_coords(x, y) = hypot(x, y) * pixel_edge_length
 
     radius_at_cell = Matrix{typeof(0.0u"Mpc")}(undef, radii_x, radii_y)
-    counts = Matrix{Float64}(undef, radii_x, radii_y)
+    counts = Matrix{Vector{Float64}}(undef, radii_x, radii_y)
 
     # TODO: Are we transposing?
     for y in 1:radii_y
