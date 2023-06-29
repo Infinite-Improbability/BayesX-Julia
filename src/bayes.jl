@@ -38,7 +38,7 @@ function log_likelihood(
 end
 
 """
-    transform(cube)
+    transform_cube(cube)
 
 Transforms the hypercube used by ultranest into physical prior values.
 
@@ -47,7 +47,7 @@ distribution. The transform function converts values on these uniform distributi
 to values on the physical prior distribution. Each column is a specific prior, so each
 row is a complete sample of the set of priors.
 """
-function transform(cube::A) where {A<:AbstractArray}
+function transform(cube::AbstractArray)
     # MT_200::Unitful.Mass,
     # fg_200,
     # a_GNFW,
@@ -81,23 +81,17 @@ log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
 
 
 """
-    run_ultranest(observed, observed_background, model)
+    _run_ultranest(observed, observed_background, model)
 
 Configure some necessary variables and launch ultranest. The observed array includes
 the background. The model is an interpolation over a true emission model.
 """
-function run_ultranest(
+function _run_ultranest(
     observed::T,
     observed_background::T,
     model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
 ) where {T<:AbstractArray}
-
-    # shape of the data
-    # dshape = [i for i in size(observed)][1:2]
-
-    # fake a background
     # TODO: actual background predictions
-    predicted_bg = observed_background * 1.0
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -191,3 +185,37 @@ const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
     obs * 0,
     m
 );
+
+"""
+Abstract supertype for priors. Should implement a transform(prior, x) function that Transforms
+a value x on the unit range to a value on the distribution represented by the prior.
+"""
+abstract type Prior end
+
+"""
+    transform(prior, x)
+Transforms a value x on the unit range to a value on the distribution represented by the prior.
+"""
+function transform(prior::Prior, x::Real) end
+
+"""A delta prior, that always returns a constant value."""
+struct DeltaPrior{T<:Number} <: Prior
+    value::T
+end
+function transform(prior::DeltaPrior, x::Real)
+    @argcheck 0 <= x <= 1
+    return prior.value
+end
+
+"""A uniform prior, that draws from a uniform distribton between `min` and `max`."""
+struct UniformPrior{T<:Number} <: Prior
+    min::T
+    max::T
+    UniformPrior(min, max) = max > min ? new(min, max) : error("Maximum is not greater than min")
+end
+function transform(prior::UniformPrior, x::Real)
+    return x * (max - min) + min
+end
+
+macro make_transform(priors::Prior...)
+end
