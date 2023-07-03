@@ -17,11 +17,12 @@ function run(
 )
     observation, observed_background = load_data(data) # TODO: binning
 
-    bin_events(obs, energy_range, 2000:4000, 2000:4000)
+    obs = bin_events(obs, energy_range, 2000:4000, 2000:4000)
+    bg = bin_events(bg, energy_range, 2000:4000, 2000:4000)
 
     transform = make_cube_transform(priors)
 
-    _run_ultranest(observation, observed_background, emission_model)
+    _run_ultranest(obs, bg, transform, emission_model)
 
 
     # Apply energy range restrictions and bin data
