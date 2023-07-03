@@ -38,36 +38,6 @@ function log_likelihood(
 end
 
 """
-    transform(cube)
-
-Transforms the hypercube used by ultranest into physical prior values.
-
-Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
-distribution. The transform function converts values on these uniform distributions
-to values on the physical prior distribution. Each column is a specific prior, so each
-row is a complete sample of the set of priors.
-"""
-function transform(cube::A) where {A<:AbstractArray}
-    # MT_200::Unitful.Mass,
-    # fg_200,
-    # a_GNFW,
-    # b_GNFW,
-    # c_GNFW,
-    # c_500_GNFW,
-
-    @debug "Transform started"
-
-    # MT_200
-    @. cube[:, 1] = cube[:, 1] * (1e15 - 1e14) + 1e14
-    # fg_200
-    @. cube[:, 2] = cube[:, 2] * (0.2 - 0.05) + 0.05
-
-    @debug "Transform done"
-
-    return cube
-end
-
-"""
     log_factorial(n)
 
 Finds the natural logarithm of the factorial of `n`.
@@ -81,23 +51,20 @@ log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
 
 
 """
-    run_ultranest(observed, observed_background, model)
+    _run_ultranest(observed, observed_background, model)
 
 Configure some necessary variables and launch ultranest. The observed array includes
 the background. The model is an interpolation over a true emission model.
 """
-function run_ultranest(
+function _run_ultranest(
     observed::T,
     observed_background::T,
+    transform::Function,
     model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
 ) where {T<:AbstractArray}
-
-    # shape of the data
-    # dshape = [i for i in size(observed)][1:2]
-
-    # fake a background
     # TODO: actual background predictions
-    predicted_bg = observed_background * 1.0
+
+    predicted_bg = observed_background * 0 + 1
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -170,24 +137,67 @@ function run_ultranest(
     return (sampler, results)
 end
 
-const sh = [24, 24]
-const m = prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0)
-const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0620,
-        5.4807,
-        0.3292,
-        1.156,
-        0.1,
-        sh,
-        0.492u"arcsecond",
-        m
-    ), sh
-))
+"""
+Abstract supertype for priors. Should implement a transform(prior, x) function that Transforms
+a value x on the unit range to a value on the distribution represented by the prior.
+"""
+abstract type Prior end
 
-@time run_ultranest(
-    obs,
-    obs * 0,
-    m
-);
+"""
+    transform(prior, x)
+Transforms a value x on the unit range to a value on the distribution represented by the prior.
+"""
+function transform(prior::Prior, x::Real) end
+
+"""A delta prior, that always returns a constant value."""
+struct DeltaPrior{T<:Number} <: Prior
+    value::T
+end
+function transform(prior::DeltaPrior, x::Real)
+    @argcheck 0 <= x <= 1
+    return prior.value
+end
+
+"""A uniform prior, that draws from a uniform distribton between `min` and `max`."""
+struct UniformPrior{T<:Number} <: Prior
+    min::T
+    max::T
+    UniformPrior(min, max) = max > min ? new(min, max) : error("Maximum is not greater than min")
+end
+function transform(prior::UniformPrior, x::Real)
+    return x * (max - min) + min
+end
+
+function make_cube_transform(priors::Prior...)
+
+    """
+        transform_cube(cube)
+
+    Transforms the hypercube used by ultranest into physical prior values.
+
+    Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
+    distribution. The transform function converts values on these uniform distributions
+    to values on the physical prior distribution. Each column is a specific prior, so each
+    row is a complete sample of the set of priors.
+    """
+    function transform_cube(cube::AbstractArray)
+        # MT_200::Unitful.Mass,
+        # fg_200,
+        # a_GNFW,
+        # b_GNFW,
+        # c_GNFW,
+        # c_500_GNFW,
+
+        @debug "Transform started"
+
+        for (c, p) in zip(axes(cube, 2), priors)
+            cube[:, c] = transform(p, cube[:, c])
+        end
+
+        @debug "Transform done"
+
+        return cube
+    end
+
+    return transform_cube
+end
