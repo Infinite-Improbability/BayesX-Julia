@@ -59,9 +59,12 @@ the background. The model is an interpolation over a true emission model.
 function _run_ultranest(
     observed::T,
     observed_background::T,
+    transform::Function,
     model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
 ) where {T<:AbstractArray}
     # TODO: actual background predictions
+
+    predicted_bg = observed_background * 0 + 1
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -133,28 +136,6 @@ function _run_ultranest(
 
     return (sampler, results)
 end
-
-const sh = [24, 24]
-const m = prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0)
-const obs = round.(Int64, complete_matrix(Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0620,
-        5.4807,
-        0.3292,
-        1.156,
-        0.1,
-        sh,
-        0.492u"arcsecond",
-        m
-    ), sh
-))
-
-@time run_ultranest(
-    obs,
-    obs * 0,
-    m
-);
 
 """
 Abstract supertype for priors. Should implement a transform(prior, x) function that Transforms

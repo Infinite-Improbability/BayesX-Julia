@@ -92,5 +92,5 @@ function fits_get_col_info(f::FITSIO.FITSFile, colnum::Integer)
     return T, rowsize, isvariable
 end
 
-f = FITS("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits")
+# f = FITS("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits")
 # f[2]

@@ -1,5 +1,5 @@
 include("bayes.jl")
-
+include("io.jl")
 
 
 """
@@ -15,7 +15,9 @@ function run(
     emission_model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
     pixel_size_length=0.492u"arcsecond"
 )
-    observation, observed_background = load_data(data, energy_range) # TODO: binning
+    observation, observed_background = load_data(data) # TODO: binning
+
+    bin_events(obs, energy_range, 2000:4000, 2000:4000)
 
     transform = make_cube_transform(priors)
 
