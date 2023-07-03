@@ -38,36 +38,6 @@ function log_likelihood(
 end
 
 """
-    transform_cube(cube)
-
-Transforms the hypercube used by ultranest into physical prior values.
-
-Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
-distribution. The transform function converts values on these uniform distributions
-to values on the physical prior distribution. Each column is a specific prior, so each
-row is a complete sample of the set of priors.
-"""
-function transform(cube::AbstractArray)
-    # MT_200::Unitful.Mass,
-    # fg_200,
-    # a_GNFW,
-    # b_GNFW,
-    # c_GNFW,
-    # c_500_GNFW,
-
-    @debug "Transform started"
-
-    # MT_200
-    @. cube[:, 1] = cube[:, 1] * (1e15 - 1e14) + 1e14
-    # fg_200
-    @. cube[:, 2] = cube[:, 2] * (0.2 - 0.05) + 0.05
-
-    @debug "Transform done"
-
-    return cube
-end
-
-"""
     log_factorial(n)
 
 Finds the natural logarithm of the factorial of `n`.
@@ -217,5 +187,36 @@ function transform(prior::UniformPrior, x::Real)
     return x * (max - min) + min
 end
 
-macro make_transform(priors::Prior...)
+function make_cube_transform(priors::Prior...)
+
+    """
+        transform_cube(cube)
+
+    Transforms the hypercube used by ultranest into physical prior values.
+
+    Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
+    distribution. The transform function converts values on these uniform distributions
+    to values on the physical prior distribution. Each column is a specific prior, so each
+    row is a complete sample of the set of priors.
+    """
+    function transform_cube(cube::AbstractArray)
+        # MT_200::Unitful.Mass,
+        # fg_200,
+        # a_GNFW,
+        # b_GNFW,
+        # c_GNFW,
+        # c_500_GNFW,
+
+        @debug "Transform started"
+
+        for (c, p) in zip(axes(cube, 2), priors)
+            cube[:, c] = transform(p, cube[:, c])
+        end
+
+        @debug "Transform done"
+
+        return cube
+    end
+
+    return transform_cube
 end

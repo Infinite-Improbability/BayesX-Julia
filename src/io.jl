@@ -3,14 +3,18 @@ using FITSIO
 # Import our patch
 include("fitsio_fix.jl")
 
-struct BayesXData{N<:Int,T<:AbstractFloat}
-    observation::Matrix{N}
-    background::Matrix{N}
-    arf::Vector{T}
-    rmf::Matrix{T}
+abstract type BayesXDataset end
+# Include exposure times in dataset
+# And NHcol, bg count rate?
+
+struct FITSData{S<:AbstractString} <: BayesXDataset
+    observation::S
+    background::S
+    arf::S
+    rmf::S
 end
 
-function load_data(events::AbstractString, background::AbstractString)
+function load_data(data::BayesXData, energy_range)::Tuple{Matrix}
 end
 
 function safe_read_key(hdu::HDU, key::String)
@@ -23,7 +27,7 @@ function safe_read_key(hdu::HDU, key::String)
 
 end
 
-function load_fits_file(path::AbstractString)#::Matrix{Int64}
+function load_events_from_fits(path::AbstractString)
     f = FITS(path, "r")
     event_hdus::Vector{TableHDU} = [h for h in f if safe_read_key(h, "extname")[1] == "EVENTS"]
     if length(event_hdus) > 1
@@ -31,4 +35,11 @@ function load_fits_file(path::AbstractString)#::Matrix{Int64}
     end
     h = event_hdus[1]
     @info "Selected HDU with HDUNAME '$(safe_read_key(h, "HDUNAME")[1])'"
+
+    return [h["X"] h["y"] h["PI"]]
 end
+
+function load_data(data::FITSData, energy_range)
+    obs = load_events_from_fits(data.observation)
+end
+

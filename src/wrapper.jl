@@ -1,8 +1,6 @@
 include("bayes.jl")
 
-abstract type BayesXDataset end
-# Include exposure times in dataset
-# And NHcol, bg count rate?
+
 
 """
     run(data, energy_range)
@@ -13,8 +11,19 @@ energy range. An gas emission model `(density, temperature) → emissivity` can 
 function run(
     data::BayesXDataset,
     energy_range,
-    priors,
-    ;
-    emission_model = prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
-    pixel_size_length = 0.492u"arcsecond"
-    )
+    priors;
+    emission_model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
+    pixel_size_length=0.492u"arcsecond"
+)
+    observation, observed_background = load_data(data, energy_range) # TODO: binning
+
+    transform = make_cube_transform(priors)
+
+    _run_ultranest(observation, observed_background, emission_model)
+
+
+    # Apply energy range restrictions and bin data
+    # Turn priors into transform function
+    # Pass through to sampler
+
+end
