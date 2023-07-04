@@ -2,6 +2,7 @@ using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
 
 include("gas_models.jl")
+include("io.jl")
 
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
