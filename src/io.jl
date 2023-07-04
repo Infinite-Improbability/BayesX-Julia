@@ -7,13 +7,14 @@ abstract type BayesXDataset end
 # Include exposure times in dataset
 # And NHcol, bg count rate?
 
-struct FITSData{S<:AbstractString,T<:AbstractFloat} <: BayesXDataset
+# TODO: Be more specific with types
+struct FITSData{S<:AbstractString} <: BayesXDataset
     observation::S
     background::S
     arf::S
     rmf::S
-    exposure_time::Quantity{T,Unitful.𝐓} # TODO: Decouple source and bg exposure times
-    pixel_edge_angle::Quantity{T,NoDims} = 0.492u"arcsecond"
+    exposure_time # TODO: Decouple source and bg exposure times
+    pixel_edge_angle
 end
 
 function load_data(data::BayesXDataset)
@@ -44,7 +45,7 @@ function load_events_from_fits(path::AbstractString)
     h = event_hdus[1]
     @info "Selected HDU with HDUNAME '$(read_key(h, "HDUNAME")[1])'"
 
-    return [read(h, "x") read(h, "y") read(h, "pi")]
+    return [read(h, "x") read(h, "y") read(h, "pi") read(h, "energy") * 1u"eV"] # TODO: manual units bad
 end
 
 function load_data(data::FITSData)
@@ -56,26 +57,26 @@ end
 function load_response(data::FITSData, energy_range)
     f = FITS(data.rmf)
     rmf_hdus::Vector{TableHDU} = [h for h in f if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"]
-    if length(matrix_hdus) > 1
-        @warn "$(length(matrix_hdus)) HDUs with matrix extension found. Using the first."
+    if length(rmf_hdus) > 1
+        @warn "$(length(rmf_hdus)) HDUs with matrix extension found. Using the first."
     end
     r = rmf_hdus[1]
     @info "Selected HDU with HDUNAME '$(read_key(r, "HDUNAME")[1])'"
 
-    first_channel = read(r, "F_CHAN")
-    last_channel = first_channel .+ read(r, "N_CHAN") - 1
+    first_channel = [i[1] for i in read(r, "F_CHAN")]
+    last_channel = first_channel .+ [i[1] for i in read(r, "N_CHAN")] .- 1
     channels_for_bin = read(r, "MATRIX")
 
-    rmf = zeros(Float64, (maximum(last_channel), read_key(r, "NAXIS2")))
+    rmf = zeros(Float64, (maximum(last_channel), read_key(r, "NAXIS2")[1]))
 
     for i in axes(rmf, 2)
-        rmf[first_channel[i]:last_channel[i], i] .= channels_for_bin[i]
+        rmf[first_channel[i][1]:last_channel[i][1], i] .= channels_for_bin[i]
     end
 
-    f = FITS(data.rmf)
-    arf_hdus::Vector{TableHDU} = [h for h in f if safe_read_key(h, "extname", "Exception when looking for specrsp HDU. Probably a HDU without extname.")[1] == "MATRIX"]
-    if length(matrix_hdus) > 1
-        @warn "$(length(matrix_hdus)) HDUs with matrix extension found. Using the first."
+    f = FITS(data.arf)
+    arf_hdus::Vector{TableHDU} = [h for h in f if safe_read_key(h, "extname", "Exception when looking for specrsp HDU. Probably a HDU without extname.")[1] == "SPECRESP"]
+    if length(arf_hdus) > 1
+        @warn "$(length(arf_hdus)) HDUs with matrix extension found. Using the first."
     end
     a = arf_hdus[1]
     @info "Selected HDU with HDUNAME '$(read_key(r, "HDUNAME")[1])'"
@@ -86,12 +87,12 @@ function load_response(data::FITSData, energy_range)
         rmf[i, :] .*= arf
     end
 
-    # Get last bin where minimum energy <= min of range
+    # Get first bin where maximum energy >= min of range
     # ∴ Subsequent bins must have minimum energy > min of range
-    min_bin = searchsortedlast(read(r, "ENERG_LOW"), energy_range[1])
+    min_bin = searchsortedfirst(read(r, "ENERG_HI") * 1u"keV", energy_range[1])
     # Get last bin where minimum energy >= max of range
     # ∴ This and subsequent bins must have minimum energy > max of range
-    max_bin = searchsortedfirst(read(r, "ENERG_LO"), energy_range[2]) - 1
+    max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", energy_range[2]) - 1
 
     return rmf[:, min_bin:max_bin]
 end
@@ -99,9 +100,14 @@ end
 function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]
-    events = events[energy_range[1].<events[:, 3].<energy_range[2], :]
+    events = events[energy_range[1].<events[:, 4].<energy_range[2], :]
 
-    binned = zeros(Int64, (length(x_edges) - 1, length(y_edges) - 1, trunc(Int64, maximum(events[:, 3]))))
+    # display(events)
+
+    # Maximum doesn't like the Unitful array
+    channels = ustrip.(cat[:, 3])
+
+    binned = zeros(Int64, (length(x_edges) - 1, length(y_edges) - 1, trunc(Int64, maximum(channels))))
 
     for r in eachrow(events)
         i = searchsortedlast(x_edges, r[1])

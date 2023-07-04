@@ -75,7 +75,7 @@ end
 struct UniformPrior{T<:Number} <: Prior
     min::T
     max::T
-    UniformPrior(min, max) = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
+    UniformPrior(min::T, max::T) where {T<:Number} = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
 end
 function transform(prior::UniformPrior, x::Real)
     return x * (max - min) + min
@@ -217,14 +217,14 @@ function run(
 
     observation, observed_background = load_data(data)
 
-    obs = bin_events(observation, energy_range, 2000:4000, 2000:4000)
-    bg = bin_events(observed_background, energy_range, 2000:4000, 2000:4000)
+    obs = bin_events(observation, energy_range, 2000:100:4000, 2000:100:4000)
+    bg = bin_events(observed_background, energy_range, 2000:100:4000, 2000:100:4000)
 
-    transform = make_cube_transform(priors)
+    transform = make_cube_transform(priors...)
 
     response_function = load_response(data, energy_range)
 
-    emission_model = prepare_model_mekal(2.2, 0.1, range(energy_range[1], energy_range[2], step=shape(response_function)[2]))
+    emission_model = prepare_model_mekal(2.2, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2]))
 
     run_ultranest(obs, bg, response_function, transform, data.exposure_time; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
