@@ -11,7 +11,6 @@ function surface_brightness(
     limit::Unitful.Length,
     model,
     pixel_edge_length::Unitful.Length,
-    exposure_time::Unitful.Time
 )
     @argcheck limit > 0u"Mpc"
 
@@ -41,6 +40,30 @@ function surface_brightness(
     # the n_e n_h density normalisation has been applied in the integrand, approximating n_e n_h as n_e^2
     # this is not ideal, should use the explicit value
     # I don't know where XSPEC gets 10^-14 so I'm just trusting their docs
-    2 * sol.u * pixel_edge_length^2 * exposure_time * 10^-14 / 4π / (1 + z)^2 / angular_diameter_dist(cosmo, z)^2
+    2 * sol.u * pixel_edge_length^2 * 10^-14 / 4π / (1 + z)^2 / angular_diameter_dist(cosmo, z)^2
+end
 
+"""
+    apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time::Unitful.Time)::Vector{Float64}
+
+Applies the response function ``RSP(PI, E) = RMF(PI, E) ∘ ARF(E)`` to all energy bins and returns adjusted counts per bin.
+```math
+\\begin{aligned}
+C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) dE \\
+&≈ T \\sum_{j} R_{ij} A{j} S{j}
+\\end{aligned}
+```
+with `C(PI)`` is the observed counts in a detector channel `PI`, `T` is the observation time,
+`ARF(E)` is the effective area of the instrument and `RMF(E, PI)` is the unitless response matrix.
+(Handbook of X-ray Astronomy Chapter 2011, Chapter 5 pg 87, by K. Arnaud, R. Smith and A. Siemiginowska)
+
+This function takes the combined RMF and ARF as the response function. This is to recalculating it on every call.
+Some people format the RMF as RMF(PI, E). This convention is used by CIAO, for example.
+"""
+function apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time::Unitful.Time)::Vector{Float64}
+    # Argcheck would really be better here but we want it to skip it in high performance situations
+    @assert length(counts_per_bin) == shape(response)[1]
+
+    # All we have to do is matrix multiplication
+    response * counts_per_bin * exposure_time
 end

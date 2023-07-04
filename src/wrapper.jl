@@ -17,8 +17,8 @@ function run(
 )
     observation, observed_background = load_data(data) # TODO: binning
 
-    obs = bin_events(obs, energy_range, 2000:4000, 2000:4000)
-    bg = bin_events(bg, energy_range, 2000:4000, 2000:4000)
+    obs = bin_events(observation, energy_range, 2000:4000, 2000:4000)
+    bg = bin_events(observed_background, energy_range, 2000:4000, 2000:4000)
 
     transform = make_cube_transform(priors)
 

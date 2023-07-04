@@ -30,7 +30,8 @@ function Model_NFW_GNFW(
     shape::Vector{N},
     pixel_edge_angle::Quantity{T,NoDims},
     emission_model,
-    exposure_time::Unitful.Time
+    exposure_time::Unitful.Time,
+    response_function::Matrix{T},
 )::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
@@ -170,10 +171,13 @@ function Model_NFW_GNFW(
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
         Ref(emission_model),
-        pixel_edge_length,
-        exposure_time
+        pixel_edge_length
     )
     @debug "Count generation done"
+
+    for i in eachindex(counts)
+        counts[i] = apply_response_function(counts[i], response_function, exposure_time)
+    end
 
     # Potential optimisations
     # Supply integrals as Vector
