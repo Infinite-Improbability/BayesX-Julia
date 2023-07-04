@@ -29,8 +29,9 @@ function Model_NFW_GNFW(
     z::T,
     shape::Vector{N},
     pixel_edge_angle::Quantity{T,NoDims},
-    emission_model
-)::Matrix{Vector{Float64}} where {N<:Integer,T<:AbstractFloat}
+    emission_model,
+    exposure_time::Unitful.Time
+)::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
     @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
@@ -169,7 +170,8 @@ function Model_NFW_GNFW(
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
         Ref(emission_model),
-        pixel_edge_length
+        pixel_edge_length,
+        exposure_time
     )
     @debug "Count generation done"
 
@@ -187,11 +189,7 @@ function Model_NFW_GNFW(
     #     end
     # end
 
-    scaling_factor = (sum(minimum(counts)) / length(minimum(counts)))
-    if scaling_factor == 0
-        scaling_factor = 1
-    end
-    return counts / scaling_factor
+    return complete_matrix(counts, shape)
 end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,

@@ -87,21 +87,17 @@ function _run_ultranest(
             params_rows[i] = params[i, :]
         end
 
-        predicted = complete_matrix.(
-            [
-                Model_NFW_GNFW(params_rows[i]...,
-                    1.062,
-                    5.4807,
-                    0.3292,
-                    1.156,
-                    0.1,
-                    dshape,
-                    0.492u"arcsecond",
-                    model,
-                ) for i in 1:n
-            ],
-            Ref(dshape)
-        )
+        predicted = [Model_NFW_GNFW(params_rows[i]...,
+            1.062,
+            5.4807,
+            0.3292,
+            1.156,
+            0.1,
+            dshape,
+            0.492u"arcsecond",
+            model,
+        ) for i in 1:n]
+
 
         @debug "Predicted results generated"
 
@@ -162,7 +158,7 @@ end
 struct UniformPrior{T<:Number} <: Prior
     min::T
     max::T
-    UniformPrior(min, max) = max > min ? new(min, max) : error("Maximum is not greater than min")
+    UniformPrior(min, max) = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
 end
 function transform(prior::UniformPrior, x::Real)
     return x * (max - min) + min
