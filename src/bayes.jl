@@ -49,16 +49,81 @@ It is intended to be broadcast across all values of the data array.
 """
 log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
 
+"""
+Abstract supertype for priors. Should implement a transform(prior, x) function that Transforms
+a value x on the unit range to a value on the distribution represented by the prior.
+"""
+abstract type Prior end
 
 """
-    _run_ultranest(observed, observed_background, model)
+    transform(prior, x)
+Transforms a value x on the unit range to a value on the distribution represented by the prior.
+"""
+function transform(prior::Prior, x::Real) end
+
+"""A delta prior, that always returns a constant value."""
+struct DeltaPrior{T<:Number} <: Prior
+    value::T
+end
+function transform(prior::DeltaPrior, x::Real)
+    @argcheck 0 <= x <= 1
+    return prior.value
+end
+
+"""A uniform prior, that draws from a uniform distribton between `min` and `max`."""
+struct UniformPrior{T<:Number} <: Prior
+    min::T
+    max::T
+    UniformPrior(min, max) = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
+end
+function transform(prior::UniformPrior, x::Real)
+    return x * (max - min) + min
+end
+
+function make_cube_transform(priors::Prior...)
+
+    """
+        transform_cube(cube)
+
+    Transforms the hypercube used by ultranest into physical prior values.
+
+    Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
+    distribution. The transform function converts values on these uniform distributions
+    to values on the physical prior distribution. Each column is a specific prior, so each
+    row is a complete sample of the set of priors.
+    """
+    function transform_cube(cube::AbstractArray)
+        # MT_200::Unitful.Mass,
+        # fg_200,
+        # a_GNFW,
+        # b_GNFW,
+        # c_GNFW,
+        # c_500_GNFW,
+
+        @debug "Transform started"
+
+        for (c, p) in zip(axes(cube, 2), priors)
+            cube[:, c] = transform(p, cube[:, c])
+        end
+
+        @debug "Transform done"
+
+        return cube
+    end
+
+    return transform_cube
+end
+
+"""
+    _run_ultranest(observed, observed_background, response_function, transform, model)
 
 Configure some necessary variables and launch ultranest. The observed array includes
 the background. The model is an interpolation over a true emission model.
 """
-function _run_ultranest(
+function run_ultranest(
     observed::T,
     observed_background::T,
+    response_function::Matrix,
     transform::Function,
     model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
 ) where {T<:AbstractArray}
@@ -131,69 +196,4 @@ function _run_ultranest(
     # sampler.plot()
 
     return (sampler, results)
-end
-
-"""
-Abstract supertype for priors. Should implement a transform(prior, x) function that Transforms
-a value x on the unit range to a value on the distribution represented by the prior.
-"""
-abstract type Prior end
-
-"""
-    transform(prior, x)
-Transforms a value x on the unit range to a value on the distribution represented by the prior.
-"""
-function transform(prior::Prior, x::Real) end
-
-"""A delta prior, that always returns a constant value."""
-struct DeltaPrior{T<:Number} <: Prior
-    value::T
-end
-function transform(prior::DeltaPrior, x::Real)
-    @argcheck 0 <= x <= 1
-    return prior.value
-end
-
-"""A uniform prior, that draws from a uniform distribton between `min` and `max`."""
-struct UniformPrior{T<:Number} <: Prior
-    min::T
-    max::T
-    UniformPrior(min, max) = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
-end
-function transform(prior::UniformPrior, x::Real)
-    return x * (max - min) + min
-end
-
-function make_cube_transform(priors::Prior...)
-
-    """
-        transform_cube(cube)
-
-    Transforms the hypercube used by ultranest into physical prior values.
-
-    Ultranest models priors as a unit hypercube where each dimesion is a unit uniform
-    distribution. The transform function converts values on these uniform distributions
-    to values on the physical prior distribution. Each column is a specific prior, so each
-    row is a complete sample of the set of priors.
-    """
-    function transform_cube(cube::AbstractArray)
-        # MT_200::Unitful.Mass,
-        # fg_200,
-        # a_GNFW,
-        # b_GNFW,
-        # c_GNFW,
-        # c_500_GNFW,
-
-        @debug "Transform started"
-
-        for (c, p) in zip(axes(cube, 2), priors)
-            cube[:, c] = transform(p, cube[:, c])
-        end
-
-        @debug "Transform done"
-
-        return cube
-    end
-
-    return transform_cube
 end

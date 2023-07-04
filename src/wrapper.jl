@@ -22,11 +22,7 @@ function run(
 
     transform = make_cube_transform(priors)
 
-    _run_ultranest(obs, bg, transform, emission_model)
+    response_function = load_response(data)
 
-
-    # Apply energy range restrictions and bin data
-    # Turn priors into transform function
-    # Pass through to sampler
-
+    _run_ultranest(obs, bg, response_function, transform, emission_model)
 end
