@@ -115,17 +115,19 @@ function make_cube_transform(priors::Prior...)
 end
 
 """
-    _run_ultranest(observed, observed_background, response_function, transform, model)
+    run(observed, observed_background, response_function, transform, exposure_time; emission_model, pixel_edge_angle)
 
 Configure some necessary variables and launch ultranest. The observed array includes
 the background. The model is an interpolation over a true emission model.
 """
-function run_ultranest(
+function run(
     observed::T,
     observed_background::T,
     response_function::Matrix,
     transform::Function,
-    model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
+    exposure_time::Unitful.Time;
+    emission_model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
+    pixel_edge_angle=0.492u"arcsecond"
 ) where {T<:AbstractArray}
     # TODO: actual background predictions
 
@@ -159,8 +161,10 @@ function run_ultranest(
             1.156,
             0.1,
             dshape,
-            0.492u"arcsecond",
-            model,
+            pixel_edge_angle,
+            emission_model,
+            exposure_time,
+            response_function
         ) for i in 1:n]
 
 
@@ -196,4 +200,30 @@ function run_ultranest(
     # sampler.plot()
 
     return (sampler, results)
+end
+
+"""
+    run(data::BayesXDataset, energy_range, priors)
+
+Run Bayesian inference on a given set of `data`, considering only the selected
+energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
+"""
+function run(
+    data::BayesXDataset,
+    energy_range,
+    priors;
+)
+
+    observation, observed_background = load_data(data)
+
+    obs = bin_events(observation, energy_range, 2000:4000, 2000:4000)
+    bg = bin_events(observed_background, energy_range, 2000:4000, 2000:4000)
+
+    transform = make_cube_transform(priors)
+
+    response_function = load_response(data, energy_range)
+
+    emission_model = prepare_model_mekal(2.2, 0.1, range(energy_range[1], energy_range[2], step=shape(response_function)[2]))
+
+    run_ultranest(obs, bg, response_function, transform, data.exposure_time; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end

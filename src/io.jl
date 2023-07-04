@@ -7,17 +7,19 @@ abstract type BayesXDataset end
 # Include exposure times in dataset
 # And NHcol, bg count rate?
 
-struct FITSData{S<:AbstractString} <: BayesXDataset
+struct FITSData{S<:AbstractString,T<:AbstractFloat} <: BayesXDataset
     observation::S
     background::S
     arf::S
     rmf::S
+    exposure_time::Quantity{T,Unitful.𝐓} # TODO: Decouple source and bg exposure times
+    pixel_edge_angle::Quantity{T,NoDims} = 0.492u"arcsecond"
 end
 
 function load_data(data::BayesXDataset)
 end
 
-function load_response(data::FITSData)
+function load_response(data::BayesXDataset, energy_range)
 end
 
 function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
@@ -51,7 +53,7 @@ function load_data(data::FITSData)
     return (obs, bg)
 end
 
-function load_response(data::FITSData)
+function load_response(data::FITSData, energy_range)
     f = FITS(data.rmf)
     rmf_hdus::Vector{TableHDU} = [h for h in f if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"]
     if length(matrix_hdus) > 1
@@ -84,7 +86,14 @@ function load_response(data::FITSData)
         rmf[i, :] .*= arf
     end
 
-    return rmf
+    # Get last bin where minimum energy <= min of range
+    # ∴ Subsequent bins must have minimum energy > min of range
+    min_bin = searchsortedlast(read(r, "ENERG_LOW"), energy_range[1])
+    # Get last bin where minimum energy >= max of range
+    # ∴ This and subsequent bins must have minimum energy > max of range
+    max_bin = searchsortedfirst(read(r, "ENERG_LO"), energy_range[2]) - 1
+
+    return rmf[:, min_bin:max_bin]
 end
 
 function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}

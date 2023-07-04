@@ -31,7 +31,7 @@ function Model_NFW_GNFW(
     pixel_edge_angle::Quantity{T,NoDims},
     emission_model,
     exposure_time::Unitful.Time,
-    response_function::Matrix{T},
+    response_function::Matrix,
 )::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
@@ -205,7 +205,9 @@ function Model_NFW_GNFW(
     z,
     shape::Vector{N},
     pixel_edge_angle::Quantity{T,NoDims},
-    emission_model
+    emission_model,
+    exposure_time::Unitful.Time,
+    response_function::Matrix,
 ) where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
@@ -217,7 +219,9 @@ function Model_NFW_GNFW(
         z,
         shape,
         pixel_edge_angle,
-        emission_model
+        emission_model,
+        exposure_time,
+        response_function
     )
 end
 
