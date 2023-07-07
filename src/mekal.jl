@@ -44,7 +44,7 @@ function prepare_model_mekal(
 )
     @debug "Preparing model"
 
-    energy_bins = collect(energy_bins)
+    energy_bins = ustrip.(u"keV", collect(energy_bins))
 
     # TODO: Figure out normalisation
 

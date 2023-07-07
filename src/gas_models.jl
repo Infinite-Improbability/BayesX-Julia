@@ -32,7 +32,7 @@ function Model_NFW_GNFW(
     emission_model,
     exposure_time::Unitful.Time,
     response_function::Matrix,
-)::Matrix{Vector{T}} where {N<:Integer,T<:AbstractFloat}
+)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
     @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
@@ -153,7 +153,6 @@ function Model_NFW_GNFW(
     radius_at_coords(x, y) = hypot(x, y) * pixel_edge_length
 
     radius_at_cell = Matrix{typeof(0.0u"Mpc")}(undef, radii_x, radii_y)
-    counts = Matrix{Vector{Float64}}(undef, radii_x, radii_y)
 
     # TODO: Are we transposing?
     for y in 1:radii_y
@@ -164,7 +163,7 @@ function Model_NFW_GNFW(
 
     @debug "Generating counts"
 
-    counts = surface_brightness.(
+    brightness = surface_brightness.(
         radius_at_cell,
         gas_temperature,
         gas_density, # TODO: Calculate nH instead of using ne
@@ -175,8 +174,10 @@ function Model_NFW_GNFW(
     )
     @debug "Count generation done"
 
-    for i in eachindex(counts)
-        counts[i] = apply_response_function(counts[i], response_function, exposure_time)
+    counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
+
+    for i in eachindex(brightness)
+        counts[i] = apply_response_function(brightness[i], response_function, exposure_time)
     end
 
     # Potential optimisations
@@ -208,7 +209,7 @@ function Model_NFW_GNFW(
     emission_model,
     exposure_time::Unitful.Time,
     response_function::Matrix,
-) where {N<:Integer,T<:AbstractFloat}
+)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
         fg_200,
@@ -225,7 +226,7 @@ function Model_NFW_GNFW(
     )
 end
 
-function complete_matrix(m::Matrix, shape::Vector{N}) where {N<:Int}
+function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:Int}
     new = Array{Float64}(undef, length(m[1]), shape...)
 
     # increasing row is increasing x

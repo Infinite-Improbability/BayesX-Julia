@@ -30,7 +30,7 @@ function surface_brightness(
     end
 
     problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
-    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc/cm^2/s")
+    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"cm^-2/s")
 
     @assert all(isfinite, sol.u)
 
@@ -62,8 +62,16 @@ Some people format the RMF as RMF(PI, E). This convention is used by CIAO, for e
 """
 function apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time::Unitful.Time)::Vector{Float64}
     # Argcheck would really be better here but we want it to skip it in high performance situations
-    @assert length(counts_per_bin) == shape(response)[1]
+    # display(counts_per_bin)
+    # display(response)
+    @assert length(counts_per_bin) == size(response)[2]
+
+    # display(response)
+    # display(counts_per_bin)
+    # display(exposure_time)
+
+    resp_unit = unit(counts_per_bin[1] * exposure_time)
 
     # All we have to do is matrix multiplication
-    response * counts_per_bin * exposure_time
+    resp_unit * response * ustrip.(resp_unit, counts_per_bin * exposure_time)
 end

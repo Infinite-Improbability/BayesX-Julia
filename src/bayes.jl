@@ -20,6 +20,11 @@ function log_likelihood(
     predicted_background,
     observed_log_factorial
 )
+    @assert size(obs) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
+    @assert size(obs) == size(observed_background)
+    @assert size(predicted) == size(predicted_background)
+
+
     t1 = @. observed * log(predicted) - predicted
     t2 = @. observed_background * log(predicted_background) - predicted_background
 
@@ -78,7 +83,7 @@ struct UniformPrior{T<:Number} <: Prior
     UniformPrior(min::T, max::T) where {T<:Number} = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
 end
 function transform(prior::UniformPrior, x::Real)
-    return x * (max - min) + min
+    return x * (prior.max - prior.min) + prior.min
 end
 
 function make_cube_transform(priors::Prior...)
@@ -104,7 +109,7 @@ function make_cube_transform(priors::Prior...)
         @debug "Transform started"
 
         for (c, p) in zip(axes(cube, 2), priors)
-            cube[:, c] = transform(p, cube[:, c])
+            cube[:, c] = transform.(Ref(p), cube[:, c])
         end
 
         @debug "Transform done"
@@ -127,12 +132,12 @@ function run(
     response_function::Matrix,
     transform::Function,
     exposure_time::Unitful.Time;
-    emission_model=prepare_model_mekal(2.2, 0.1, 0.3:0.1:3.0),
+    emission_model,
     pixel_edge_angle=0.492u"arcsecond"
 ) where {T<:AbstractArray}
     # TODO: actual background predictions
 
-    predicted_bg = observed_background * 0 + 1
+    predicted_bg = observed_background * 0 .+ 1
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -220,11 +225,13 @@ function run(
     obs = bin_events(observation, energy_range, 2000:100:4000, 2000:100:4000)
     bg = bin_events(observed_background, energy_range, 2000:100:4000, 2000:100:4000)
 
+    @assert size(obs) == size(bg)
+
     transform = make_cube_transform(priors...)
 
     response_function = load_response(data, energy_range)
 
-    emission_model = prepare_model_mekal(2.2, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2]))
+    emission_model = prepare_model_mekal(2.2, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
 
-    run_ultranest(obs, bg, response_function, transform, data.exposure_time; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
+    run(obs, bg, response_function, transform, data.exposure_time; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
