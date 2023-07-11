@@ -20,8 +20,8 @@ function log_likelihood(
     predicted_background,
     observed_log_factorial
 )
-    @assert size(obs) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
-    @assert size(obs) == size(observed_background)
+    @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
+    @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background)
 
 
