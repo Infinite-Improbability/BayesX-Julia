@@ -25,6 +25,9 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
+# FITSIO.jl doesn't support BitArray columns and so refuses to read any FITS file containing them.
+# Since we have FITS files that do contain them, from Chandra, and we don't care about those columns
+# we override the method to bypass this problem. It is a hack, but it works.
 
 using FITSIO
 import FITSIO.fits_get_col_info
@@ -91,6 +94,3 @@ function fits_get_col_info(f::FITSIO.FITSFile, colnum::Integer)
 
     return T, rowsize, isvariable
 end
-
-# f = FITS("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits")
-# f[2]
