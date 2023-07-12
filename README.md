@@ -15,3 +15,6 @@ After installation the sample analysis can be launched with
 ```sh
 julia -O3 --project=@. src/bayes.jl
 ```
+
+# MPI Support
+Ultranest supports MPI. To use just launch your Julia scripts using `mpiexec` or equivalent.
