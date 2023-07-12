@@ -2,7 +2,15 @@ using Integrals
 
 include("mekal.jl")
 
-"""Observed surface brightness"""
+"""
+    surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_length)
+
+Calculate the observed surface_brightness at some projected radius on the sky.
+
+The temperature and density functions should take the true distance from origin (cluster center) and return the appropriate value, with units.
+The limit controls limits on LOS radius during integration. Theoretically it should be ±infinity, but we may approximate it as a finite value.
+The pixel edge length is the distance observed on the sky, determined from the pixel_edge_angle at source redshift.
+"""
 function surface_brightness(
     projected_radius::Unitful.Length,
     temperature::Function,

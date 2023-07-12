@@ -1,6 +1,7 @@
 using SpectralFitting
 using Interpolations
 
+"""Mekal model using SpectralFitting.jl framework."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
     "Normalisation"
     K::T
@@ -29,11 +30,13 @@ function XS_Mekal(;
 end
 SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
 
+"""
+    prepare_model_mekal(nHcol, redshift, energy_bins, temperatures; densities, normalisation=1)
 
-# mekal = XS_Mekal(t=FitParam(8.0), ρ=FitParam(12.0), z=FitParam(0.1))
-# invokemodel(collect(0.1:0.1:2), mekal)
-# invokemodel(collect(0.1:0.1:2), mekal, [1.0, 6.0, 4.0])
+Create an interpolated alias to the mekal model over specified parameter ranges.
 
+Interpolation has a significant performance improvement over calling the model directly.
+"""
 function prepare_model_mekal(
     nHcol,
     redshift,

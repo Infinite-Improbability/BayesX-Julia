@@ -3,11 +3,18 @@ using FITSIO
 # Import our patch
 include("fitsio_fix.jl")
 
+"""
+Abstract type to wrap various specific formats for source data. By doing so we can make use of
+    multiple dispatch to automatically select the appropriate loading functions for data.
+"""
 abstract type BayesXDataset end
 # Include exposure times in dataset
 # And NHcol, bg count rate?
 
 # TODO: Be more specific with types
+"""
+Store a collection of observation data from fits files.
+"""
 struct FITSData{S<:AbstractString} <: BayesXDataset
     observation::S
     background::S
@@ -17,9 +24,19 @@ struct FITSData{S<:AbstractString} <: BayesXDataset
     pixel_edge_angle
 end
 
+"""
+    load_data(data)
+
+Load events data from a given dataset, returning observed events and just the background.
+"""
 function load_data(data::BayesXDataset)
 end
 
+"""
+    load_response(data, energy_range)
+
+Load the RMF and ARF for an observation, trimmed for the desired energy range
+"""
 function load_response(data::BayesXDataset, energy_range)
 end
 
@@ -33,6 +50,11 @@ function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
 
 end
 
+"""
+    load_events_from_fits(path)
+
+Loads events from a single fits file for further processing.
+"""
 function load_events_from_fits(path::AbstractString)
     f = FITS(path, "r")
     event_hdus::Vector{TableHDU} = [
@@ -101,6 +123,12 @@ function load_response(data::FITSData, energy_range)
     return rmf[1:max_channel, min_bin:max_bin] * 1u"cm^2" # Hack to add arf units
 end
 
+"""
+    bin_events(events, energy_range, x_edges, y_edges)
+
+Take a table of events in the format (x y channel energy), trim it by energy and bin it spatially.
+Returns an array of counts per bin with dimensions (channel, x, y).
+"""
 function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]

@@ -16,8 +16,17 @@ Calculate the critical density at some redshift `z`.
 ρ_crit(z) = 3 * H(cosmo, z)^2 / (8π * G)
 
 
-"""Calculate predicted counts using a physical model based NFW-GNFW profiles
-as described in Olamaie 2012.
+"""
+    Model_NFW_GNFW_GNFW(MT_200, fg_200, a_GNFW, b_GNFW, c_GNFW, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function)
+
+Calculate predicted counts using a physical model based NFW-GNFW profiles as described in Olamaie 2012.
+
+The first six parameters are model priors. 
+`z` is redshift and `shape` describes the size of the source number as a number of spatial bins in each dimension.
+The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
+This area is assumed to be square with the edge angle giving the side length.
+The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
+The response function includes both the RMF and ARF, as described in `apply_response_function`.
 """
 function Model_NFW_GNFW(
     MT_200::T,
@@ -226,6 +235,14 @@ function Model_NFW_GNFW(
     )
 end
 
+"""
+    complete_matrix(m::Matrix, shape::Vector)
+
+Complete matrix expands predictions from 1/4 of the sky to the whole sky.
+
+Takes a small matrix `m` of vectors of counts per channel and treats it as the quadrants of a larger matrix of size `shape`.
+This is expanded by channels to create a 3D array of counts for `(channel, x, y)`.
+"""
 function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:Int}
     new = Array{Float64}(undef, length(m[1]), shape...)
 
