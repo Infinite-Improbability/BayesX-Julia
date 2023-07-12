@@ -218,6 +218,7 @@ function run(
     data::BayesXDataset,
     energy_range,
     priors;
+    nHcol=2.2 # units of 10²² atoms per cm⁻²
 )
 
     observation, observed_background = load_data(data)
@@ -231,7 +232,11 @@ function run(
 
     response_function = load_response(data, energy_range)
 
-    emission_model = prepare_model_mekal(2.2, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
+    emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
 
     run(obs, bg, response_function, transform, data.exposure_time; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
+
+data = FITSData("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits", "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf", 300000u"s", 0.492u"arcsecond")
+priors = [UniformPrior(1.0e14, 1.0e15), UniformPrior(0.08, 0.2)]
+#nHcol = 3.89
