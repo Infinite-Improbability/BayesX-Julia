@@ -22,7 +22,7 @@ function log_likelihood(
 )
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
-    @assert size(predicted) == size(predicted_background)
+    @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
 
 
     t1 = @. observed * log(predicted) - predicted
@@ -133,11 +133,11 @@ function run(
     transform::Function,
     exposure_time::Unitful.Time;
     emission_model,
-    pixel_edge_angle=0.492u"arcsecond"
+    pixel_edge_angle=0.492u"arcsecond",
+    background_rate=8.6e-2u"m^-2/arcminute^2/s",
+    average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
-    # TODO: actual background predictions
-
-    predicted_bg = observed_background * 0 .+ 1
+    predicted_bg = background_rate / size(observed)[1] * exposure_time * average_effective_area * pixel_edge_angle^2
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -180,7 +180,7 @@ function run(
             Ref(observed),
             Ref(observed_background),
             predicted,
-            Ref(predicted_bg),
+            predicted_bg,
             Ref(log_obs_factorial)
         )
     end
@@ -238,5 +238,6 @@ function run(
 end
 
 data = FITSData("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits", "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf", 300000u"s", 0.492u"arcsecond")
-priors = [UniformPrior(1.0e14, 1.0e15), UniformPrior(0.08, 0.2)]
+priors = [UniformPrior(1.0e14, 1.0e16), UniformPrior(0.08, 0.2)]
+run(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89)
 #nHcol = 3.89
