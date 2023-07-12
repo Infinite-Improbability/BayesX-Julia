@@ -2,7 +2,7 @@
 
 julia_version = "1.8.5"
 manifest_format = "2.0"
-project_hash = "9237c86b4063cf84cefea24fecf87d3066a49e0c"
+project_hash = "7f0445725551fa085c1ecf78e503b82014be58ad"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "dcfdf328328f2645531c4ddebf841228aef74130"
@@ -322,12 +322,6 @@ deps = ["CFITSIO", "Printf", "Reexport", "Tables"]
 git-tree-sha1 = "a8924c203d66d4c5d72980572c6810213422a59d"
 uuid = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
 version = "0.17.1"
-
-[[deps.FastGaussQuadrature]]
-deps = ["LinearAlgebra", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "0f478d8bad6f52573fb7658a263af61f3d96e43a"
-uuid = "442a2c76-b920-505d-bb47-c5924d526838"
-version = "0.5.1"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
