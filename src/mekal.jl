@@ -1,5 +1,6 @@
 using SpectralFitting
 using Interpolations
+using Unitful
 
 """Mekal model using SpectralFitting.jl framework."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}

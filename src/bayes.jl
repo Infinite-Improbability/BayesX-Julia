@@ -1,3 +1,5 @@
+using Plots
+
 using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
 
@@ -187,10 +189,11 @@ function run(
             emission_model,
             exposure_time,
             response_function
-        ) for i in 1:n]
+        ) .+ predicted_bg for i in 1:n]
 
 
         @debug "Predicted results generated"
+        [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
         return log_likelihood.(
             Ref(observed),
@@ -254,7 +257,8 @@ function run(
     run(obs, bg, response_function, transform, data.exposure_time, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
 
-data = FITSData("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits", "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf", 300000u"s", 0.492u"arcsecond")
-priors = [UniformPrior(1.0e14, 1.0e16), UniformPrior(0.08, 0.2)]
-run(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89, redshift=0.164)
-#nHcol = 3.89
+if abspath(PROGRAM_FILE) == @__FILE__
+    data = FITSData("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits", "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf", 300000u"s", 0.492u"arcsecond")
+    priors = [UniformPrior(1.0e14, 1.0e16), UniformPrior(0.08, 0.2)]
+    run(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89, redshift=0.164)
+end
