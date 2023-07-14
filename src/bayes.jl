@@ -14,6 +14,8 @@ Calculate the log-likelihood of the prediction given an observation.
 The observed and predicted arrays include background events.
 Log factorial is calculated as `ln(observed) + ln(observed_background)`.
 We require it to be supplied to improve performance - no need to calculate it every time.
+
+We assume the predicted_background is scaled to the same exposure time as the observed background.
 """
 function log_likelihood(
     observed,
@@ -130,7 +132,7 @@ function make_cube_transform(priors::Prior...)
 end
 
 """
-    run(observed, observed_background, response_function, transform, exposure_time; emission_model, pixel_edge_angle)
+    run(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time; emission_model, pixel_edge_angle)
 
 Configure some necessary variables and launch ultranest.
 
@@ -148,14 +150,17 @@ function run(
     observed_background::T,
     response_function::Matrix,
     transform::Function,
-    exposure_time::Unitful.Time,
+    obs_exposure_time::Unitful.Time,
+    bg_exposure_time::Unitful.Time,
     redshift::Real;
     emission_model,
     pixel_edge_angle=0.492u"arcsecond",
     background_rate=8.6e-2u"m^-2/arcminute^2/s",
     average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
-    predicted_bg = background_rate / size(observed)[1] * exposure_time * average_effective_area * pixel_edge_angle^2
+    predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
+    predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
+    predicted_bg_bg = predicted_bg_rate * bg_exposure_time # Used for log likelihood
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
@@ -187,19 +192,19 @@ function run(
             dshape,
             pixel_edge_angle,
             emission_model,
-            exposure_time,
+            obs_exposure_time,
             response_function
-        ) .+ predicted_bg for i in 1:n]
+        ) .+ predicted_obs_bg for i in 1:n]
 
 
         @debug "Predicted results generated"
-        [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
+        # [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
         return log_likelihood.(
             Ref(observed),
             Ref(observed_background),
             predicted,
-            predicted_bg,
+            predicted_bg_bg,
             Ref(log_obs_factorial)
         )
     end
@@ -243,8 +248,8 @@ function run(
 
     observation, observed_background = load_data(data)
 
-    obs = bin_events(observation, energy_range, 2000:100:4000, 2000:100:4000)
-    bg = bin_events(observed_background, energy_range, 2000:100:4000, 2000:100:4000)
+    obs = bin_events(observation.first, energy_range, 2000:100:4000, 2000:100:4000)
+    bg = bin_events(observed_background.first, energy_range, 2000:100:4000, 2000:100:4000)
 
     @assert size(obs) == size(bg)
 
@@ -254,11 +259,17 @@ function run(
 
     emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
 
-    run(obs, bg, response_function, transform, data.exposure_time, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
+    run(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    data = FITSData("/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits", "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf", "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf", 300000u"s", 0.492u"arcsecond")
-    priors = [UniformPrior(1.0e14, 1.0e16), UniformPrior(0.08, 0.2)]
-    run(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89, redshift=0.164)
-end
+# if abspath(PROGRAM_FILE) == @__FILE__
+data = FITSData(
+    "/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits",
+    "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits",
+    "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.arf",
+    "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf",
+    0.492u"arcsecond"
+)
+priors = [UniformPrior(1.0e17, 8.0e17), UniformPrior(0.08, 0.2)]
+run(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89, redshift=0.164)
+# end

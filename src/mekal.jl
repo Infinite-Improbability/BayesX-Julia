@@ -42,8 +42,8 @@ function prepare_model_mekal(
     nHcol,
     redshift,
     energy_bins;
-    temperatures=1e-30:0.01:15,
-    densities=0:10.0:100,
+    temperatures=1e-30:0.5:150,
+    densities=0:20.0:1000,
     normalisation=1.0
 )
     @debug "Preparing model"

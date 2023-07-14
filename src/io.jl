@@ -1,4 +1,5 @@
 using FITSIO
+using Unitful
 
 # Import our patch
 include("fitsio_fix.jl")
@@ -20,16 +21,17 @@ struct FITSData{S<:AbstractString} <: BayesXDataset
     background::S
     arf::S
     rmf::S
-    exposure_time # TODO: Decouple source and bg exposure times
     pixel_edge_angle
 end
 
 """
     load_data(data)
 
-Load events data from a given dataset, returning observed events and just the background.
+Load events data from a given dataset, returning pairs events and exposure times.
+
+The first pair includes all observed events, the second is the background observation.
 """
-function load_data(data::BayesXDataset)
+function load_data(data::BayesXDataset)::NTuple{2,Pair}
 end
 
 """
@@ -37,7 +39,7 @@ end
 
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """
-function load_response(data::BayesXDataset, energy_range)
+function load_response(data::BayesXDataset, energy_range)::Matrix{Float64}
 end
 
 function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
@@ -55,7 +57,7 @@ end
 
 Loads events from a single fits file for further processing.
 """
-function load_events_from_fits(path::AbstractString)
+function load_events_from_fits(path::AbstractString)::Pair{Matrix,Unitful.Time{Float64}}
     f = FITS(path, "r")
     event_hdus::Vector{TableHDU} = [
         h for h in f
@@ -65,18 +67,20 @@ function load_events_from_fits(path::AbstractString)
         @warn "$(length(event_hdus)) HDUs with events extension found. Using the first."
     end
     h = event_hdus[1]
-    @info "Selected HDU with HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])'"
+    @info "Selected HDU with HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' for events."
 
-    return [read(h, "x") read(h, "y") read(h, "pi") read(h, "energy") * 1u"eV"] # TODO: manual units bad
+    live_time = read_key(h, "LIVETIME")[1] # We don't want safe_read_key because we want an exception if this fails.
+
+    return [read(h, "x") read(h, "y") read(h, "pi") read(h, "energy") * 1u"eV"] => live_time * 1u"s" # TODO: manual units bad
 end
 
-function load_data(data::FITSData)
+function load_data(data::FITSData)::NTuple{2,Pair}
     obs = load_events_from_fits(data.observation)
     bg = load_events_from_fits(data.background)
     return (obs, bg)
 end
 
-function load_response(data::FITSData, energy_range)
+function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float64}}
     f_rmf = FITS(data.rmf)
     rmf_hdus::Vector{TableHDU} = [h for h in f_rmf if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"]
     if length(rmf_hdus) > 1
