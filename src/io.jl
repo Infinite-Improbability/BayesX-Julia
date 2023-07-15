@@ -1,6 +1,8 @@
 using FITSIO
 using Unitful
 
+export FITSData
+
 # Import our patch
 include("fitsio_fix.jl")
 
@@ -8,7 +10,7 @@ include("fitsio_fix.jl")
 Abstract type to wrap various specific formats for source data. By doing so we can make use of
     multiple dispatch to automatically select the appropriate loading functions for data.
 """
-abstract type BayesXDataset end
+abstract type Dataset end
 # Include exposure times in dataset
 # And NHcol, bg count rate?
 
@@ -16,7 +18,7 @@ abstract type BayesXDataset end
 """
 Store a collection of observation data from fits files.
 """
-struct FITSData{S<:AbstractString} <: BayesXDataset
+struct FITSData{S<:AbstractString} <: Dataset
     observation::S
     background::S
     arf::S
@@ -31,7 +33,7 @@ Load events data from a given dataset, returning pairs events and exposure times
 
 The first pair includes all observed events, the second is the background observation.
 """
-function load_data(data::BayesXDataset)::NTuple{2,Pair}
+function load_data(data::Dataset)::NTuple{2,Pair}
 end
 
 """
@@ -39,7 +41,7 @@ end
 
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """
-function load_response(data::BayesXDataset, energy_range)::Matrix{Float64}
+function load_response(data::Dataset, energy_range)::Matrix{Float64}
 end
 
 function safe_read_key(hdu::HDU, key::String, msg::AbstractString)

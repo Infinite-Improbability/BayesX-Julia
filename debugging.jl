@@ -1,6 +1,6 @@
 using Plots
 
-include("src/bayes.jl")
+include("src/run.jl")
 
 em = prepare_model_mekal(3.89, 0.1, (0.3:0.01:7)u"keV")
 
