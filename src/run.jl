@@ -51,7 +51,11 @@ function sample(
 
     @assert size(observed) == size(observed_background)
 
-    dshape = [i for i in size(observed)][2:3]
+    shape = [i for i in size(observed)][2:3]
+
+    @debug "Observation has shape $(size(observed))"
+    @debug "Background has shape $(size(observed_background))"
+    @debug "Response matrix has shape $(size(response_function))"
 
     # a wrapper to handle running the gas model and likelihood calculation
     @debug "Generating likelihood wrapper"
@@ -71,7 +75,7 @@ function sample(
             0.3292,
             1.156,
             redshift,
-            dshape,
+            shape,
             pixel_edge_angle,
             emission_model,
             obs_exposure_time,

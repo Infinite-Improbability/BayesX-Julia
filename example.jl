@@ -1,7 +1,8 @@
 include("src/BayesJ.jl")
 using .BayesJ, Unitful, UnitfulAngles
+using Profile
 
-ENV["JULIA_DEBUG"] = "BayesJ"
+# ENV["JULIA_DEBUG"] = "BayesJ"
 data = FITSData(
     "/home/ryan/data/chandra/4361/manual3/repro/acisf04361_repro_evt2.fits",
     "/home/ryan/data/chandra/4361/manual3/repro/bg_trimmed_300-7000.fits",

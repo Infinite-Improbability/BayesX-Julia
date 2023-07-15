@@ -170,7 +170,7 @@ function Model_NFW_GNFW(
         end
     end
 
-    @debug "Generating counts"
+    @debug "Calculating brightness"
 
     brightness = surface_brightness.(
         radius_at_cell,
@@ -181,13 +181,14 @@ function Model_NFW_GNFW(
         Ref(emission_model),
         pixel_edge_length
     )
-    @debug "Count generation done"
 
     counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
 
+    @debug "Applying response function"
     for i in eachindex(brightness)
         counts[i] = apply_response_function(brightness[i], response_function, exposure_time)
     end
+    #
 
     # Potential optimisations
     # Supply integrals as Vector
@@ -244,6 +245,7 @@ Takes a small matrix `m` of vectors of counts per channel and treats it as the q
 This is expanded by channels to create a 3D array of counts for `(channel, x, y)`.
 """
 function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:Int}
+    @debug "Completing matrix"
     new = Array{Float64}(undef, length(m[1]), shape...)
 
     # increasing row is increasing x

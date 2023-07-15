@@ -123,7 +123,8 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     # Get first bin where maximum energy >= min of range
     # ∴ Subsequent bins must have minimum energy > min of range
     min_bin = searchsortedfirst(read(r, "ENERG_HI") * 1u"keV", energy_range[1])
-    min_channel = searchsortedfirst(read(f_rmf[3], "E_MAX") * 1u"keV", energy_range[1])
+    # min_channel = searchsortedfirst(read(f_rmf[3], "E_MAX") * 1u"keV", energy_range[1])
+    min_channel = 1 # we don't trim events channels based on minimum (yet)
     # Get last bin where minimum energy >= max of range
     # ∴ This and subsequent bins must have minimum energy > max of range
     max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", energy_range[2]) - 1
