@@ -68,18 +68,20 @@ with `C(PI)`` is the observed counts in a detector channel `PI`, `T` is the obse
 This function takes the combined RMF and ARF as the response function. This is to recalculating it on every call.
 Some people format the RMF as RMF(PI, E). This convention is used by CIAO, for example.
 """
-function apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time::Unitful.Time)::Vector{Float64}
+function apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time)::Vector{Float64}
     # Argcheck would really be better here but we want it to skip it in high performance situations
     # display(counts_per_bin)
     # display(response)
-    @assert length(counts_per_bin) == size(response)[2]
+    @assert length(counts_per_bin) == size(response)[2] "There are $(length(counts_per_bin)) energy bins but the response matrix has $(size(response, 2)) columns"
 
     # display(response)
     # display(counts_per_bin)
     # display(exposure_time)
 
-    resp_unit = unit(counts_per_bin[1] * exposure_time)
+
+    time_scaled_counts = counts_per_bin * exposure_time
 
     # All we have to do is matrix multiplication
-    resp_unit * response * ustrip.(resp_unit, counts_per_bin * exposure_time)
+    mult = response * time_scaled_counts
+    return mult
 end

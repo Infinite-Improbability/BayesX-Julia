@@ -185,8 +185,13 @@ function Model_NFW_GNFW(
     counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
 
     @debug "Applying response function"
+    # Stripping units here is an attempt to fix performance issues
+    # I think the root cause is using generic instead of specialised matrix multiplication
+    # We may be able to clean that up with better typing instead of stripping unitd
+    resp = ustrip.(u"cm^2", response_function)
+    exp_time = ustrip(u"s", exposure_time)
     for i in eachindex(brightness)
-        counts[i] = apply_response_function(brightness[i], response_function, exposure_time)
+        counts[i] = apply_response_function(ustrip.(u"cm^-2/s", brightness[i]), resp, exp_time)
     end
     #
 
