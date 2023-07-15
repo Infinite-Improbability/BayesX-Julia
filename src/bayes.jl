@@ -24,6 +24,8 @@ function log_likelihood(
     predicted_background,
     observed_log_factorial
 )
+    @debug "Calculating log likelihood"
+
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
@@ -158,6 +160,8 @@ function run(
     background_rate=8.6e-2u"m^-2/arcminute^2/s",
     average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
+    @debug "Preparing for ultranest"
+
     predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
     predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
     predicted_bg_bg = predicted_bg_rate * bg_exposure_time # Used for log likelihood
@@ -173,8 +177,9 @@ function run(
     dshape = [i for i in size(observed)][2:3]
 
     # a wrapper to handle running the gas model and likelihood calculation
+    @debug "Generating likelihood wrapper"
     function likelihood_wrapper(params)
-        @debug "Likelihood started"
+        @debug "Likelihood wrapper called"
 
         n, _ = size(params)
 
@@ -210,7 +215,8 @@ function run(
     end
 
     # ultranest setup
-    paramnames = ["MT_200", "fg_200"]
+    @debug "Creating sampler"
+    paramnames = ["MT_200", "fg_200"] # move to pairs with prior objects?
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
@@ -219,13 +225,12 @@ function run(
     )
 
     # run Ultranest
-    @debug "Sampler starting"
+    @info "Launching sampler"
     results = sampler.run()
-    @debug "Sampler done"
-
-    # print("result has these keys:", keys(results), "\n")
 
     # output data
+    @debug "Sampler done"
+    # print("result has these keys:", keys(results), "\n")
     sampler.print_results()
     # sampler.plot()
 
@@ -245,6 +250,7 @@ function run(
     nHcol=2.2, # units of 10²² atoms per cm⁻²
     redshift=0.1
 )
+    @info "Loading data"
 
     observation, observed_background = load_data(data)
 
@@ -257,10 +263,14 @@ function run(
 
     response_function = load_response(data, energy_range)
 
+    @info "Generating emissions model"
+
     emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
 
     run(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
+
+ENV["JULIA_DEBUG"] = "all"
 
 # if abspath(PROGRAM_FILE) == @__FILE__
 data = FITSData(
