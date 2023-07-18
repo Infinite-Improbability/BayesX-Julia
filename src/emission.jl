@@ -1,4 +1,5 @@
 using Integrals
+using LinearAlgebra: dot
 
 include("mekal.jl")
 
@@ -26,9 +27,9 @@ function surface_brightness(
         s, temp = params
         r = hypot(s, l)
 
-        # should be passing n_h not n_e to integral
-        # and using n_e n_h instead of n_e^2
-        f = model(ustrip(u"keV", temp(r)), ustrip(u"cm^-3", density(r) / μ_e)) * 1u"cm^3/s" * (density(r) / μ_e)^2
+        nH = hydrogen_number_density(density(r))
+
+        f = model(ustrip(u"keV", temp(r)), ustrip(u"cm^-3", nH)) * 1u"cm^3/s" * (density(r) / μ_e) * nH
 
         # TODO: Switch to in place
 
@@ -57,7 +58,7 @@ end
 Applies the response function ``RSP(PI, E) = RMF(PI, E) ∘ ARF(E)`` to all energy bins and returns adjusted counts per bin.
 ```math
 \\begin{aligned}
-C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) dE \\
+C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E)sum ⋅ S(E) dE \\
 &≈ T \\sum_{j} R_{ij} A{j} S{j}
 \\end{aligned}
 ```
@@ -84,4 +85,10 @@ function apply_response_function(counts_per_bin::Vector, response::Matrix, expos
     # All we have to do is matrix multiplication
     mult = response * time_scaled_counts
     return mult
+end
+
+function hydrogen_number_density(gas_density)
+    abundance = 10 .^ ([12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25] .- 12)
+    nucleon_total = [1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0]
+    return gas_density / (m_p * dot(abundance, nucleon_total))
 end
