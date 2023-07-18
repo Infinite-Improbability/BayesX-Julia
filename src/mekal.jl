@@ -1,6 +1,7 @@
 using SpectralFitting
 using Interpolations
 using Unitful
+using ProgressMeter
 
 """Mekal model using SpectralFitting.jl framework."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
@@ -61,11 +62,13 @@ function prepare_model_mekal(
 
     # Generate source flux
     # TODO: document unit
-    @debug "Invoking MEKAL"
+    @debug "Setting evaluation points"
+    # TODO: progress bar
     emission_model(kbT, ρ) = XS_Mekal(K=FitParam(normalisation), t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(redshift))
     points = [emission_model(t, d) for t in temperatures, d in densities]
-    emission = invokemodel.(
-        Ref(energy_bins),
+    @debug "Invoking MEKAL"
+    emission = @showprogress map(
+        x -> invokemodel(energy_bins, x),
         points
     )
 
