@@ -58,9 +58,9 @@ function Model_NFW_GNFW(
     # This is equation 4 from Neto et al. 2007.
     # It assumes a relaxed halo and has different values in their full sample
     # Kinda sketch, I rather fit r200 or c200 as a prior
-    c_200 = 5.26 * (MT_200 * cosmo.h / (10^14)u"Msun")^(-0.1)
+    c_200 = 5.26 * (MT_200 * cosmo.h / (10^14)u"Msun")^(-0.1) / (1 + z)
     # c_200_DM = 5.26 * (((MT_200 * cosmo.h) / 1e14)^(-0.1)) * (1 / (1 + z(k)))
-    # Why does BayesX have the redshift dependence?
+    # Why does it have the redshift dependence?
 
     # Calculate gas mass
     Mg_200_DM = MT_200 * fg_200
@@ -76,7 +76,7 @@ function Model_NFW_GNFW(
     # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (200 / 3) * c_200 / (log(1 + c_200) - c_200 / (1 + c_200))
+    ρ_s = ρ_crit_z * (200 / 3) * c_200^3 / (log(1 + c_200) - c_200 / (1 + c_200))
 
     # Sketchy way to get R500 from r200
     # TODO: Do better
