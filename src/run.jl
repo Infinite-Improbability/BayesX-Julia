@@ -102,7 +102,8 @@ function sample(
         paramnames,
         likelihood_wrapper,
         transform=transform,
-        vectorized=true
+        vectorized=true,
+        log_dir="logs"
     )
 
     # run Ultranest
@@ -113,7 +114,7 @@ function sample(
     @debug "Sampler done"
     # print("result has these keys:", keys(results), "\n")
     sampler.print_results()
-    # sampler.plot()
+    sampler.plot_corner()
 
     return (sampler, results)
 end
