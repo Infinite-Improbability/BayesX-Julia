@@ -9,6 +9,7 @@ export sample
 include("gas_models.jl")
 include("io.jl")
 include("likelihood.jl")
+include("mpi.jl")
 
 """
     sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time; emission_model, pixel_edge_angle)
@@ -37,7 +38,7 @@ function sample(
     background_rate=8.6e-2u"m^-2/arcminute^2/s",
     average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
-    @debug "Preparing for ultranest"
+    @mpidebug "Preparing for ultranest"
 
     predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
     predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
@@ -53,14 +54,14 @@ function sample(
 
     shape = [i for i in size(observed)][2:3]
 
-    @debug "Observation has shape $(size(observed))"
-    @debug "Background has shape $(size(observed_background))"
-    @debug "Response matrix has shape $(size(response_function))"
+    @mpidebug "Observation has shape $(size(observed))"
+    @mpidebug "Background has shape $(size(observed_background))"
+    @mpidebug "Response matrix has shape $(size(response_function))"
 
     # a wrapper to handle running the gas model and likelihood calculation
-    @debug "Generating likelihood wrapper"
+    @mpidebug "Generating likelihood wrapper"
     function likelihood_wrapper(params)
-        @debug "Likelihood wrapper called"
+        @mpirankeddebug "Likelihood wrapper called"
 
         n, _ = size(params)
 
@@ -83,7 +84,7 @@ function sample(
         ) .+ predicted_obs_bg for i in 1:n]
 
 
-        @debug "Predicted results generated"
+        @mpirankeddebug "Predicted results generated"
         # [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
         return log_likelihood.(
@@ -96,7 +97,7 @@ function sample(
     end
 
     # ultranest setup
-    @debug "Creating sampler"
+    @mpidebug "Creating sampler"
     paramnames = ["MT_200", "fg_200"] # move to pairs with prior objects?
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
@@ -107,11 +108,11 @@ function sample(
     )
 
     # run Ultranest
-    @info "Launching sampler"
+    @mpiinfo "Launching sampler"
     results = sampler.run()
 
     # output data
-    @debug "Sampler done"
+    @mpidebug "Sampler done"
     # print("result has these keys:", keys(results), "\n")
     sampler.print_results()
     sampler.plot_corner()
@@ -132,12 +133,12 @@ function sample(
     nHcol=2.2, # units of 10²² atoms per cm⁻²
     redshift=0.1
 )
-    @info "Loading data"
+    @mpiinfo "Loading data"
 
     observation, observed_background = load_data(data)
 
-    obs = bin_events(observation.first, energy_range, 2000:100:4000, 2000:100:4000)
-    bg = bin_events(observed_background.first, energy_range, 2000:100:4000, 2000:100:4000)
+    obs = bin_events(observation.first, energy_range, 2000:25:4000, 2000:25:4000)
+    bg = bin_events(observed_background.first, energy_range, 2000:25:4000, 2000:25:4000)
 
     @assert size(obs) == size(bg)
 
@@ -145,7 +146,7 @@ function sample(
 
     response_function = load_response(data, energy_range)
 
-    @info "Generating emissions model"
+    @mpiinfo "Generating emissions model"
 
     emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
 

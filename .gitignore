@@ -25,3 +25,4 @@ docs/site/
 
 # Custom
 logs/*
+LocalPreferences.toml

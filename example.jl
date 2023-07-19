@@ -10,5 +10,5 @@ data = FITSData(
     "/home/ryan/data/chandra/4361/manual3/repro/specx/specx.rmf",
     0.492u"arcsecond"
 )
-priors = [UniformPrior(1.0e14, 1.0e18), UniformPrior(0.08, 0.2)]
+priors = [LogUniformPrior(1.0e14, 1.0e17), UniformPrior(0.01, 1.0)]
 sample(data, [0.3u"keV", 7u"keV"], priors, nHcol=3.89, redshift=0.164)

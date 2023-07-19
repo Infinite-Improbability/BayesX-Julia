@@ -48,7 +48,7 @@ function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
     try
         return read_key(hdu, key)
     catch
-        @debug msg
+        @mpidebug msg
         return (nothing, nothing)
     end
 
@@ -69,7 +69,7 @@ function load_events_from_fits(path::AbstractString)::Pair{Matrix,Unitful.Time{F
         @warn "$(length(event_hdus)) HDUs with events extension found. Using the first."
     end
     h = event_hdus[1]
-    @debug "Selected HDU with EVENTS extension and HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' from $path for events."
+    @mpidebug "Selected HDU with EVENTS extension and HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' from $path for events."
 
     live_time = read_key(h, "LIVETIME")[1] # We don't want safe_read_key because we want an exception if this fails.
 
@@ -91,7 +91,7 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
         @warn "$(length(rmf_hdus)) HDUs with matrix extension found. Using the first."
     end
     r = rmf_hdus[1]
-    @debug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
+    @mpidebug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
 
     first_channel = [i[1] for i in read(r, "F_CHAN")]
     last_channel = first_channel .+ [i[1] for i in read(r, "N_CHAN")] .- 1
@@ -111,7 +111,7 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
         @warn "$(length(arf_hdus)) HDUs with matrix extension found. Using the first."
     end
     a = arf_hdus[1]
-    @debug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
+    @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
     arf = read(a, "SPECRESP") # TODO: Automate unit selection
 
     # turn rmf into response matrix
@@ -130,7 +130,7 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", energy_range[2]) - 1
     max_channel = searchsortedfirst(read(f_rmf[3], "E_MIN") * 1u"keV", energy_range[2]) - 1
 
-    @debug "Trimming response matrix with arrangement (PI,E) to range [$min_channel:$max_channel, $min_bin:$max_bin]"
+    @mpidebug "Trimming response matrix with arrangement (PI,E) to range [$min_channel:$max_channel, $min_bin:$max_bin]"
 
     return rmf[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # Hack to add arf units
 end
@@ -142,7 +142,7 @@ Take a table of events in the format (x y channel energy), trim it by energy and
 Returns an array of counts per bin with dimensions (channel, x, y).
 """
 function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
-    @debug "Binning events"
+    @mpidebug "Binning events"
 
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]

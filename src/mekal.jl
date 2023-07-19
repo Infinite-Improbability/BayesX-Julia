@@ -3,6 +3,8 @@ using Interpolations
 using Unitful
 using ProgressMeter
 
+include("mpi.jl")
+
 """Mekal model using SpectralFitting.jl framework."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
     "Normalisation"
@@ -43,18 +45,18 @@ function prepare_model_mekal(
     nHcol,
     redshift,
     energy_bins;
-    temperatures=1e-30:0.5:150,
-    densities=0:20.0:1000,
+    temperatures=1e-30:5.0:500.0,
+    densities=0:5.0:200,
     normalisation=1.0
 )
-    @debug "Preparing MEKAL emission model"
+    @mpidebug "Preparing MEKAL emission model"
 
     energy_bins = ustrip.(u"keV", collect(energy_bins))
 
     # TODO: Figure out normalisation
 
     # Generate transmission fractions
-    @debug "Invoking absorption model"
+    @mpidebug "Invoking absorption model"
     absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
     absorption = invokemodel(energy_bins, absorption_model)
 
@@ -62,11 +64,11 @@ function prepare_model_mekal(
 
     # Generate source flux
     # TODO: document unit
-    @debug "Setting evaluation points"
+    @mpidebug "Setting evaluation points"
     # TODO: progress bar
     emission_model(kbT, ρ) = XS_Mekal(K=FitParam(normalisation), t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(redshift))
     points = [emission_model(t, d) for t in temperatures, d in densities]
-    @debug "Invoking MEKAL"
+    @mpidebug "Invoking MEKAL"
     emission = @showprogress map(
         x -> invokemodel(energy_bins, x),
         points
@@ -75,14 +77,14 @@ function prepare_model_mekal(
     @assert all(all.(isfinite, emission))
 
     # Apply absorption
-    @debug "Applying absorption to MEKAL"
+    @mpidebug "Applying absorption to MEKAL"
     flux = [absorption .* emission[index] for index in eachindex(IndexCartesian(), emission)]
 
     @assert all(all.(isfinite, flux))
 
-    @debug "Generating interpolation"
+    @mpidebug "Generating interpolation"
     interpol = scale(interpolate(flux, BSpline(Linear())), (temperatures, densities))
 
-    @debug "Emission model generation complete."
+    @mpidebug "Emission model generation complete."
     return interpol
 end

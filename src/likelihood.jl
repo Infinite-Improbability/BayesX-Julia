@@ -1,5 +1,7 @@
 export DeltaPrior, LogUniformPrior, UniformPrior
 
+include("mpi.jl")
+
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
 
@@ -18,7 +20,7 @@ function log_likelihood(
     predicted_background,
     observed_log_factorial
 )
-    @debug "Calculating log likelihood"
+    @mpirankeddebug "Calculating log likelihood"
 
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
@@ -126,13 +128,13 @@ function make_cube_transform(priors::Prior...)
         # c_GNFW,
         # c_500_GNFW,
 
-        @debug "Transform started"
+        @mpirankeddebug "Transform started"
 
         for (c, p) in zip(axes(cube, 2), priors)
             cube[:, c] = transform.(Ref(p), cube[:, c])
         end
 
-        @debug "Transform done"
+        @mpirankeddebug "Transform done"
 
         return cube
     end

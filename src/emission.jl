@@ -2,6 +2,7 @@ using Integrals
 using LinearAlgebra: dot
 
 include("mekal.jl")
+include("mpi.jl")
 
 """
     surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_length)

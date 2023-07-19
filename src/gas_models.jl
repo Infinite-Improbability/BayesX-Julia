@@ -6,6 +6,7 @@ using Integrals
 
 include("params.jl")
 include("emission.jl")
+include("mpi.jl")
 
 
 """
@@ -44,7 +45,7 @@ function Model_NFW_GNFW(
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
-    @debug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
+    @mpirankeddebug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
 
     @argcheck MT_200 > 0
     @argcheck fg_200 > 0
@@ -127,7 +128,7 @@ function Model_NFW_GNFW(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
 
-    @debug "Integrating to find Pei"
+    @mpirankeddebug "Integrating to find Pei"
     integral = IntegralProblem(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
@@ -136,7 +137,7 @@ function Model_NFW_GNFW(
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4")
     Pei_GNFW = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200.u
-    @debug "Pei calculation complete"
+    @mpirankeddebug "Pei calculation complete"
 
     @assert Pei_GNFW > 0u"Pa"
 
@@ -170,7 +171,7 @@ function Model_NFW_GNFW(
         end
     end
 
-    @debug "Calculating brightness"
+    @mpirankeddebug "Calculating brightness"
 
     brightness = surface_brightness.(
         radius_at_cell,
@@ -184,7 +185,7 @@ function Model_NFW_GNFW(
 
     counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
 
-    @debug "Applying response function"
+    @mpirankeddebug "Applying response function"
     # Stripping units here is an attempt to fix performance issues
     # I think the root cause is using generic instead of specialised matrix multiplication
     # We may be able to clean that up with better typing instead of stripping unitd
@@ -250,7 +251,7 @@ Takes a small matrix `m` of vectors of counts per channel and treats it as the q
 This is expanded by channels to create a 3D array of counts for `(channel, x, y)`.
 """
 function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:Int}
-    @debug "Completing matrix"
+    @mpirankeddebug "Completing matrix"
     new = Array{Float64}(undef, length(m[1]), shape...)
 
     # increasing row is increasing x
@@ -288,6 +289,6 @@ function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:
 
     @assert all(isfinite, new)
 
-    @debug "Matrix reshaped"
+    @mpirankeddebug "Matrix reshaped"
     return new
 end
