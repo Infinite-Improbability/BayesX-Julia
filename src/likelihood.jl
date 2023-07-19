@@ -1,4 +1,4 @@
-export DeltaPrior, UniformPrior
+export DeltaPrior, LogUniformPrior, UniformPrior
 
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
@@ -77,7 +77,7 @@ function transform(prior::DeltaPrior, x::Real)
     return prior.value
 end
 
-"""A uniform prior that draws from a uniform distribton between `min` and `max`."""
+"""A uniform prior that draws from a uniform distribution between `min` and `max`."""
 struct UniformPrior{T<:Number} <: Prior
     min::T
     max::T
@@ -85,6 +85,19 @@ struct UniformPrior{T<:Number} <: Prior
 end
 function transform(prior::UniformPrior, x::Real)
     return x * (prior.max - prior.min) + prior.min
+end
+
+"""A log uniform prior that draws from a distribution between `min`
+and `max` whose base 10 logarithm is uniformly distributed."""
+struct LogUniformPrior{T<:Number} <: Prior
+    min::T
+    max::T
+    LogUniformPrior(min::T, max::T) where {T<:Number} = max > min ? new{T}(min, max) : error("Maximum is not greater than min")
+end
+function transform(prior::LogUniformPrior, x::Real)
+    lmin = log10(prior.min)
+    lmax = log10(prior.max)
+    return 10^(x * (lmax - lmin) + lmin)
 end
 
 """
