@@ -173,15 +173,21 @@ function Model_NFW_GNFW(
 
     @mpirankeddebug "Calculating brightness"
 
-    brightness = surface_brightness.(
-        radius_at_cell,
+    brightness_radii = ustrip.(u"Mpc", pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length))
+
+    brightness_line = [ustrip.(u"cm^-2/s", x) for x in surface_brightness.(
+        brightness_radii * 1u"Mpc",
         gas_temperature,
-        gas_density, # TODO: Calculate nH instead of using ne
+        gas_density,
         z,
         20 * max(radii_x, radii_y) * pixel_edge_length,
         Ref(emission_model),
         pixel_edge_length
-    )
+    )]
+
+    brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())
+
+    brightness = brightness_interpolation.(ustrip.(u"Mpc", radius_at_cell)) * 1u"cm^-2/s"
 
     counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
 
