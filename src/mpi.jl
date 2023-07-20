@@ -22,5 +22,5 @@ macro mpierror(exs...)
 end
 
 macro mpirankeddebug(exs...)
-    return :(@debug "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))]" $(exs...))
+    return :(@debug "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] $($exs[1] )" $(esc.(exs[2:end])...))
 end

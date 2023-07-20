@@ -45,7 +45,7 @@ function Model_NFW_GNFW(
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
 
-    @mpirankeddebug "Model called with parameters MT_200=$MT_200, fg_200=$fg_200"
+    @mpirankeddebug "Model" MT_200 fg_200
 
     @argcheck MT_200 > 0
     @argcheck fg_200 > 0
