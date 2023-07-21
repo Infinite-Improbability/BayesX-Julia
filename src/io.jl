@@ -130,7 +130,7 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", energy_range[2]) - 1
     max_channel = searchsortedfirst(read(f_rmf[3], "E_MIN") * 1u"keV", energy_range[2]) - 1
 
-    @mpidebug "Trimming response matrix with arrangement (PI,E) to range [$min_channel:$max_channel, $min_bin:$max_bin]"
+    @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
 
     return rmf[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # Hack to add arf units
 end

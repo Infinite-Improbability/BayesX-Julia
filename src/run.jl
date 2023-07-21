@@ -1,5 +1,6 @@
 using Unitful
 using Plots
+using Profile
 
 using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
@@ -61,16 +62,10 @@ function sample(
     # a wrapper to handle running the gas model and likelihood calculation
     @mpidebug "Generating likelihood wrapper"
     function likelihood_wrapper(params)
-        @mpirankeddebug "Likelihood wrapper called"
+        @mpirankeddebug "Likelihood wrapper called" params
 
-        n, _ = size(params)
-
-        params_rows = Vector{Vector{eltype(params)}}(undef, n)
-        for i in 1:n
-            params_rows[i] = params[i, :]
-        end
-
-        predicted = [Model_NFW_GNFW(params_rows[i]...,
+        predicted = Model_NFW_GNFW(
+            params...,
             1.062,
             5.4807,
             0.3292,
@@ -81,18 +76,22 @@ function sample(
             emission_model,
             obs_exposure_time,
             response_function
-        ) .+ predicted_obs_bg for i in 1:n]
+        ) .+ predicted_obs_bg
 
 
         @mpirankeddebug "Predicted results generated"
+
+        # @mpirankedinfo "Taking heap snapshot"
+        # Profile.take_heap_snapshot()
+        # @mpirankedinfo "Snapshot made"
         # [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
-        return log_likelihood.(
-            Ref(observed),
-            Ref(observed_background),
+        return log_likelihood(
+            observed,
+            observed_background,
             predicted,
             predicted_bg_bg,
-            Ref(log_obs_factorial)
+            log_obs_factorial
         )
     end
 
@@ -103,7 +102,7 @@ function sample(
         paramnames,
         likelihood_wrapper,
         transform=transform,
-        vectorized=true,
+        vectorized=false,
         log_dir="logs"
     )
 

@@ -48,7 +48,7 @@ function Model_NFW_GNFW(
     @mpirankeddebug "Model" MT_200 fg_200
 
     @argcheck MT_200 > 0
-    @argcheck fg_200 > 0
+    @argcheck 1 > fg_200 > 0
     @argcheck a_GNFW > 0
     # @argcheck c_500_GNFW > 0
     # @argcheck (b_GNFW - c_500_GNFW) > 0
@@ -200,6 +200,9 @@ function Model_NFW_GNFW(
     for i in eachindex(brightness)
         counts[i] = apply_response_function(ustrip.(u"cm^-2/s", brightness[i]), resp, exp_time)
     end
+
+    @mpirankeddebug "Free memory in MB" (Sys.free_memory() / 2^20)
+
     #
 
     # Potential optimisations

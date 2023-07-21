@@ -120,7 +120,7 @@ function make_cube_transform(priors::Prior...)
     to values on the physical prior distribution. Each column is a specific prior, so each
     row is a complete sample of the set of priors.
     """
-    function transform_cube(cube::AbstractArray)
+    function transform_cube(cube::AbstractVector)
         # MT_200::Unitful.Mass,
         # fg_200,
         # a_GNFW,
@@ -130,8 +130,8 @@ function make_cube_transform(priors::Prior...)
 
         @mpirankeddebug "Transform started"
 
-        for (c, p) in zip(axes(cube, 2), priors)
-            cube[:, c] = transform.(Ref(p), cube[:, c])
+        for (c, p) in zip(axes(cube, 1), priors)
+            cube[c] = transform.(Ref(p), cube[c])
         end
 
         @mpirankeddebug "Transform done"
