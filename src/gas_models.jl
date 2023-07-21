@@ -180,7 +180,7 @@ function Model_NFW_GNFW(
         gas_temperature,
         gas_density,
         z,
-        20 * max(radii_x, radii_y) * pixel_edge_length,
+        Quantity(Inf, u"Mpc"),
         Ref(emission_model),
         pixel_edge_length
     )]

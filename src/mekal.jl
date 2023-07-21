@@ -2,6 +2,9 @@ using SpectralFitting
 using Interpolations
 using Unitful
 using ProgressMeter
+using LibXSPEC_jll
+
+libXSFunctions
 
 include("mpi.jl")
 
@@ -87,4 +90,32 @@ function prepare_model_mekal(
 
     @mpidebug "Emission model generation complete."
     return interpol
+end
+
+
+function call_mekal(
+    min_energy,
+    max_energy,
+    nbins,
+    emitting_volume,
+    distance,
+    nH,
+    temperature
+)
+    flux = Vector{Float64}(undef, nbins)
+    cem = emitting_volume / distance^2
+    abundances = ones(Float64, 15)
+    ne = 0.0
+    @ccall "libXSFunctions".fmekal_(
+        min_energy::Ref{Float64},
+        max_energy::Ref{Float64},
+        flux::Ptr{Float64},
+        nbins::Ref{Int32},
+        cem::Ref{Float64},
+        nH::Ref{Float64},
+        temperature::Ref{Float64},
+        abundances::Ptr{Float64},
+        ne::Ref{Float64}
+    )::Cvoid
+    # display(flux)
 end
