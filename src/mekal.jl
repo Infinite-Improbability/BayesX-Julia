@@ -72,7 +72,7 @@ function prepare_model_mekal(
     emission_model(kbT, ρ) = XS_Mekal(K=FitParam(normalisation), t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(redshift))
     points = [emission_model(t, d) for t in temperatures, d in densities]
     @mpidebug "Invoking MEKAL"
-    emission = @showprogress map(
+    emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> invokemodel(energy_bins, x),
         points
     )
@@ -173,7 +173,7 @@ function prepare_model_mekal2(
     # TODO: progress bar
     points = [(t, d) for t in temperatures, d in densities]
     @mpidebug "Invoking MEKAL"
-    emission = @showprogress map(
+    emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
         points
     )

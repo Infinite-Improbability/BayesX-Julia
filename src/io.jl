@@ -1,5 +1,6 @@
 using FITSIO
 using Unitful
+using ProgressMeter
 
 export FITSData
 
@@ -83,6 +84,8 @@ function load_data(data::FITSData)::NTuple{2,Pair}
 end
 
 function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float64}}
+    @mpidebug "Loading response matrices"
+
     f_rmf = FITS(data.rmf)
     rmf_hdus::Vector{TableHDU} = [
         h for h in f_rmf if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"
@@ -122,13 +125,13 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
 
     # Get first bin where maximum energy >= min of range
     # ∴ Subsequent bins must have minimum energy > min of range
-    min_bin = searchsortedfirst(read(r, "ENERG_HI") * 1u"keV", energy_range[1])
-    # min_channel = searchsortedfirst(read(f_rmf[3], "E_MAX") * 1u"keV", energy_range[1])
+    min_bin = searchsortedfirst(read(r, "ENERG_HI") * 1u"keV", minimum(energy_range))
+    # min_channel = searchsortedfirst(read(f_rmf[3], "E_MAX") * 1u"keV", minimum(energy_range))
     min_channel = 1 # we don't trim events channels based on minimum (yet)
     # Get last bin where minimum energy >= max of range
     # ∴ This and subsequent bins must have minimum energy > max of range
-    max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", energy_range[2]) - 1
-    max_channel = searchsortedfirst(read(f_rmf[3], "E_MIN") * 1u"keV", energy_range[2]) - 1
+    max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", maximum(energy_range)) - 1
+    max_channel = searchsortedfirst(read(f_rmf[3], "E_MIN") * 1u"keV", maximum(energy_range)) - 1
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
 
@@ -146,18 +149,21 @@ function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
 
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]
-    events = events[energy_range[1].<events[:, 4].<energy_range[2], :]
+    events = events[minimum(energy_range).<events[:, 4].<maximum(energy_range), :]
 
     # Maximum doesn't like the Unitful array
     channels = ustrip.(events[:, 3])
 
     binned = zeros(Int64, (trunc(Int64, maximum(channels)), length(x_edges) - 1, length(y_edges) - 1))
 
+    prog = ProgressUnknown("Events read:")
     for r in eachrow(events)
         i = searchsortedlast(x_edges, r[1])
         j = searchsortedlast(y_edges, r[2])
         binned[trunc(Int64, r[3]), i, j] += 1
+        ProgressMeter.next!(prog)
     end
+    ProgressMeter.finish!(prog)
 
     return binned
 end
