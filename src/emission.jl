@@ -28,7 +28,7 @@ function surface_brightness(
         s, temp = params
         r = hypot(s, l)
 
-        f = model(hydrogen_number_density(density(r)), temp(r))
+        f = model(temp(r), hydrogen_number_density(density(r)))
 
         # TODO: Switch to in place
 
