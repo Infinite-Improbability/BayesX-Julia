@@ -175,14 +175,14 @@ function Model_NFW_GNFW(
 
     brightness_radii = ustrip.(u"Mpc", pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length))
 
-    brightness_line = [ustrip.(u"cm^-2/s", x) for x in surface_brightness.(
+    brightness_line = [ustrip.(u"cm^(-2)/s", x) for x in surface_brightness.(
         brightness_radii * 1u"Mpc",
         gas_temperature,
         gas_density,
         z,
         Quantity(Inf, u"Mpc"),
         Ref(emission_model),
-        pixel_edge_length
+        pixel_edge_angle
     )]
 
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())

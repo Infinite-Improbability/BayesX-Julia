@@ -95,8 +95,8 @@ end
 
 function call_mekal(
     energy_range,
-    emitting_volume,
-    distance,
+    # emitting_volume,
+    # distance,
     nH,
     temperature
 )
@@ -110,8 +110,8 @@ function call_mekal(
     end
 
     # Scale by volume of and distance to emitting area.
-    cem_units = uconvert(u"m", 1e50u"cm^3" / (1u"pc")^2)
-    cem = uconvert(u"m", emitting_volume / distance^2) / cem_units
+    # cem_units = uconvert(u"m", 1e50u"cm^3" / (1u"pc")^2)
+    # cem = uconvert(u"m", emitting_volume / distance^2) / cem_units
     cem = 1.0
 
     # Ensure input quantities are in the right units
@@ -140,9 +140,15 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
-    display(ne)
+    # TODO: Missing absorption
 
-    return flux
+    return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
 
-call_mekal((0.3:0.01:7.0)u"keV", 150u"m^3", 1u"Mpc", 100u"cm^-3", 100u"keV")
+function prepare_mekal_2(energy_range)
+    return function mekal(nH, t)
+        call_mekal(energy_range, nH, t)
+    end
+end
+
+# call_mekal((0.3:0.01:7.0)u"keV", 150u"m^3", 1u"Mpc", 100u"cm^-3", 100u"keV")

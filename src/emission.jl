@@ -17,10 +17,10 @@ function surface_brightness(
     projected_radius::Unitful.Length,
     temperature::Function,
     density::Function,
-    z,
+    z::Float64,
     limit::Unitful.Length,
     model,
-    pixel_edge_length::Unitful.Length,
+    pixel_edge_angle,
 )
     @argcheck limit > 0u"Mpc"
 
@@ -28,9 +28,7 @@ function surface_brightness(
         s, temp = params
         r = hypot(s, l)
 
-        nH = hydrogen_number_density(density(r))
-
-        f = model(ustrip(u"keV", temp(r)), ustrip(u"cm^-3", nH)) * 1u"cm^3/s" * (density(r) / μ_e) * nH
+        f = model(hydrogen_number_density(density(r)), temp(r))
 
         # TODO: Switch to in place
 
@@ -39,18 +37,14 @@ function surface_brightness(
         return f
     end
 
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
-    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1e-3u"cm^-2/s")
+    problem = IntegralProblem(integrand, -limit, limit, [projected_radius, temperature])
+    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
 
     @assert all(isfinite, sol.u)
 
     # doubling solution to account for integral bounds
-    # applying exposure area and time
-    # applying XSPEC normalisation
-    # the n_e n_h density normalisation has been applied in the integrand, approximating n_e n_h as n_e^2
-    # this is not ideal, should use the explicit value
-    # I don't know where XSPEC gets 10^-14 so I'm just trusting their docs
-    2 * sol.u * pixel_edge_length^2 * 10^-14 / 4π / (1 + z)^2 / angular_diameter_dist(cosmo, z)^2
+    # applying exposure area
+    sol.u / (4π * 1u"rad^2" * (1 + z)^4) * pixel_edge_angle^2
 end
 
 """
