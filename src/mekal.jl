@@ -1,6 +1,6 @@
 using SpectralFitting
 using Interpolations
-using Unitful
+using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
 
@@ -94,28 +94,55 @@ end
 
 
 function call_mekal(
-    min_energy,
-    max_energy,
-    nbins,
+    energy_range,
     emitting_volume,
     distance,
     nH,
     temperature
 )
-    flux = Vector{Float64}(undef, nbins)
-    cem = emitting_volume / distance^2
-    abundances = ones(Float64, 15)
-    ne = 0.0
+    # Convert energy range into format expected by mekal
+    n_energy_bins = length(energy_range) - 1
+    min_energy = Vector{Cfloat}(undef, n_energy_bins)
+    max_energy = Vector{Cfloat}(undef, n_energy_bins)
+    for i in 1:n_energy_bins
+        min_energy[i] = ustrip(Cfloat, u"keV", energy_range[i])
+        max_energy[i] = ustrip(Cfloat, u"keV", energy_range[i+1])
+    end
+
+    # Scale by volume of and distance to emitting area.
+    cem_units = uconvert(u"m", 1e50u"cm^3" / (1u"pc")^2)
+    cem = uconvert(u"m", emitting_volume / distance^2) / cem_units
+    cem = 1.0
+
+    # Ensure input quantities are in the right units
+    nH = ustrip(Cfloat, u"cm^-3", nH)
+    temperature = ustrip(Cfloat, u"keV", temperature)
+
+    # Abundances of elements w.r.t solar values
+    # Using one because it matches BayesX
+    abundances = ones(Cfloat, 15)
+
+    # Initalise output variables
+    flux = ones(Cfloat, n_energy_bins)
+    ne = 10.0
+
+    # ccall(:jl_breakpoint, Cvoid, (Any,), flux)
+
     @ccall "libXSFunctions".fmekal_(
-        min_energy::Ref{Float64},
-        max_energy::Ref{Float64},
-        flux::Ptr{Float64},
-        nbins::Ref{Int32},
-        cem::Ref{Float64},
-        nH::Ref{Float64},
-        temperature::Ref{Float64},
-        abundances::Ptr{Float64},
-        ne::Ref{Float64}
+        min_energy::Ptr{Cfloat},
+        max_energy::Ptr{Cfloat},
+        flux::Ptr{Cfloat},
+        n_energy_bins::Ref{Cint},
+        cem::Ref{Cfloat},
+        nH::Ref{Cfloat},
+        temperature::Ref{Cfloat},
+        abundances::Ptr{Cfloat},
+        ne::Ref{Cfloat},
     )::Cvoid
-    # display(flux)
+
+    display(ne)
+
+    return flux
 end
+
+call_mekal((0.3:0.01:7.0)u"keV", 150u"m^3", 1u"Mpc", 100u"cm^-3", 100u"keV")
