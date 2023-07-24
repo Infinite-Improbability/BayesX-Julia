@@ -140,8 +140,6 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
-    # TODO: Missing absorption
-
     return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
 
