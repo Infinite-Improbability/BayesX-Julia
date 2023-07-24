@@ -37,14 +37,14 @@ function surface_brightness(
         return f
     end
 
-    problem = IntegralProblem(integrand, -limit, limit, [projected_radius, temperature])
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
     sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
 
     @assert all(isfinite, sol.u)
 
     # doubling solution to account for integral bounds
     # applying exposure area
-    sol.u / (4π * 1u"rad^2" * (1 + z)^4) * pixel_edge_angle^2
+    2 * sol.u * (π / (180 * 60))^2 / (4π * (1 + z)^4) * uconvert(u"arcminute", pixel_edge_angle)^2
 end
 
 """
