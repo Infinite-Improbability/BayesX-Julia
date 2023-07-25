@@ -140,7 +140,9 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
-    return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
+    return 1u"m^(-3)/s/keV" * 3.03103e-9 / 2.53325e-3 * flux .* (max_energy - min_energy)u"keV"
+
+    # return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
 
 """
@@ -158,6 +160,8 @@ function prepare_model_mekal2(
     densities=0:5.0:200 # cm^-3
 )
     @mpidebug "Preparing MEKAL emission model"
+
+    # TODO: Do I need to redshift the energy bins?
 
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"

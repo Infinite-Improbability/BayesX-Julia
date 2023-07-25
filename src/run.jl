@@ -36,7 +36,7 @@ function sample(
     redshift::Real;
     emission_model,
     pixel_edge_angle=0.492u"arcsecond",
-    background_rate=8.6e-2u"m^-2/arcminute^2/s",
+    background_rate=8.4e-6u"cm^-2/arcminute^2/s",
     average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"

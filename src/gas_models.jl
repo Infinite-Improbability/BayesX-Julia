@@ -155,6 +155,16 @@ function Model_NFW_GNFW(
         (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
     end
 
+    ρ_200 = gas_density(r_200)
+    @mpidebug "ρ_200" ρ_200
+    T_200 = gas_temperature(r_200)
+    @mpidebug "T_200" T_200
+
+    ρ_500 = gas_density(r_500)
+    @mpidebug "ρ_500" ρ_500
+    T_500 = gas_temperature(r_500)
+    @mpidebug "T_500" T_500
+
     # Calculate source brightness at various points
     # TODO: Moving center
     pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)

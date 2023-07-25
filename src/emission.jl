@@ -37,14 +37,41 @@ function surface_brightness(
         return f
     end
 
+    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
     sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
-
     @assert all(isfinite, sol.u)
+
+    # sol is volume emissivity per face area of column
+    # because of how we defined the limits we have to double it
+    # [photons/s/m^2]
+    u = 2 * sol.u
+
+    # add in surface area of column end
+    # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
+    # [photons/s]
+    u *= (angular_diameter_dist(cosmo, z) * ustrip(u"rad", pixel_edge_angle))^2
+
+    # factor in time dilation and redshift
+    # [photons/s]
+    # u /= (1 + z)^2
+    # This wil be implicit in the luminosity distance
+
+    # assume emission is uniformly distributed over a sphere
+    # [photons/s/steradian]
+    # u /= (4π * 1u"rad^2")
+    # Luminosity distance will also help with that
+
+    # convert from solid angle to area
+    # remembering there are redshift effects on observed angle
+    # we choose to use the luminosity distance as it helpfully handles this
+    u /= (4π * luminosity_dist(cosmo, z)^2)
+
+    return u
 
     # doubling solution to account for integral bounds
     # applying exposure area
-    2 * sol.u * (π / (180 * 60))^2 / (4π * (1 + z)^4) * uconvert(u"arcminute", pixel_edge_angle)^2
+    # return 2 * sol.u / (4π * 1u"rad^2" * (1 + z)^4) * pixel_edge_angle^2
 end
 
 """
