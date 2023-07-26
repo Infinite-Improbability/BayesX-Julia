@@ -35,6 +35,7 @@ Load events data from a given dataset, returning pairs events and exposure times
 The first pair includes all observed events, the second is the background observation.
 """
 function load_data(data::Dataset)::NTuple{2,Pair}
+    error("load_data is not implemented for these arguments", data)
 end
 
 """
@@ -43,6 +44,7 @@ end
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """
 function load_response(data::Dataset, energy_range)::Matrix{Float64}
+    error("load_response is not implemented for these arguments", data, energy_range)
 end
 
 function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
