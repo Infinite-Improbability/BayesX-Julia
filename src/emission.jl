@@ -46,12 +46,12 @@ function surface_brightness(
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
     # [photons/s/m^2]
-    u::Vector{Quantity} = 2 * sol.u
+    # u::Vector{Quantity} = 2 * sol.u
 
     # add in surface area of column end
     # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
     # [photons/s]
-    u *= (angular_diameter_dist(cosmo, z) * ustrip(u"radᵃ", pixel_edge_angle))^2
+    # u *= (angular_diameter_dist(cosmo, z) * ustrip(u"radᵃ", pixel_edge_angle))^2
 
     # factor in time dilation and redshift
     # [photons/s]
@@ -66,13 +66,13 @@ function surface_brightness(
     # convert from solid angle to area
     # remembering there are redshift effects on observed angle
     # we choose to use the luminosity distance as it helpfully handles this
-    u /= (4π * luminosity_dist(cosmo, z)^2)
+    # u /= (4π * luminosity_dist(cosmo, z)^2)
 
-    return u
+    # return u
 
     # doubling solution to account for integral bounds
     # applying exposure area
-    # return 2 * sol.u / (4π * 1u"rad^2" * (1 + z)^4) * pixel_edge_angle^2
+    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^4) * pixel_edge_angle^2
 end
 
 """
