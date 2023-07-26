@@ -140,7 +140,7 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
-    return 1u"m^(-3)/s/keV" * 3.03103e-9 / 2.53325e-3 * flux .* (max_energy - min_energy)u"keV"
+    return 1e20u"m^(-3)/s/keV" * 3.03103e-9 / 2.53325e-3 * flux .* (max_energy - min_energy)u"keV"
 
     # return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
