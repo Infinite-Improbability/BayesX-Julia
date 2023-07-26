@@ -96,7 +96,7 @@ function Model_NFW_GNFW(
         a,
         b,
         c
-    ) where {T<:AbstractFloat}
+    )::Unitful.Length{T} where {T<:AbstractFloat}
         r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
         (r / r_p)^(-c) *
         (1 + (r / r_p)^a)^(-(a + b - c) / a) *
@@ -112,7 +112,7 @@ function Model_NFW_GNFW(
         a,
         b,
         c
-    ) where {T<:AbstractFloat}
+    )::Unitful.Volume{T} where {T<:AbstractFloat}
         s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
 
         @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $a, $b, $c"
@@ -135,21 +135,21 @@ function Model_NFW_GNFW(
         r_200,
         [r_s, r_p, a_GNFW, b_GNFW, c_GNFW]
     )
-    vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4")
-    Pei_GNFW = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200.u
+    vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
+    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
     @mpirankeddebug "Pei calculation complete"
 
     @assert Pei_GNFW > 0u"Pa"
 
     """Calculate gas density at some radius"""
-    function gas_density(r::Unitful.Length)::Unitful.Density
+    function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
         (μ_e / μ) * (1 / (4π * G)) *
         (Pei_GNFW / ρ_s) * (1 / r_s^3) *
         gnfw_gas_radial_term(r, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
     end
 
     """Calculate gas temperature at some radius"""
-    function gas_temperature(r::Unitful.Length)::Unitful.Energy
+    function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
         4π * μ * G * ρ_s * (r_s^3) *
         ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
         (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
@@ -183,9 +183,9 @@ function Model_NFW_GNFW(
 
     @mpirankeddebug "Calculating brightness"
 
-    brightness_radii = ustrip.(u"Mpc", pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length))
+    brightness_radii::Vector{Float64} = ustrip.(Float64, u"Mpc", pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length))
 
-    brightness_line = [ustrip.(u"cm^(-2)/s", x) for x in surface_brightness.(
+    brightness_line::Vector{Vector{Float64}} = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
         brightness_radii * 1u"Mpc",
         gas_temperature,
         gas_density,
@@ -197,7 +197,7 @@ function Model_NFW_GNFW(
 
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())
 
-    brightness = brightness_interpolation.(ustrip.(u"Mpc", radius_at_cell)) * 1u"cm^-2/s"
+    brightness = brightness_interpolation.(ustrip.(u"Mpc", radius_at_cell)) #* 1u"cm^-2/s"
 
     counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
 
@@ -208,7 +208,8 @@ function Model_NFW_GNFW(
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
     for i in eachindex(brightness)
-        counts[i] = apply_response_function(ustrip.(u"cm^-2/s", brightness[i]), resp, exp_time)
+        # @inbounds counts[i] = apply_response_function(ustrip.(Float64, u"cm^-2/s", brightness[i]), resp, exp_time)
+        @inbounds counts[i] = apply_response_function(brightness[i], resp, exp_time)
     end
 
     @mpirankeddebug "Free memory in MB" (Sys.free_memory() / 2^20)

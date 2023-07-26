@@ -3,7 +3,7 @@ MPI.Init()
 
 """Wrappers around the logging macros to ensure they only run for a single process.."""
 
-const comm = MPI.COMM_WORLD
+const comm::MPI.Comm = MPI.COMM_WORLD
 
 macro mpidebug(exs...)
     return :(MPI.Comm_rank(comm) > 0 ? nothing : @debug $(esc.(exs)...))

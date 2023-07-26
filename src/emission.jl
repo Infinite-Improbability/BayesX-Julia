@@ -21,7 +21,7 @@ function surface_brightness(
     limit::Unitful.Length,
     model,
     pixel_edge_angle,
-)
+)::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
     function integrand(l, params)
@@ -45,7 +45,7 @@ function surface_brightness(
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
     # [photons/s/m^2]
-    u = 2 * sol.u
+    u::Vector{Quantity} = 2 * sol.u
 
     # add in surface area of column end
     # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
@@ -91,7 +91,7 @@ with `C(PI)`` is the observed counts in a detector channel `PI`, `T` is the obse
 This function takes the combined RMF and ARF as the response function. This is to recalculating it on every call.
 Some people format the RMF as RMF(PI, E). This convention is used by CIAO, for example.
 """
-function apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time)::Vector{Float64}
+function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T}, exposure_time::T)::Vector{T} where {T<:AbstractFloat}
     # Argcheck would really be better here but we want it to skip it in high performance situations
     # display(counts_per_bin)
     # display(response)
