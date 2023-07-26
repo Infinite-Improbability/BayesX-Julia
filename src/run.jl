@@ -1,4 +1,4 @@
-using Unitful
+using Unitful, DimensionfulAngles
 using Plots
 using Profile
 
@@ -35,8 +35,8 @@ function sample(
     bg_exposure_time::Unitful.Time,
     redshift::Real;
     emission_model,
-    pixel_edge_angle=0.492u"arcsecond",
-    background_rate=8.4e-6u"cm^-2/arcminute^2/s",
+    pixel_edge_angle=0.492u"arcsecondᵃ",
+    background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2"
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"

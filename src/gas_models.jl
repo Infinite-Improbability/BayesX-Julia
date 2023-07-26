@@ -1,5 +1,5 @@
 using ArgCheck
-using Unitful, UnitfulAstro, UnitfulAngles
+using Unitful, UnitfulAstro, DimensionfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
 
@@ -38,9 +38,9 @@ function Model_NFW_GNFW(
     c_500_GNFW::T,
     z::T,
     shape::Vector{N},
-    pixel_edge_angle::Quantity{T,NoDims},
+    pixel_edge_angle::DimensionfulAngles.Angle{T},
     emission_model,
-    exposure_time::Unitful.Time,
+    exposure_time::Unitful.Time{T},
     response_function::Matrix,
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into an object?
@@ -167,7 +167,7 @@ function Model_NFW_GNFW(
 
     # Calculate source brightness at various points
     # TODO: Moving center
-    pixel_edge_length = ustrip(u"rad", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     radii_x, radii_y = ceil.(Int64, shape ./ 2)
 
     radius_at_coords(x, y) = hypot(x, y) * pixel_edge_length
@@ -241,7 +241,7 @@ function Model_NFW_GNFW(
     c_500_GNFW,
     z,
     shape::Vector{N},
-    pixel_edge_angle::Quantity{T,NoDims},
+    pixel_edge_angle::DimensionfulAngles.Angle{T},
     emission_model,
     exposure_time::Unitful.Time,
     response_function::Matrix,

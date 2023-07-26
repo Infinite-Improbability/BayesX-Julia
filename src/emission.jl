@@ -1,5 +1,6 @@
 using Integrals
 using LinearAlgebra: dot
+using DimensionfulAngles
 
 include("mekal.jl")
 include("mpi.jl")
@@ -20,7 +21,7 @@ function surface_brightness(
     z::Float64,
     limit::Unitful.Length,
     model,
-    pixel_edge_angle,
+    pixel_edge_angle::DimensionfulAngles.Angle,
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
@@ -50,7 +51,7 @@ function surface_brightness(
     # add in surface area of column end
     # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
     # [photons/s]
-    u *= (angular_diameter_dist(cosmo, z) * ustrip(u"rad", pixel_edge_angle))^2
+    u *= (angular_diameter_dist(cosmo, z) * ustrip(u"radᵃ", pixel_edge_angle))^2
 
     # factor in time dilation and redshift
     # [photons/s]
