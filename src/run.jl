@@ -13,7 +13,7 @@ include("likelihood.jl")
 include("mpi.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time; emission_model, pixel_edge_angle)
+    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area)
 
 Configure some necessary variables and launch ultranest.
 
@@ -136,8 +136,8 @@ function sample(
 
     observation, observed_background = load_data(data)
 
-    obs = bin_events(observation.first, energy_range, 2000:25:4000, 2000:25:4000)
-    bg = bin_events(observed_background.first, energy_range, 2000:25:4000, 2000:25:4000)
+    obs = bin_events(observation.first, energy_range, 3700:25:4200, 4100:25:4550)
+    bg = bin_events(observed_background.first, energy_range, 3700:25:4200, 4100:25:4550)
     @mpidebug "Done binning events"
 
     @assert size(obs) == size(bg)
