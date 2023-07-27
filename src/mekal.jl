@@ -92,13 +92,45 @@ function prepare_model_mekal(
     return interpol
 end
 
+"""
+    call_mekal(energy_range, temperature, nH)
 
+Given a unitful range of energy and unitless temperature (keV) and hydrogen density in the source (cm^-3)
+calls MEKAL to calculate the volume emissivity of the source.
+
+The XSPEC and MEKAL documentation is at times short on detail. Here's what I've figured out.
+
+The MEKA model has more extensive comments that MEKAL that are very helpful. The values calculated
+by MEKAL are multiplied by a constant of 2.53325e-3. Inspecting the MEKA comments we find the following
+equation for this constant which we will term `C`
+```math
+C = \\frac{\\sqrt{2} h^2 α^3}{(3πm_e)^{1.5} \\sqrt{1000e} π (1pc)^2 10^4}
+```
+and the instruction to use SI units. `h` appears to be Planck's constant (unreduced) and `α` the fine-structure constant.
+Calculating this gives C=2.533242122484874e-59 kg^1/2 m^2 A^-1/2 s^-5/2.
+
+MEKAL adjusts emissions by what it terms `cem` which is the emitting volume divided by the square of distance to the volume.
+This follows naturally from the relationship between surface emissivity `σ` and volume emissivity `ϵ`.
+```math
+    σ = ϵV / (4πD)^2
+```
+MEKAL uses units of 1e50cm^3 / 1pc^2 for `cem`. If we multiply by 10^50cm^3 we get 2.533242122484874e-13 J^2 cm s^2 C^-1/2 kg^-3/2.
+As dividing by 1pc^2 would change more than just the magnitude of the value I assume it is folded in as the 1pc^2 in the original equation.
+Furthermore I assume that remaining difference rests in the details of units and implementation.
+
+MEKAL states it outputs in phot/cm^2/s/keV. MEKA states the same but has an optional switch that instead outputs in phot/m^3/s/keV.
+It does this by replacing `C` with `D=3.03103E-9` which it states is derived so that
+```math
+C = D * 10^40 / (4π * 1pc^2)
+```
+I have verified this gives results matching that of doing the conversion manually (by dividing out 1e50cm^3 and multiplying by 1pc^2).
+"""
 function call_mekal(
     energy_range,
     # emitting_volume,
     # distance,
-    temperature,
-    nH,
+    temperature, # keV
+    nH, # cm^-3
 )
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
@@ -140,10 +172,10 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
-    return 1e20u"m^(-3)/s/keV" * 3.03103e-9 / 2.53325e-3 * flux .* (max_energy - min_energy)u"keV"
-
-    # return 1e-4u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
+    return 1u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
+
+# display(call_mekal((0.3:0.1:7.0)u"keV", 10, 1e-3))
 
 """
     prepare_model_mekal2(nHcol, energy_bins; temperatures, densities)
