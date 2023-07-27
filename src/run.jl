@@ -129,7 +129,7 @@ function sample(
     data::Dataset,
     energy_range,
     priors;
-    nHcol=2.2, # units of 10²² atoms per cm⁻²
+    nHcol=0.022, # units of 10²² atoms per cm⁻²
     redshift=0.1
 )
     @mpiinfo "Loading data"
