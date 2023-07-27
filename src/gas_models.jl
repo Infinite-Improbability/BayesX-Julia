@@ -155,16 +155,6 @@ function Model_NFW_GNFW(
         (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
     end
 
-    ρ_200 = gas_density(r_200)
-    @mpidebug "ρ_200" ρ_200
-    T_200 = gas_temperature(r_200)
-    @mpidebug "T_200" T_200
-
-    ρ_500 = gas_density(r_500)
-    @mpidebug "ρ_500" ρ_500
-    T_500 = gas_temperature(r_500)
-    @mpidebug "T_500" T_500
-
     # Calculate source brightness at various points
     # TODO: Moving center
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
@@ -214,7 +204,23 @@ function Model_NFW_GNFW(
 
     @mpirankeddebug "Free memory in MB" (Sys.free_memory() / 2^20)
 
-    #
+    r1 = 0.0044236216840579379u"Mpc"
+    t1 = gas_temperature(r1)
+    ρ1 = gas_density(r1)
+    nh1 = hydrogen_number_density(ρ1)
+    e1 = emission_model(t1, nh1)
+    display(e1)
+
+    s1 = surface_brightness(
+        r1,
+        gas_temperature,
+        gas_density,
+        z,
+        Quantity(Inf, u"Mpc"),
+        emission_model,
+        pixel_edge_angle
+    )
+    display(s1)
 
     # Potential optimisations
     # Supply integrals as Vector
