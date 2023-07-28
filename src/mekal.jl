@@ -9,6 +9,35 @@ using LibXSPEC_jll
 
 include("mpi.jl")
 
+"""Mekal model using SpectralFitting.jl framework. Kept around so we can borrow the model data downloading functions."""
+@xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
+    "Normalisation"
+    K::T
+    "Plasma Temperature"
+    t::T
+    "Hydrogen Density"
+    ρ::T
+    "Metal Abundances"
+    a::T
+    "Redshift"
+    z::T
+    "Switch"
+    s::Int
+end
+function XS_Mekal(;
+    K=FitParam(1.0), # these values were picked arbitarily
+    t=FitParam(8.0),
+    ρ=FitParam(10.0),
+    a=FitParam(1.0),
+    z=FitParam(0.1),
+    s=0
+)
+    XS_Mekal{typeof(K),SpectralFitting.FreeParameters{(:K, :t, :ρ)}}(
+        K, t, ρ, a, z, s
+    )
+end
+SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
+
 
 """
     call_mekal(energy_range, temperature, nH)
@@ -134,6 +163,13 @@ function prepare_model_mekal(
     hydrogen_densities::AbstractRange{NumberDensity}=(0:0.01:1)u"cm^-3"
 )
     @mpidebug "Preparing MEKAL emission model"
+
+    @mpidebug "Checking for model data"
+    if MPI.Comm_rank(comm) == 0
+        @info "Downloading model data"
+        SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
+    end
+    MPI.Barrier(comm)
 
     eb = ustrip.(u"keV", collect(energy_bins))
     temps = ustrip.(u"keV", temperatures)
