@@ -207,15 +207,18 @@ function prepare_model_mekal(
     @mpidebug "Emission model generation complete."
 
     function volume_emissivity(t::Unitful.Energy, nH::NumberDensity)::Vector{NumberDensityRate{Float64}}
-        try
-            x = interpol(t, nH) * 1u"m^(-3)/s"
-            return x
-        catch e
-            if isa(e, BoundsError)
-                @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
-                return call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
-            else
-                throw(e)
+        let interpol = interpol
+            let energy_bins = energy_bins
+                try
+                    return interpol(t, nH) * 1u"m^(-3)/s"
+                catch e
+                    if isa(e, BoundsError)
+                        @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
+                        return call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
+                    else
+                        throw(e)
+                    end
+                end
             end
         end
     end
