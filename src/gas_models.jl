@@ -43,15 +43,15 @@ function Model_NFW_GNFW(
     exposure_time::Unitful.Time{T},
     response_function::Matrix,
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
-    # Move some parameters into an object?
+    # Move some parameters into a struct?
 
     @mpirankeddebug "Model" MT_200 fg_200
 
     @argcheck MT_200 > 0
     @argcheck 1 > fg_200 > 0
     @argcheck a_GNFW > 0
-    # @argcheck c_500_GNFW > 0
-    # @argcheck (b_GNFW - c_500_GNFW) > 0
+    @argcheck c_500_GNFW > 0
+    @argcheck (b_GNFW - c_500_GNFW) > 0
 
     MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
 
@@ -127,7 +127,6 @@ function Model_NFW_GNFW(
     end
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
-
     @mpirankeddebug "Integrating to find Pei"
     integral = IntegralProblem(
         gnfw_gas_mass_integrand,
@@ -137,9 +136,8 @@ function Model_NFW_GNFW(
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
-    @mpirankeddebug "Pei calculation complete"
-
     @assert Pei_GNFW > 0u"Pa"
+    @mpirankeddebug "Pei calculation complete"
 
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
@@ -201,40 +199,6 @@ function Model_NFW_GNFW(
         # @inbounds counts[i] = apply_response_function(ustrip.(Float64, u"cm^-2/s", brightness[i]), resp, exp_time)
         @inbounds counts[i] = apply_response_function(brightness[i], resp, exp_time)
     end
-
-    @mpirankeddebug "Free memory in MB" (Sys.free_memory() / 2^20)
-
-    r1 = 0.0044236216840579379u"Mpc"
-    t1 = gas_temperature(r1)
-    ρ1 = gas_density(r1)
-    nh1 = hydrogen_number_density(ρ1)
-    e1 = emission_model(t1, nh1)
-    display(e1)
-
-    s1 = surface_brightness(
-        r1,
-        gas_temperature,
-        gas_density,
-        z,
-        Quantity(Inf, u"Mpc"),
-        emission_model,
-        pixel_edge_angle
-    )
-    display(s1)
-
-    # Potential optimisations
-    # Supply integrals as Vector
-    # Eliminate duplicate radii
-
-    # TODO: Conversion from rate to counts
-    # For now we handwave it with a fixed factor
-
-    # Debug code for verifing matrix completion and radius calculation
-    # for y in 1:radii_y
-    #     for x in 1:radii_x
-    #         counts[x, y] = repeat([ustrip(u"Mpc", radius_at_coords(x, y))], 26)
-    #     end
-    # end
 
     return complete_matrix(counts, shape)
 end
