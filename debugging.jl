@@ -32,6 +32,7 @@ em = prepare_model_mekal(2.2e20u"cm^-2", energy_range)
 model = Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
 
 @profview Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
+@profview_allocs Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
 @benchmark Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
 
 # bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s"

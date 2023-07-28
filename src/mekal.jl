@@ -206,7 +206,7 @@ function prepare_model_mekal(
 
     @mpidebug "Emission model generation complete."
 
-    function volume_emissivity(t::Unitful.Energy, nH::NumberDensity)::Vector{NumberDensityRate{Float64}}
+    function volume_emissivity(t, nH)
         let
             interpol = interpol
             energy_bins = energy_bins
