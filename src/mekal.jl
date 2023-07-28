@@ -6,6 +6,7 @@ using LibXSPEC_jll
 
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
+@derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓
 
 include("mpi.jl")
 
@@ -85,7 +86,7 @@ function call_mekal(
     energy_range, #keV
     temperature, # keV
     nH, # cm^-3
-)
+)::Vector{NumberDensityRate{Float64}}
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
     min_energy = Vector{Cfloat}(undef, n_energy_bins)
@@ -158,22 +159,17 @@ correction twice.
 """
 function prepare_model_mekal(
     nHcol::SurfaceDensity,
-    energy_bins::AbstractRange{Unitful.Energy};
-    temperatures::AbstractRange{Unitful.Energy}=(1e-30:0.025:120.0)u"keV",
-    hydrogen_densities::AbstractRange{NumberDensity}=(0:0.01:1)u"cm^-3"
-)
+    energy_bins::AbstractRange{T};
+    temperatures::AbstractRange{U}=(1e-30:0.1:120.0)u"keV",
+    hydrogen_densities::AbstractRange{V}=(0:0.2:10.0)u"cm^-3"
+) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
 
-    @mpidebug "Checking for model data"
     if MPI.Comm_rank(comm) == 0
-        @info "Downloading model data"
+        @mpidebug "Checking for model data"
         SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
     end
     MPI.Barrier(comm)
-
-    eb = ustrip.(u"keV", collect(energy_bins))
-    temps = ustrip.(u"keV", temperatures)
-    nH = ustrip.(u"cm^-3", hydrogen_densities)
 
     # TODO: Do I need to redshift the energy bins?
     # Also will redshift need special consideration for the absorption?
@@ -181,13 +177,13 @@ function prepare_model_mekal(
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
     absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
-    absorption = invokemodel(ustrip.(u"keV", collect(eb)), absorption_model)
+    absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
 
     @assert all(isfinite, absorption)
 
     # Generate source flux
     @mpidebug "Setting evaluation points"
-    points = [(t, d) for t in temps, d in nH]
+    points = [(ustrip(u"keV", t), ustrip(u"cm^-3", nH)) for t in temperatures, nH in hydrogen_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
@@ -203,10 +199,26 @@ function prepare_model_mekal(
     @assert all(all.(isfinite, flux))
 
     # The interpolation library doesn't like units so we have to strip and reapply them
+    # Also it only wants ranges not vectors for the knots
+
     @mpidebug "Generating interpolation"
-    interpol = scale(interpolate(flux, BSpline(Linear())), temps, nH)
+    interpol = scale(interpolate(flux, BSpline(Linear())), temperatures, hydrogen_densities)
 
     @mpidebug "Emission model generation complete."
-    f(t, d) = interpol(ustrip(u"keV", t), ustrip(u"cm^-3", d)) * 1u"m^(-3)/s"
-    return f
+
+    function volume_emissivity(t::Unitful.Energy, nH::NumberDensity)::Vector{NumberDensityRate{Float64}}
+        try
+            x = interpol(t, nH) * 1u"m^(-3)/s"
+            return x
+        catch e
+            if isa(e, BoundsError)
+                @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
+                return call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
+            else
+                throw(e)
+            end
+        end
+    end
+
+    return volume_emissivity
 end
