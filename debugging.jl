@@ -43,6 +43,9 @@ n_channels = size(model, 1)
 bg_count = bg_rate * exposure_time * avg_eff_area * pixel_size^2 / n_channels
 bg = fill(upreferred(bg_count), size(model))
 
+display(heatmap(dropdims(sum(model + bg, dims=1), dims=1), title="Model"))
+display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
+
 s = sample(
     round.(Int, noisy + bg),
     round.(Int, bg),
