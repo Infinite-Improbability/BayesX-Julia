@@ -16,4 +16,4 @@ data = FITSData(
 )
 
 priors = [LogUniformPrior(1.0e14, 1.0e17), UniformPrior(0.01, 1.0)]
-sample(data, (0.3:0.01:7.0)u"keV", priors, nHcol=3.89, redshift=0.164)
+sample(data, (0.3:0.01:7.0)u"keV", priors, nHcol=3.89e20u"cm^-2", redshift=0.164)
