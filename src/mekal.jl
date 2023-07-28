@@ -9,94 +9,6 @@ using LibXSPEC_jll
 
 include("mpi.jl")
 
-"""Mekal model using SpectralFitting.jl framework."""
-@xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
-    "Normalisation"
-    K::T
-    "Plasma Temperature"
-    t::T
-    "Hydrogen Density"
-    ρ::T
-    "Metal Abundances"
-    a::T
-    "Redshift"
-    z::T
-    "Switch"
-    s::Int
-end
-function XS_Mekal(;
-    K=FitParam(1.0),
-    t=FitParam(8.0),
-    ρ=FitParam(10.0),
-    a=FitParam(1.0),
-    z=FitParam(0.1),
-    s=0
-)
-    XS_Mekal{typeof(K),SpectralFitting.FreeParameters{(:K, :t, :ρ)}}(
-        K, t, ρ, a, z, s
-    )
-end
-SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
-
-
-"""
-    prepare_model_mekal(nHcol, redshift, energy_bins; temperatures, hydrogen_densities)
-
-Create an interpolated alias to the mekal model over specified parameter ranges.
-
-Interpolation has a significant performance improvement over calling the model directly.
-"""
-function prepare_model_mekal(
-    nHcol::SurfaceDensity,
-    redshift::Real,
-    energy_bins::AbstractRange{Unitful.Energy};
-    temperatures::AbstractRange{Unitful.Energy}=(1e-30:0.01:20.0)u"keV",
-    hydrogen_densities::AbstractRange{NumberDensity}=(0:0.01:1)u"cm^-3",
-    normalisation=1.0
-)
-    @mpidebug "Preparing MEKAL emission model"
-
-    eb = ustrip.(u"keV", collect(energy_bins))
-    temps = ustrip.(u"keV", temperatures)
-    nH = ustrip.(u"cm^-3", hydrogen_densities)
-
-    # TODO: Figure out normalisation
-
-    # Generate transmission fractions
-    @mpidebug "Invoking absorption model"
-    absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
-    absorption = invokemodel(eb, absorption_model)
-
-    @assert all(isfinite, absorption)
-
-    # Generate source flux
-    # TODO: document unit
-    @mpidebug "Setting evaluation points"
-    emission_model(kbT, ρ) = XS_Mekal(K=FitParam(normalisation), t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(redshift))
-    points = [emission_model(t, d) for t in temps, d in nH]
-
-    @mpidebug "Invoking MEKAL"
-    emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> invokemodel(eb, x),
-        points
-    )
-
-    @assert all(all.(isfinite, emission))
-
-    # Apply absorption
-    @mpidebug "Applying absorption to MEKAL"
-    flux = [absorption .* emission[index] for index in eachindex(IndexCartesian(), emission)]
-
-    @assert all(all.(isfinite, flux))
-
-    @mpidebug "Generating interpolation"
-    interpol = scale(interpolate(flux, BSpline(Linear())), (temps, nH))
-
-    f(t, d) = interpol(ustrip(u"keV", t), ustrip(u"cm^-3", d)) * 1u"m^(-3)/s"
-
-    @mpidebug "Emission model generation complete."
-    return f
-end
 
 """
     call_mekal(energy_range, temperature, nH)
@@ -105,7 +17,7 @@ Given a unitful range of energy and unitless temperature (keV) and hydrogen dens
 calls MEKAL to calculate the volume emissivity of the source in the source frame.
 
 Due to performance concerns I recommend calling `prepare_model_mekal` instead to generate an interpolation over
-the model.
+the model. The interpolation also implicitly includes absorption, which this function does not.
 
 ## Implementation Details
 
@@ -200,17 +112,22 @@ function call_mekal(
     return 1u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
 
-# display(call_mekal((0.3:0.1:7.0)u"keV", 10, 1e-3))
 
 """
     prepare_model_mekal2(nHcol, energy_bins; temperatures, hydrogen_densities)
 
-Create an interpolated alias to the mekal model over specified parameter ranges.
+Create an interpolated alias to the mekal model with photoelectric absorption over specified parameter ranges.
+
+The interpolation object `(T::Unitful.Energy, nH::Unitful.𝐋^-3) -> volume emissivity` returned gives the volume emissivity per bin of
+a source of the specified temperature and hydrogen number density with the effects of absorption from passage through an area
+with a hydrogen column density equal to that specified in the `prepare_model_mekal` call.
 
 Interpolation has a significant performance improvement over calling the model directly.
-This version calls MEKAL without using XSPEC's wrappers.
+No redshift is currently applied to energy bins - they should be assumed to be in the source frame.
+It may be wise to adjust this but then `surface_brightness` will need adjustment so it doesn't apply the
+correction twice.
 """
-function prepare_model_mekal2(
+function prepare_model_mekal(
     nHcol::SurfaceDensity,
     energy_bins::AbstractRange{Unitful.Energy};
     temperatures::AbstractRange{Unitful.Energy}=(1e-30:0.025:120.0)u"keV",
@@ -223,6 +140,7 @@ function prepare_model_mekal2(
     nH = ustrip.(u"cm^-3", hydrogen_densities)
 
     # TODO: Do I need to redshift the energy bins?
+    # Also will redshift need special consideration for the absorption?
 
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
@@ -234,7 +152,6 @@ function prepare_model_mekal2(
     # Generate source flux
     @mpidebug "Setting evaluation points"
     points = [(t, d) for t in temps, d in nH]
-
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
@@ -249,6 +166,7 @@ function prepare_model_mekal2(
 
     @assert all(all.(isfinite, flux))
 
+    # The interpolation library doesn't like units so we have to strip and reapply them
     @mpidebug "Generating interpolation"
     interpol = scale(interpolate(flux, BSpline(Linear())), temps, nH)
 

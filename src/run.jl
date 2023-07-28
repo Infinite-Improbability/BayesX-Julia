@@ -151,7 +151,7 @@ function sample(
     @mpiinfo "Generating emissions model"
 
     # emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
-    emission_model = prepare_model_mekal2(nHcol, energy_range)
+    emission_model = prepare_model_mekal(nHcol, energy_range)
 
     sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end
