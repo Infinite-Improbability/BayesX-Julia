@@ -3,6 +3,7 @@ using Profile
 using BenchmarkTools
 using DotEnv
 using Unitful, DimensionfulAngles
+using PoissonRandom
 
 include("src/run.jl")
 
@@ -20,7 +21,7 @@ data = FITSData(
 )
 
 energy_range = (0.3:0.01:3.0)u"keV"
-exposure_time = 300e6u"s" # inflated to crazy lengths
+exposure_time = 300e3u"s"
 pixel_size = 0.492u"arcsecondᵃ"
 redshift = 0.164
 
@@ -30,6 +31,7 @@ fg = 0.13
 response = load_response(data, energy_range)
 em = prepare_model_mekal(2.2e20u"cm^-2", energy_range)
 model = Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [32, 32], pixel_size, em, exposure_time, response)
+noisy = pois_rand.(model)
 
 # @profview Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
 # @profview_allocs Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, [24, 24], pixel_size, em, exposure_time, response)
@@ -41,10 +43,8 @@ n_channels = size(model, 1)
 bg_count = bg_rate * exposure_time * avg_eff_area * pixel_size^2 / n_channels
 bg = fill(upreferred(bg_count), size(model))
 
-# TODO: The noise! I forgot the noise
-
 s = sample(
-    round.(Int, model + bg),
+    round.(Int, noisy + bg),
     round.(Int, bg),
     response,
     make_cube_transform(UniformPrior(1e14, 1e15), UniformPrior(0.08, 0.2)),
@@ -63,4 +63,4 @@ posterior = s[2]["posterior"]
 # The ongoing problem seems to be that count rates are just too low to get
 # information with realistic exposure times. But clearly BayesX lacks this
 # problem.
-# Also need to add noise.
+# Adding noise may have fixed this

@@ -2,7 +2,7 @@
 
 julia_version = "1.9.2"
 manifest_format = "2.0"
-project_hash = "642232ca27cbe817c6b67538edc16c6c2dfecc02"
+project_hash = "5b6d7fc1270286c2d562a297cd05f30748392b99"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "f5c25e8a5b29b5e941b7408bc8cc79fea4d9ef9a"
@@ -1120,6 +1120,12 @@ version = "1.38.17"
     IJulia = "7073ff75-c697-5162-941a-fcdaad2a7d2a"
     ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
     Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
+
+[[deps.PoissonRandom]]
+deps = ["Random"]
+git-tree-sha1 = "a0f1159c33f846aa77c3f30ebbc69795e5327152"
+uuid = "e409e4f3-bfea-5376-8464-e040bb5c01ab"
+version = "0.4.4"
 
 [[deps.PrecompileTools]]
 deps = ["Preferences"]
