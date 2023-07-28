@@ -128,10 +128,10 @@ energy range. An gas emission model `(density, temperature) → emissivity` can 
 function sample(
     data::Dataset,
     energy_range::AbstractRange{T},
-    priors::AbstractVector{Prior};
+    priors::AbstractVector{U};
     nHcol::SurfaceDensity=2.2e20u"cm^-2",
     redshift::Real=0.1
-) where {T<:Unitful.Energy}
+) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
 
     observation, observed_background = load_data(data)

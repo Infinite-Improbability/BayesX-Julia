@@ -15,5 +15,5 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
-priors = [LogUniformPrior(1.0e14, 1.0e17), UniformPrior(0.01, 1.0)]
-sample(data, (0.3:0.01:7.0)u"keV", priors, nHcol=3.89e20u"cm^-2", redshift=0.164)
+priors = [LogUniformPrior(1.0e13, 1.0e19), LogUniformPrior(0.01, 1.0)]
+sample(data, (0.7:0.01:7.0)u"keV", priors, nHcol=3.89e20u"cm^-2", redshift=0.164)

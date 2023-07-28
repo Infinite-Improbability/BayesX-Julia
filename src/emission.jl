@@ -29,6 +29,8 @@ function surface_brightness(
         s, temp = params
         r = hypot(s, l)
 
+        r = max(r, 0.01u"Mpc")
+
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
 
