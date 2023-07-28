@@ -29,3 +29,4 @@ LocalPreferences.toml
 *.heapsnapshot
 *.log
 testbed/*
+.env
