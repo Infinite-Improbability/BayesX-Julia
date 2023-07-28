@@ -4,7 +4,8 @@ using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
 
-libXSFunctions
+@derived_dimension SurfaceDensity Unitful.𝐋^-2
+@derived_dimension NumberDensity Unitful.𝐋^-3
 
 include("mpi.jl")
 
@@ -37,43 +38,46 @@ function XS_Mekal(;
 end
 SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
 
+
 """
-    prepare_model_mekal(nHcol, redshift, energy_bins; temperatures, densities, normalisation=1)
+    prepare_model_mekal(nHcol, redshift, energy_bins; temperatures, hydrogen_densities)
 
 Create an interpolated alias to the mekal model over specified parameter ranges.
 
 Interpolation has a significant performance improvement over calling the model directly.
 """
 function prepare_model_mekal(
-    nHcol,
-    redshift,
-    energy_bins;
-    temperatures=1e-30:5.0:500.0,
-    densities=0:5.0:200,
+    nHcol::SurfaceDensity,
+    redshift::Real,
+    energy_bins::AbstractRange{Unitful.Energy};
+    temperatures::AbstractRange{Unitful.Energy}=(1e-30:0.01:20.0)u"keV",
+    hydrogen_densities::AbstractRange{NumberDensity}=(0:0.01:1)u"cm^-3",
     normalisation=1.0
 )
     @mpidebug "Preparing MEKAL emission model"
 
-    energy_bins = ustrip.(u"keV", collect(energy_bins))
+    eb = ustrip.(u"keV", collect(energy_bins))
+    temps = ustrip.(u"keV", temperatures)
+    nH = ustrip.(u"cm^-3", hydrogen_densities)
 
     # TODO: Figure out normalisation
 
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
-    absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
-    absorption = invokemodel(energy_bins, absorption_model)
+    absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
+    absorption = invokemodel(eb, absorption_model)
 
     @assert all(isfinite, absorption)
 
     # Generate source flux
     # TODO: document unit
     @mpidebug "Setting evaluation points"
-    # TODO: progress bar
     emission_model(kbT, ρ) = XS_Mekal(K=FitParam(normalisation), t=FitParam(kbT), ρ=FitParam(ρ), z=FitParam(redshift))
-    points = [emission_model(t, d) for t in temperatures, d in densities]
+    points = [emission_model(t, d) for t in temps, d in nH]
+
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> invokemodel(energy_bins, x),
+        x -> invokemodel(eb, x),
         points
     )
 
@@ -86,25 +90,33 @@ function prepare_model_mekal(
     @assert all(all.(isfinite, flux))
 
     @mpidebug "Generating interpolation"
-    interpol = scale(interpolate(flux, BSpline(Linear())), (temperatures, densities))
+    interpol = scale(interpolate(flux, BSpline(Linear())), (temps, nH))
+
+    f(t, d) = interpol(ustrip(u"keV", t), ustrip(u"cm^-3", d)) * 1u"m^(-3)/s"
 
     @mpidebug "Emission model generation complete."
-    return interpol
+    return f
 end
 
 """
     call_mekal(energy_range, temperature, nH)
 
 Given a unitful range of energy and unitless temperature (keV) and hydrogen density in the source (cm^-3)
-calls MEKAL to calculate the volume emissivity of the source.
+calls MEKAL to calculate the volume emissivity of the source in the source frame.
 
-The XSPEC and MEKAL documentation is at times short on detail. Here's what I've figured out.
+Due to performance concerns I recommend calling `prepare_model_mekal` instead to generate an interpolation over
+the model.
 
-The MEKA model has more extensive comments that MEKAL that are very helpful. The values calculated
-by MEKAL are multiplied by a constant of 2.53325e-3. Inspecting the MEKA comments we find the following
+## Implementation Details
+
+The XSPEC and MEKAL documentation is at times short on detail. Here's what I've figured out, mostly by
+inspecting the models in the XSPEC source code. The MEKA model has similar code and more extensive comments that MEKAL
+ that are very helpful.
+
+The values calculated by MEKAL are multiplied by a constant of 2.53325e-3. Inspecting the MEKA comments we find the following
 equation for this constant which we will term `C`
 ```math
-C = \\frac{\\sqrt{2} h^2 α^3}{(3πm_e)^{1.5} \\sqrt{1000e} π (1pc)^2 10^4}
+C = √2 ⋅ h^2 ⋅ α^3 / ((3πm_e)^1.5 ⋅ √(1000e) ⋅ π ⋅ (1pc)^2 ⋅ 10^4)
 ```
 and the instruction to use SI units. `h` appears to be Planck's constant (unreduced) and `α` the fine-structure constant.
 Calculating this gives C=2.533242122484874e-59 kg^1/2 m^2 A^-1/2 s^-5/2.
@@ -124,11 +136,12 @@ It does this by replacing `C` with `D=3.03103E-9` which it states is derived so 
 C = D * 10^40 / (4π * 1pc^2)
 ```
 I have verified this gives results matching that of doing the conversion manually (by dividing out 1e50cm^3 and multiplying by 1pc^2).
+
+Attempts were made to invoke MEKAL through XSPEC's wrapper functions but I found the modifications they introduced were troublesome to work out,
+though some were necessary and are reimplemented in `surface_brightness`. MEKAL's operations are more clearly physically motivated.
 """
 function call_mekal(
-    energy_range,
-    # emitting_volume,
-    # distance,
+    energy_range, #keV
     temperature, # keV
     nH, # cm^-3
 )
@@ -142,24 +155,32 @@ function call_mekal(
     end
 
     # Scale by volume of and distance to emitting area.
-    # cem_units = uconvert(u"m", 1e50u"cm^3" / (1u"pc")^2)
-    # cem = uconvert(u"m", emitting_volume / distance^2) / cem_units
+    # MEKAL expects units of 1e50cm^3 / 1pc^2
+    # By keeping it at one we match the behaviour of MEKA when
+    # it is asked to output volume emissivity rather than a spectrum
+    # and so can carry across its coefficents.
     cem = 1.0
-
-    # Ensure input quantities are in the right units
-    # nH = ustrip(Cfloat, u"cm^-3", nH)
-    # temperature = ustrip(Cfloat, u"keV", temperature)
 
     # Abundances of elements w.r.t solar values
     # Using one because it matches BayesX
+    # These appear to be hardcoded and thus may not match what XSPEC reports on launch.
     abundances = ones(Cfloat, 15)
 
     # Initalise output variables
     flux = ones(Cfloat, n_energy_bins)
     ne = 10.0
 
+    # When debugging with GDB it can be helpful to have a breakpoint before entering the
+    # Fortran code
     # ccall(:jl_breakpoint, Cvoid, (Any,), flux)
 
+    # We call the FMEKAL function from the XSPEC binary bundled in LibXSPEC_jll
+    # The name is mangled to fmekal_ by the compiler and was uncovered
+    # using `nm -D libXSFunctions.so` on the shared object, which was found in the
+    # Julia artifacts directory.
+    # There is a risk this will fail on other platforms as the binaries may be made with
+    # different compilers with different mangling conventions, even using the same LibXSPEC_jll version.
+    # It may be possible to do some kind of dynamic reference to avoid this?
     @ccall "libXSFunctions".fmekal_(
         min_energy::Ptr{Cfloat},
         max_energy::Ptr{Cfloat},
@@ -172,13 +193,17 @@ function call_mekal(
         ne::Ref{Cfloat},
     )::Cvoid
 
+    # We cancel out the 2.53e-3 coefficent applied by MEKAL as it outputs a spectrum in photons/cm^2/s/keV
+    # Then we apply the 3.03e-9 coefficent which cancels out the distance-scaled emitting volume `cem` 
+    # This converts our results to photons/m^3/s/keV
+    # So finally we multiply by the width of our energy bins to get photons/m^3/s/bin
     return 1u"m^(-3)/s/keV" * flux * 3.03103e-9 / 2.53325e-3 .* (max_energy - min_energy)u"keV"
 end
 
 # display(call_mekal((0.3:0.1:7.0)u"keV", 10, 1e-3))
 
 """
-    prepare_model_mekal2(nHcol, energy_bins; temperatures, densities)
+    prepare_model_mekal2(nHcol, energy_bins; temperatures, hydrogen_densities)
 
 Create an interpolated alias to the mekal model over specified parameter ranges.
 
@@ -186,26 +211,30 @@ Interpolation has a significant performance improvement over calling the model d
 This version calls MEKAL without using XSPEC's wrappers.
 """
 function prepare_model_mekal2(
-    nHcol,
-    energy_bins;
-    temperatures=1e-30:5.0:500.0, #keV
-    densities=0:5.0:200 # cm^-3
+    nHcol::SurfaceDensity,
+    energy_bins::AbstractRange{Unitful.Energy};
+    temperatures::AbstractRange{Unitful.Energy}=(1e-30:0.025:120.0)u"keV",
+    hydrogen_densities::AbstractRange{NumberDensity}=(0:0.01:1)u"cm^-3"
 )
     @mpidebug "Preparing MEKAL emission model"
+
+    eb = ustrip.(u"keV", collect(energy_bins))
+    temps = ustrip.(u"keV", temperatures)
+    nH = ustrip.(u"cm^-3", hydrogen_densities)
 
     # TODO: Do I need to redshift the energy bins?
 
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
-    absorption_model = PhotoelectricAbsorption(FitParam(nHcol))
-    absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
+    absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
+    absorption = invokemodel(ustrip.(u"keV", collect(eb)), absorption_model)
 
     @assert all(isfinite, absorption)
 
     # Generate source flux
     @mpidebug "Setting evaluation points"
-    # TODO: progress bar
-    points = [(t, d) for t in temperatures, d in densities]
+    points = [(t, d) for t in temps, d in nH]
+
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
@@ -221,7 +250,7 @@ function prepare_model_mekal2(
     @assert all(all.(isfinite, flux))
 
     @mpidebug "Generating interpolation"
-    interpol = scale(interpolate(flux, BSpline(Linear())), temperatures, densities)
+    interpol = scale(interpolate(flux, BSpline(Linear())), temps, nH)
 
     @mpidebug "Emission model generation complete."
     f(t, d) = interpol(ustrip(u"keV", t), ustrip(u"cm^-3", d)) * 1u"m^(-3)/s"

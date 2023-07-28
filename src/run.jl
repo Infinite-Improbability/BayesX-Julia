@@ -127,10 +127,10 @@ energy range. An gas emission model `(density, temperature) → emissivity` can 
 """
 function sample(
     data::Dataset,
-    energy_range,
-    priors;
-    nHcol=0.022, # units of 10²² atoms per cm⁻²
-    redshift=0.1
+    energy_range::AbstractRange{Unitful.Energy},
+    priors::AbstractVector{Prior};
+    nHcol::SurfaceDensity=2.2e20u"cm^-2",
+    redshift::Real=0.1
 )
     @mpiinfo "Loading data"
 
