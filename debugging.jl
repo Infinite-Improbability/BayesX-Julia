@@ -19,10 +19,10 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
-energy_range = (0.3:0.01:0.46)u"keV"
+energy_range = (0.3:0.01:7.0)u"keV"
 exposure_time = 300e3u"s"
 pixel_size = 0.492u"arcsecondᵃ"
-redshift = 0.5
+redshift = 0.164
 
 mass = 7e14u"Msun"
 fg = 0.13

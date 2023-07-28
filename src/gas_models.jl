@@ -141,16 +141,32 @@ function Model_NFW_GNFW(
 
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
-        (μ_e / μ) * (1 / (4π * G)) *
-        (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-        gnfw_gas_radial_term(r, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
+        let
+            ρ_s = ρ_s
+            r_s = r_s
+            r_p = r_p
+            a_GNFW = a_GNFW
+            b_GNFW = b_GNFW
+            c_GNFW = c_GNFW
+            (μ_e / μ) * (1 / (4π * G)) *
+            (Pei_GNFW / ρ_s) * (1 / r_s^3) *
+            gnfw_gas_radial_term(r, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
+        end
     end
 
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
-        4π * μ * G * ρ_s * (r_s^3) *
-        ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
-        (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
+        let
+            ρ_s = ρ_s
+            r_s = r_s
+            r_p = r_p
+            a_GNFW = a_GNFW
+            b_GNFW = b_GNFW
+            c_GNFW = c_GNFW
+            4π * μ * G * ρ_s * (r_s^3) *
+            ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
+            (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
+        end
     end
 
     # Calculate source brightness at various points
