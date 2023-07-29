@@ -1,4 +1,4 @@
-include("src/BayesJ.jl")
+include("../src/BayesJ.jl")
 using .BayesJ
 using Unitful, DimensionfulAngles
 using DotEnv
