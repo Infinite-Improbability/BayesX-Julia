@@ -126,7 +126,7 @@ Run Bayesian inference on a given set of `data`, considering only the selected
 energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
 """
 function sample(
-    data::Dataset,
+    data::FITSData,
     energy_range::AbstractRange{T},
     priors::AbstractVector{U};
     nHcol::SurfaceDensity=2.2e20u"cm^-2",

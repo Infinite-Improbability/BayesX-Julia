@@ -2,6 +2,7 @@
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 Cosmology = "76746363-e552-5dba-9a5a-cef6fa9cc5ab"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DimensionfulAngles = "2d4b8d7a-02d9-40f9-9abe-9c695b77de0d"
 DotEnv = "4dc1fcf4-5e3b-5448-94ab-0c38ec0385c1"
 FITSIO = "525bcba6-941b-5504-bd06-fd0dc1a4d2eb"
