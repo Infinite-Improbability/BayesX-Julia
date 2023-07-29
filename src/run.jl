@@ -120,13 +120,13 @@ function sample(
 end
 
 """
-    sample(data::BayesXDataset, energy_range, priors)
+    sample(data::Dataset, energy_range, priors)
 
 Run Bayesian inference on a given set of `data`, considering only the selected
 energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
 """
 function sample(
-    data::FITSData,
+    data::Dataset,
     energy_range::AbstractRange{T},
     priors::AbstractVector{U};
     nHcol::SurfaceDensity=2.2e20u"cm^-2",
@@ -136,6 +136,7 @@ function sample(
 
     observation, observed_background = load_data(data)
 
+    # TODO: Binning as sample argument
     obs = bin_events(observation.first, energy_range, 3700:25:4200, 4100:25:4550)
     bg = bin_events(observed_background.first, energy_range, 3700:25:4200, 4100:25:4550)
     @mpidebug "Done binning events"
@@ -150,7 +151,6 @@ function sample(
 
     @mpiinfo "Generating emissions model"
 
-    # emission_model = prepare_model_mekal(nHcol, 0.1, LinRange(energy_range[1], energy_range[2], size(response_function)[2] + 1)) # we need this +1 but it seems to be one element too short
     emission_model = prepare_model_mekal(nHcol, energy_range)
 
     sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
