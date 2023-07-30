@@ -86,7 +86,7 @@ function call_mekal(
     energy_range, #keV
     temperature, # keV
     nH, # cm^-3
-)::Vector{NumberDensityRate{Float64}}
+)
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
     min_energy = Vector{Cfloat}(undef, n_energy_bins)
@@ -160,8 +160,9 @@ correction twice.
 function prepare_model_mekal(
     nHcol::SurfaceDensity,
     energy_bins::AbstractRange{T};
-    temperatures::AbstractRange{U}=(1e-30:5.0:1000.0)u"keV",
-    hydrogen_densities::AbstractRange{V}=(0:0.01:10.0)u"cm^-3"
+    temperatures::AbstractRange{U}=(1e-30:0.005:10.0)u"keV",
+    hydrogen_densities::AbstractRange{V}=(1e-30:0.005:5.0)u"cm^-3",
+    use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
 
@@ -180,6 +181,17 @@ function prepare_model_mekal(
     absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
 
     @assert all(isfinite, absorption)
+
+    if !use_interpolation
+        function volume_emissivity_direct(t, nH)
+            let
+                energy_bins = energy_bins
+                absorption = absorption
+                return absorption .* call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
+            end
+        end
+        return volume_emissivity_direct
+    end
 
     # Generate source flux
     @mpidebug "Setting evaluation points"
@@ -210,12 +222,13 @@ function prepare_model_mekal(
         let
             interpol = interpol
             energy_bins = energy_bins
+            absorption = absorption
             try
                 return interpol(t, nH) * 1u"m^(-3)/s"
             catch e
                 if isa(e, BoundsError)
                     @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
-                    return call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
+                    return absorption .* call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
                 else
                     throw(e)
                 end

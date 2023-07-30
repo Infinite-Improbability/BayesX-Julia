@@ -130,7 +130,8 @@ function sample(
     energy_range::AbstractRange{T},
     priors::AbstractVector{U};
     nHcol::SurfaceDensity=2.2e20u"cm^-2",
-    redshift::Real=0.1
+    redshift::Real=0.1,
+    use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
 
@@ -151,7 +152,7 @@ function sample(
 
     @mpiinfo "Generating emissions model"
 
-    emission_model = prepare_model_mekal(nHcol, energy_range)
+    emission_model = prepare_model_mekal(nHcol, energy_range, use_interpolation=use_interpolation)
 
     sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
 end

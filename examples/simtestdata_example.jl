@@ -18,4 +18,4 @@ data = PlaintextData(
 )
 
 priors = [LogUniformPrior(1.0e13, 1.0e15), LogUniformPrior(0.01, 1.0)]
-sample(data, range(0.3u"keV", 7u"keV", 33), priors, nHcol=3.89e20u"cm^-2", redshift=0.164)
+sample(data, range(0.3u"keV", 7u"keV", 33), priors, nHcol=3.89e20u"cm^-2", redshift=0.164, use_interpolation=false)
