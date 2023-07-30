@@ -3,7 +3,7 @@ using Unitful, DimensionfulAngles
 using ProgressMeter
 using DelimitedFiles
 
-export FITSData
+export FITSData, PlaintextData
 
 # Import our patch
 include("fitsio_fix.jl")
@@ -178,6 +178,7 @@ function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
     return binned
 end
 
+"""Store preprocessed data from plaintext files with whitespace delimiters."""
 struct PlaintextData{S<:AbstractString,T<:Unitful.Time,U<:DimensionfulAngles.Angle,V<:Unitful.Area} <: Dataset
     observation::S
     background::S

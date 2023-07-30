@@ -9,8 +9,8 @@ using FortranFiles
 # We use include instead of importing the module for easy access to internal methods
 include("../src/run.jl")
 
-f = FortranFile("../BayesX/log.dat")
-fm = reshape(read(f, (Float64, 64 * 64 * 32)), (32, 64, 64))
+# f = FortranFile("../BayesX/log.dat")
+# fm = reshape(read(f, (Float64, 64 * 64 * 32)), (32, 64, 64))
 
 DotEnv.config()
 
@@ -48,22 +48,22 @@ bg = fill(upreferred(bg_count), size(model))
 display(heatmap(dropdims(sum(model + bg, dims=1), dims=1), title="Model"))
 display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
 
-# s = sample(
-#     round.(Int, noisy + bg),
-#     round.(Int, bg),
-#     response,
-#     make_cube_transform(UniformPrior(1e14, 1e15), UniformPrior(0.08, 0.2)),
-#     exposure_time,
-#     exposure_time,
-#     redshift,
-#     emission_model=em,
-#     pixel_edge_angle=pixel_size,
-#     background_rate=bg_rate,
-#     average_effective_area=avg_eff_area
-# )
+s = sample(
+    round.(Int, noisy + bg),
+    round.(Int, bg),
+    response,
+    make_cube_transform(UniformPrior(1e14, 1e15), UniformPrior(0.08, 0.2)),
+    exposure_time,
+    exposure_time,
+    redshift,
+    emission_model=em,
+    pixel_edge_angle=pixel_size,
+    background_rate=bg_rate,
+    average_effective_area=avg_eff_area
+)
 
-# posterior = s[2]["posterior"]
-# @assert all(posterior["errlo"] .< [ustrip(mass), fg] .< posterior["errup"]) display(posterior)
+posterior = s[2]["posterior"]
+@assert all(posterior["errlo"] .< [ustrip(mass), fg] .< posterior["errup"]) display(posterior)
 
 # The ongoing problem seems to be that count rates are just too low to get
 # information with realistic exposure times. But clearly BayesX lacks this
