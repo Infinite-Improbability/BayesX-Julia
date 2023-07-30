@@ -149,12 +149,12 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
 end
 
 """
-    bin_events(events, energy_range, x_edges, y_edges)
+    bin_events(::FITSData, events, energy_range, x_edges, y_edges)
 
 Take a table of events in the format (x y channel energy), trim it by energy and bin it spatially.
 Returns an array of counts per bin with dimensions (channel, x, y).
 """
-function bin_events(events, energy_range, x_edges, y_edges)::Array{Int64}
+function bin_events(_::FITSData, events, energy_range, x_edges, y_edges)::Array{Int64}
     @mpidebug "Binning events"
 
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
@@ -225,7 +225,11 @@ function load_response(data::PlaintextData)::NTuple{2,Pair}
     return rmf * data.unit
 end
 
-function bin_events(events, args...)
+"""
+    bin_events(::PlaintextData, events, ...)
+
+Placeholder function, returns events matrix without modification"""
+function bin_events(_::PlaintextData, events, args...)
     @mpiwarn "PlaintextData does not support binning. Data will be used unmodified."
     return events
 end

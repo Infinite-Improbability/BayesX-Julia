@@ -137,8 +137,8 @@ function sample(
     observation, observed_background = load_data(data)
 
     # TODO: Binning as sample argument
-    obs = bin_events(observation.first, energy_range, 3700:25:4200, 4100:25:4550)
-    bg = bin_events(observed_background.first, energy_range, 3700:25:4200, 4100:25:4550)
+    obs = bin_events(data, observation.first, energy_range, 3700:25:4200, 4100:25:4550)
+    bg = bin_events(data, observed_background.first, energy_range, 3700:25:4200, 4100:25:4550)
     @mpidebug "Done binning events"
 
     @assert size(obs) == size(bg)
