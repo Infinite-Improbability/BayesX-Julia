@@ -185,7 +185,7 @@ function Model_NFW_GNFW(
 
     @mpirankeddebug "Creating brightness interpolation"
 
-    brightness_radii = pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length)
+    brightness_radii = (0u"Mpc"):pixel_edge_length:((radii_x+radii_y)*pixel_edge_length)
     brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
         brightness_radii,
         gas_temperature,
@@ -198,9 +198,9 @@ function Model_NFW_GNFW(
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())
 
     @mpirankeddebug "Calculating counts"
-    counts = Array{Float64}(undef, length(brightness_line[1]), shape...)
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
+    counts = Array{Float64}(undef, size(resp, 1), shape...)
 
     for j in 1:shape[2]
         for i in 1:shape[1]
@@ -209,6 +209,8 @@ function Model_NFW_GNFW(
             counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
         end
     end
+
+    @assert all(i -> i >= 0, counts)
 
     return counts
 end
