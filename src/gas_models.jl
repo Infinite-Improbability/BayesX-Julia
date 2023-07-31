@@ -42,6 +42,7 @@ function Model_NFW_GNFW(
     emission_model,
     exposure_time::Unitful.Time{T},
     response_function::Matrix,
+    centre,
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into a struct?
 
@@ -54,6 +55,7 @@ function Model_NFW_GNFW(
     @argcheck (b_GNFW - c_500_GNFW) > 0
 
     MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
+    centre = centre .* 1u"arcsecondᵃ"
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -172,25 +174,20 @@ function Model_NFW_GNFW(
     # Calculate source brightness at various points
     # TODO: Moving center
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
-    radii_x, radii_y = ceil.(Int64, shape ./ 2)
+    centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
+    radii_x, radii_y = shape ./ 2
 
-    radius_at_coords(x, y) = hypot(x, y) * pixel_edge_length
-
-    radius_at_cell = Matrix{typeof(0.0u"Mpc")}(undef, radii_x, radii_y)
-
-    # TODO: Are we transposing?
-    for y in 1:radii_y
-        for x in 1:radii_x
-            radius_at_cell[x, y] = radius_at_coords(x, y)
-        end
+    function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
+        x = (i - radii_x) * pixel_edge_length - centre_length[1]
+        y = (j - radii_y) * pixel_edge_length - centre_length[2]
+        abs(hypot(x, y))
     end
 
-    @mpirankeddebug "Calculating brightness"
+    @mpirankeddebug "Creating brightness interpolation"
 
-    brightness_radii::Vector{Float64} = ustrip.(Float64, u"Mpc", pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length))
-
-    brightness_line::Vector{Vector{Float64}} = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-        brightness_radii * 1u"Mpc",
+    brightness_radii = pixel_edge_length:pixel_edge_length:(hypot(radii_x, radii_y)*pixel_edge_length)
+    brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
+        brightness_radii,
         gas_temperature,
         gas_density,
         z,
@@ -198,25 +195,22 @@ function Model_NFW_GNFW(
         Ref(emission_model),
         pixel_edge_angle
     )]
-
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())
 
-    brightness = brightness_interpolation.(ustrip.(u"Mpc", radius_at_cell)) #* 1u"cm^-2/s"
-
-    counts = Matrix{Vector{Float64}}(undef, size(brightness)...)
-
-    @mpirankeddebug "Applying response function"
-    # Stripping units here is an attempt to fix performance issues
-    # I think the root cause is using generic instead of specialised matrix multiplication
-    # We may be able to clean that up with better typing instead of stripping unitd
+    @mpirankeddebug "Calculating counts"
+    counts = Array{Float64}(undef, length(brightness_line[1]), shape...)
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
-    for i in eachindex(brightness)
-        # @inbounds counts[i] = apply_response_function(ustrip.(Float64, u"cm^-2/s", brightness[i]), resp, exp_time)
-        @inbounds counts[i] = apply_response_function(brightness[i], resp, exp_time)
+
+    for j in 1:shape[2]
+        for i in 1:shape[1]
+            radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
+            brightness = brightness_interpolation(radius)
+            counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
+        end
     end
 
-    return complete_matrix(counts, shape)
+    return counts
 end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
@@ -231,6 +225,7 @@ function Model_NFW_GNFW(
     emission_model,
     exposure_time::Unitful.Time,
     response_function::Matrix,
+    centre,
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
@@ -244,57 +239,7 @@ function Model_NFW_GNFW(
         pixel_edge_angle,
         emission_model,
         exposure_time,
-        response_function
+        response_function,
+        ustrip.(u"arcsecondᵃ", centre)
     )
-end
-
-"""
-    complete_matrix(m::Matrix, shape::Vector)
-
-Complete matrix expands predictions from 1/4 of the sky to the whole sky.
-
-Takes a small matrix `m` of vectors of counts per channel and treats it as the quadrants of a larger matrix of size `shape`.
-This is expanded by channels to create a 3D array of counts for `(channel, x, y)`.
-"""
-function complete_matrix(m::Matrix, shape::Vector{N})::Array{Float64} where {N<:Int}
-    @mpirankeddebug "Completing matrix"
-    new = Array{Float64}(undef, length(m[1]), shape...)
-
-    # increasing row is increasing x
-    # increasing column is increasing y
-
-    radii = ceil.(Int64, shape / 2)
-
-    # top left
-    for y in 1:radii[2]
-        for x in 1:radii[1]
-            new[:, radii[1]+1-x, radii[2]+1-y] = m[x, y]
-        end
-    end
-
-    # bottom left
-    for y in 1:radii[2]
-        for x in 1:radii[1]
-            new[:, radii[1]+x, radii[2]+1-y] = m[x, y]
-        end
-    end
-
-    # top right
-    for y in 1:radii[2]
-        for x in 1:radii[1]
-            new[:, radii[1]+1-x, radii[2]+y] = m[x, y]
-        end
-    end
-
-    # bottom right
-    for y in 1:radii[2]
-        for x in 1:radii[1]
-            new[:, radii[1]+x, radii[2]+y] = m[x, y]
-        end
-    end
-
-    @assert all(isfinite, new)
-
-    @mpirankeddebug "Matrix reshaped"
-    return new
 end

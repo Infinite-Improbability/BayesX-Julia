@@ -65,7 +65,8 @@ function sample(
         @mpirankeddebug "Likelihood wrapper called" params
 
         predicted = Model_NFW_GNFW(
-            params...,
+            params[1],
+            params[2],
             1.062,
             5.4807,
             0.3292,
@@ -75,7 +76,8 @@ function sample(
             pixel_edge_angle,
             emission_model,
             obs_exposure_time,
-            response_function
+            response_function,
+            (params[3], params[4])
         ) .+ predicted_obs_bg
 
 
@@ -97,7 +99,7 @@ function sample(
 
     # ultranest setup
     @mpidebug "Creating sampler"
-    paramnames = ["MT_200", "fg_200"] # move to pairs with prior objects?
+    paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
@@ -138,8 +140,8 @@ function sample(
     observation, observed_background = load_data(data)
 
     # TODO: Binning as sample argument
-    obs = bin_events(data, observation.first, energy_range, 3700:25:4200, 4100:25:4550)
-    bg = bin_events(data, observed_background.first, energy_range, 3700:25:4200, 4100:25:4550)
+    obs = bin_events(data, observation.first, energy_range, 3000:25:4900, 3600:25:5050)
+    bg = bin_events(data, observed_background.first, energy_range, 3000:25:4900, 3600:25:5050)
     @mpidebug "Done binning events"
 
     @assert size(obs) == size(bg)
