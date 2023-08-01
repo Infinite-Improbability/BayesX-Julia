@@ -37,45 +37,119 @@ mass = 3e14u"Msun"
 fg = 0.13
 
 response = load_response(data, energy_range)
-em = prepare_model_mekal(2.2e20u"cm^-2", energy_range, temperatures=(0.001:0.1:20)u"keV", hydrogen_densities=(1e-20:0.1:10)u"cm^-3", use_interpolation=true)
-model = Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, shape, pixel_size, em, exposure_time, response, (0u"arcsecondᵃ", 0u"arcsecondᵃ"))
+em = prepare_model_mekal(
+    2.2e20u"cm^-2",
+    energy_range,
+    temperatures=(0.001:0.1:20)u"keV",
+    hydrogen_densities=(1e-20:0.1:10)u"cm^-3",
+    use_interpolation=true
+)
+model = Model_NFW_GNFW(
+    mass,
+    fg,
+    1.062,
+    5.4807,
+    0.3292,
+    1.156,
+    redshift,
+    shape,
+    pixel_size,
+    em,
+    exposure_time,
+    response,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+)
 replace!(model, NaN => 0.0)
 
 @assert all(isfinite.(model))
 
 noisy = pois_rand.(model)
 
-@profview Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, shape, pixel_size, em, exposure_time, response, (0u"arcsecondᵃ", 0u"arcsecondᵃ"))
-@profview_allocs Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, shape, pixel_size, em, exposure_time, response, (0u"arcsecondᵃ", 0u"arcsecondᵃ"))
-display(@benchmark Model_NFW_GNFW(mass, fg, 1.062, 5.4807, 0.3292, 1.156, redshift, shape, pixel_size, em, exposure_time, response, (0u"arcsecondᵃ", 0u"arcsecondᵃ")))
+@profview Model_NFW_GNFW(
+    mass,
+    fg,
+    1.062,
+    5.4807,
+    0.3292,
+    1.156,
+    redshift,
+    shape,
+    pixel_size,
+    em,
+    exposure_time,
+    response,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+)
+@profview_allocs Model_NFW_GNFW(
+    mass,
+    fg,
+    1.062,
+    5.4807,
+    0.3292,
+    1.156,
+    redshift,
+    shape,
+    pixel_size,
+    em,
+    exposure_time,
+    response,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+)
+display(
+    @benchmark Model_NFW_GNFW(
+        mass,
+        fg,
+        1.062,
+        5.4807,
+        0.3292,
+        1.156,
+        redshift,
+        shape,
+        pixel_size,
+        em,
+        exposure_time,
+        response,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+    )
+)
 
 bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 avg_eff_area = 250u"cm^2";
 n_channels = size(model, 1);
-bg_count = bg_rate * exposure_time * avg_eff_area * pixel_size^2 / n_channels;
+bg_count = bg_rate * exposure_time * avg_eff_area *
+           pixel_size^2 / n_channels;
 bg = fill(upreferred(bg_count), size(model));
 
-display(heatmap(dropdims(sum(model + bg, dims=1), dims=1), title="Model"))
-display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
+display(
+    heatmap(
+        dropdims(sum(model + bg, dims=1), dims=1),
+        title="Model"
+    )
+)
+display(
+    heatmap(
+        dropdims(sum(noisy + bg, dims=1), dims=1),
+        title="Noisy"
+    )
+)
 
-# s = sample(
-#     round.(Int, noisy + bg),
-#     round.(Int, bg),
-#     response,
-#     make_cube_transform(UniformPrior(1e14, 1e15), UniformPrior(0.08, 0.2), UniformPrior(-1, 1), UniformPrior(-1, 1)),
-#     exposure_time,
-#     exposure_time,
-#     redshift,
-#     emission_model=em,
-#     pixel_edge_angle=pixel_size,
-#     background_rate=bg_rate,
-#     average_effective_area=avg_eff_area
-# )
+s = sample(
+    round.(Int, noisy + bg),
+    round.(Int, bg),
+    response,
+    make_cube_transform(
+        UniformPrior(1e14, 1e15),
+        UniformPrior(0.08, 0.2),
+        UniformPrior(-1, 1),
+        UniformPrior(-1, 1)),
+    exposure_time,
+    exposure_time,
+    redshift,
+    emission_model=em,
+    pixel_edge_angle=pixel_size,
+    background_rate=bg_rate,
+    average_effective_area=avg_eff_area
+)
 
-# posterior = s[2]["posterior"]
-# @assert all(posterior["errlo"] .< [ustrip(mass), fg] .< posterior["errup"]) display(posterior)
-
-# The ongoing problem seems to be that count rates are just too low to get
-# information with realistic exposure times. But clearly BayesX lacks this
-# problem.
-# Adding noise may have fixed this
+posterior = s[2]["posterior"]
+@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
