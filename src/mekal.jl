@@ -160,8 +160,8 @@ correction twice.
 function prepare_model_mekal(
     nHcol::SurfaceDensity,
     energy_bins::AbstractRange{T};
-    temperatures::AbstractRange{U}=(1e-30:0.01:40.0)u"keV",
-    hydrogen_densities::AbstractRange{V}=(1e-30:0.01:2.0)u"cm^-3",
+    temperatures::AbstractRange{U}=(1e-30:0.01:5.0)u"keV",
+    hydrogen_densities::AbstractRange{V}=(1e-30:0.01:15.0)u"cm^-3",
     use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
@@ -229,7 +229,7 @@ function prepare_model_mekal(
                 if isa(e, BoundsError)
                     t = uconvert(u"keV", t)
                     nH = uconvert(u"cm^-3", nH)
-                    @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
+                    # @warn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
                     return absorption .* call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
                 else
                     throw(e)
