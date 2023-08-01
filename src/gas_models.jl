@@ -201,16 +201,28 @@ function Model_NFW_GNFW(
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
     counts = Array{Float64}(undef, size(resp, 1), shape...)
+    min_radius = r_500 * 0.1
+
+    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
+    if shortest_radius <= min_radius
+        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
+    end
 
     for j in 1:shape[2]
         for i in 1:shape[1]
             radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
-            brightness = brightness_interpolation(radius)
-            counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
+            if radius < min_radius
+                counts[:, i, j] .= NaN
+            else
+                brightness = brightness_interpolation(radius)
+                counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
+            end
         end
     end
 
-    @assert all(i -> i >= 0, counts)
+    # replace!(i -> i < 0 ? 0 : i, counts)
+
+    # @assert all(i -> i >= 0, counts)
 
     return counts
 end

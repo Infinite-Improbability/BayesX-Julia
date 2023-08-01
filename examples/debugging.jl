@@ -29,7 +29,7 @@ data = PlaintextData(
 
 energy_range = range(0.3u"keV", 7.0u"keV", 33)
 exposure_time = 300e3u"s"
-pixel_size = 0.492u"arcsecondᵃ"
+pixel_size = 0.492e1u"arcsecondᵃ"
 redshift = 0.164
 shape = [64, 64]
 

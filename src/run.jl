@@ -4,6 +4,7 @@ using Profile
 
 using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
+stepsampler = pyimport_conda("ultranest.stepsampler", "ultranest")
 
 export sample
 
@@ -108,6 +109,12 @@ function sample(
         log_dir="logs"
     )
 
+    # @mpidebug "Creating stepsampler"
+    # sampler.stepsampler = stepsampler.SliceSampler(
+    #     nsteps=25,
+    #     generate_direction=stepsampler.generate_mixture_random_direction,
+    # )
+
     # run Ultranest
     @mpiinfo "Launching sampler"
     results = sampler.run()
@@ -140,8 +147,10 @@ function sample(
     observation, observed_background = load_data(data)
 
     # TODO: Binning as sample argument
-    obs = bin_events(data, observation.first, energy_range, 3000:25:4900, 3600:25:5050)
-    bg = bin_events(data, observed_background.first, energy_range, 3000:25:4900, 3600:25:5050)
+    step = 50
+    obs = bin_events(data, observation.first, energy_range, 3000:step:4900, 3600:step:5050)
+    bg = bin_events(data, observed_background.first, energy_range, 3000:step:4900, 3600:step:5050)
+    pixel_edge_angle = step * data.pixel_edge_angle
     @mpidebug "Done binning events"
 
     @assert size(obs) == size(bg)
@@ -156,5 +165,5 @@ function sample(
 
     emission_model = prepare_model_mekal(nHcol, energy_range, use_interpolation=use_interpolation)
 
-    sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=data.pixel_edge_angle)
+    sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=pixel_edge_angle)
 end
