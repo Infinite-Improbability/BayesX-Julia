@@ -171,10 +171,10 @@ function sample(
     model = Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
-        1.062,
-        5.4807,
-        0.3292,
-        1.156,
+        1.0510, # Using universal values from Arnaud 2010
+        5.4905,
+        0.3081,
+        1.177,
         redshift,
         [64, 64],
         0.492u"arcsecondᵃ",
@@ -186,10 +186,10 @@ function sample(
     model_direct = Model_NFW_GNFW(
         5e14u"Msun",
         0.13,
-        1.062,
-        5.4807,
-        0.3292,
-        1.156,
+        1.0510, # Using universal values from Arnaud 2010
+        5.4905,
+        0.3081,
+        1.177,
         redshift,
         [64, 64],
         0.492u"arcsecondᵃ",

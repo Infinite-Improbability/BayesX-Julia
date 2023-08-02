@@ -32,7 +32,7 @@ exposure_time = 300e3u"s"
 pixel_size = 0.492e1u"arcsecondᵃ"
 redshift = 0.164
 shape = [64, 64]
-
+gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Using universal values from Arnaud 2010
 mass = 3e14u"Msun"
 fg = 0.13
 
@@ -46,10 +46,7 @@ em = prepare_model_mekal(
 model = Model_NFW_GNFW(
     mass,
     fg,
-    1.062,
-    5.4807,
-    0.3292,
-    1.156,
+    gnfw...,
     redshift,
     shape,
     pixel_size,
@@ -67,10 +64,7 @@ noisy = pois_rand.(model)
 # @profview Model_NFW_GNFW(
 #     mass,
 #     fg,
-#     1.062,
-#     5.4807,
-#     0.3292,
-#     1.156,
+#     gnfw...,
 #     redshift,
 #     shape,
 #     pixel_size,
@@ -82,10 +76,7 @@ noisy = pois_rand.(model)
 # @profview_allocs Model_NFW_GNFW(
 #     mass,
 #     fg,
-#     1.062,
-#     5.4807,
-#     0.3292,
-#     1.156,
+#     gnfw...,
 #     redshift,
 #     shape,
 #     pixel_size,
@@ -98,10 +89,7 @@ noisy = pois_rand.(model)
 #     @benchmark Model_NFW_GNFW(
 #         mass,
 #         fg,
-#         1.062,
-#         5.4807,
-#         0.3292,
-#         1.156,
+#         gnfw...,
 #         redshift,
 #         shape,
 #         pixel_size,
