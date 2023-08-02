@@ -224,7 +224,7 @@ function prepare_model_mekal(
     # Also it only wants ranges not vectors for the knots
 
     @mpidebug "Generating interpolation"
-    interpol = scale(interpolate(flux, BSpline(Linear())), temperatures, hydrogen_densities)
+    interpol = scale(interpolate!(flux, BSpline(Linear())), temperatures, hydrogen_densities)
 
     @mpidebug "Emission model generation complete."
 
