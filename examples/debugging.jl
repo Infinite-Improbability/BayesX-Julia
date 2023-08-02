@@ -4,13 +4,13 @@ using BenchmarkTools
 using DotEnv
 using Unitful, DimensionfulAngles
 using PoissonRandom
-using FortranFiles
+# using FortranFiles
 
 # We use include instead of importing the module for easy access to internal methods
 include("../src/run.jl")
 
-f = FortranFile("../BayesX/log.dat", "r")
-fm = reshape(read(f, (Float64, 64 * 64 * 32)), (32, 64, 64))
+# f = FortranFile("../BayesX/log.dat", "r")
+# fm = reshape(read(f, (Float64, 64 * 64 * 32)), (32, 64, 64))
 
 DotEnv.config()
 
