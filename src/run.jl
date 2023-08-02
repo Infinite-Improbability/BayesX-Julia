@@ -149,9 +149,9 @@ function sample(
     observation, observed_background = load_data(data)
 
     # TODO: Binning as sample argument
-    step = 50
-    obs = bin_events(data, observation.first, energy_range, 3000:step:4900, 3600:step:5050)
-    bg = bin_events(data, observed_background.first, energy_range, 3000:step:4900, 3600:step:5050)
+    step = 5
+    obs = bin_events(data, observation.first, energy_range, 3700:step:4200, 4100:step:4550)
+    bg = bin_events(data, observed_background.first, energy_range, 3700:step:4200, 4100:step:4550)
     pixel_edge_angle = step * data.pixel_edge_angle
     @mpidebug "Done binning events"
 
