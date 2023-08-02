@@ -18,7 +18,7 @@ Calculate the critical density at some redshift `z`.
 
 
 """
-    Model_NFW_GNFW_GNFW(MT_200, fg_200, a_GNFW, b_GNFW, c_GNFW, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function)
+    Model_NFW_GNFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function)
 
 Calculate predicted counts using a physical model based NFW-GNFW profiles as described in Olamaie 2012.
 
@@ -32,9 +32,9 @@ The response function includes both the RMF and ARF, as described in `apply_resp
 function Model_NFW_GNFW(
     MT_200::T,
     fg_200::T,
-    a_GNFW::T,
-    b_GNFW::T,
-    c_GNFW::T,
+    α::T,
+    β::T,
+    γ::T,
     c_500_GNFW::T,
     z::T,
     shape::Vector{N},
@@ -50,9 +50,9 @@ function Model_NFW_GNFW(
 
     @argcheck MT_200 > 0
     @argcheck 1 > fg_200 > 0
-    @argcheck a_GNFW > 0
+    @argcheck α > 0
     @argcheck c_500_GNFW > 0
-    @argcheck (b_GNFW - c_500_GNFW) > 0
+    @argcheck (β - c_500_GNFW) > 0
 
     MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
     centre = centre .* 1u"arcsecondᵃ"
@@ -95,14 +95,14 @@ function Model_NFW_GNFW(
         r::Unitful.Length{T},
         r_s::Unitful.Length{T}, # NFW
         r_p::Unitful.Length{T}, # GNFW
-        a,
-        b,
-        c
+        α,
+        β,
+        γ
     )::Unitful.Length{T} where {T<:AbstractFloat}
         r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
-        (r / r_p)^(-c) *
-        (1 + (r / r_p)^a)^(-(a + b - c) / a) *
-        (b * (r / r_p)^a + c)
+        (r / r_p)^(-γ) *
+        (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
+        (β * (r / r_p)^α + γ)
     end
 
     """An integral over radius that is equal to the gas
@@ -111,13 +111,13 @@ function Model_NFW_GNFW(
         r::Unitful.Length{T},
         r_s::Unitful.Length{T}, # NFW
         r_p::Unitful.Length{T}, # GNFW
-        a,
-        b,
-        c
+        α,
+        β,
+        γ
     )::Unitful.Volume{T} where {T<:AbstractFloat}
-        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
 
-        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $a, $b, $c"
+        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $α, $β, $γ"
 
         return s
     end
@@ -134,7 +134,7 @@ function Model_NFW_GNFW(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
         r_200,
-        [r_s, r_p, a_GNFW, b_GNFW, c_GNFW]
+        [r_s, r_p, α, β, γ]
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
@@ -147,12 +147,12 @@ function Model_NFW_GNFW(
             ρ_s = ρ_s
             r_s = r_s
             r_p = r_p
-            a_GNFW = a_GNFW
-            b_GNFW = b_GNFW
-            c_GNFW = c_GNFW
+            α = α
+            β = β
+            γ = γ
             (μ_e / μ) * (1 / (4π * G)) *
             (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-            gnfw_gas_radial_term(r, r_s, r_p, a_GNFW, b_GNFW, c_GNFW)
+            gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
         end
     end
 
@@ -162,12 +162,12 @@ function Model_NFW_GNFW(
             ρ_s = ρ_s
             r_s = r_s
             r_p = r_p
-            a_GNFW = a_GNFW
-            b_GNFW = b_GNFW
-            c_GNFW = c_GNFW
+            α = α
+            β = β
+            γ = γ
             4π * μ * G * ρ_s * (r_s^3) *
             ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
-            (1 + (r / r_p)^a_GNFW) * (b_GNFW * (r / r_p)^a_GNFW + c_GNFW)^(-1)
+            (1 + (r / r_p)^α) * (β * (r / r_p)^α + γ)^(-1)
         end
     end
 
@@ -233,9 +233,9 @@ end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
     fg_200,
-    a_GNFW,
-    b_GNFW,
-    c_GNFW,
+    α,
+    β,
+    γ,
     c_500_GNFW,
     z,
     shape::Vector{N},
@@ -248,9 +248,9 @@ function Model_NFW_GNFW(
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
         fg_200,
-        a_GNFW,
-        b_GNFW,
-        c_GNFW,
+        α,
+        β,
+        γ,
         c_500_GNFW,
         z,
         shape,
