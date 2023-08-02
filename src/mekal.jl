@@ -144,13 +144,15 @@ end
 
 
 """
-    prepare_model_mekal2(nHcol, energy_bins; temperatures, hydrogen_densities)
+    prepare_model_mekal(nHcol, energy_bins, z; temperatures, hydrogen_densities)
 
 Create an interpolated alias to the mekal model with photoelectric absorption over specified parameter ranges.
 
 The interpolation object `(T::Unitful.Energy, nH::Unitful.𝐋^-3) -> volume emissivity` returned gives the volume emissivity per bin of
 a source of the specified temperature and hydrogen number density with the effects of absorption from passage through an area
 with a hydrogen column density equal to that specified in the `prepare_model_mekal` call.
+
+Applies redshift and time dilation.
 
 Interpolation has a significant performance improvement over calling the model directly.
 No redshift is currently applied to energy bins - they should be assumed to be in the source frame.
@@ -159,7 +161,8 @@ correction twice.
 """
 function prepare_model_mekal(
     nHcol::SurfaceDensity,
-    energy_bins::AbstractRange{T};
+    energy_bins::AbstractRange{T},
+    z::Real;
     temperatures::AbstractRange{U}=(1e-30:0.01:5.0)u"keV",
     hydrogen_densities::AbstractRange{V}=(1e-30:0.01:15.0)u"cm^-3",
     use_interpolation::Bool=true
@@ -172,15 +175,18 @@ function prepare_model_mekal(
     end
     MPI.Barrier(comm)
 
-    # TODO: Do I need to redshift the energy bins?
-    # Also will redshift need special consideration for the absorption?
-
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
     absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
     absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
 
     @assert all(isfinite, absorption)
+
+    # We approximate the absorping hydrogen as at rest w.r.t. observer
+    # But the cluster isn't
+    # This means we need to apply redshift to the observed energy bins and
+    # time dilation to the count rate
+    energy_bins = energy_bins * (1 + z) # redshift
 
     if !use_interpolation
         function volume_emissivity_direct(
@@ -201,7 +207,7 @@ function prepare_model_mekal(
     points = [(ustrip(u"keV", t), ustrip(u"cm^-3", nH)) for t in temperatures, nH in hydrogen_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
+        x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)) / (1 + z), # time dilation
         points
     )
 

@@ -64,6 +64,8 @@ function surface_brightness(
     # u /= (4π * 1u"rad^2")
     # Luminosity distance will also help with that
 
+    # Model already includes energy redshift and time dilation
+
     # convert from solid angle to area
     # remembering there are redshift effects on observed angle
     # we choose to use the luminosity distance as it helpfully handles this
@@ -73,7 +75,7 @@ function surface_brightness(
 
     # doubling solution to account for integral bounds
     # applying exposure area
-    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^4) * pixel_edge_angle^2
+    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
 end
 
 """

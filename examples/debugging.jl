@@ -40,6 +40,7 @@ response = load_response(data, energy_range)
 em = prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
+    redshift,
     temperatures=(0.001:0.1:10)u"keV",
     hydrogen_densities=(1e-20:0.5:50)u"cm^-3",
     use_interpolation=true

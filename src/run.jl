@@ -78,7 +78,8 @@ function sample(
             emission_model,
             obs_exposure_time,
             response_function,
-            (params[3], params[4])
+            # (params[3], params[4])
+            (0, 0)
         ) .+ predicted_obs_bg
 
 
@@ -100,7 +101,8 @@ function sample(
 
     # ultranest setup
     @mpidebug "Creating sampler"
-    paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
+    # paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
+    paramnames = ["MT_200", "fg_200"]
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
@@ -129,7 +131,7 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range, priors)
+    sample(data::Dataset, energy_range, priors, nhCol, redshift)
 
 Run Bayesian inference on a given set of `data`, considering only the selected
 energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
@@ -137,9 +139,9 @@ energy range. An gas emission model `(density, temperature) → emissivity` can 
 function sample(
     data::Dataset,
     energy_range::AbstractRange{T},
-    priors::AbstractVector{U};
-    nHcol::SurfaceDensity=2.2e20u"cm^-2",
-    redshift::Real=0.1,
+    priors::AbstractVector{U},
+    nHcol::SurfaceDensity,
+    redshift::Real;
     use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
@@ -163,7 +165,7 @@ function sample(
 
     @mpiinfo "Generating emissions model"
 
-    emission_model = prepare_model_mekal(nHcol, energy_range, use_interpolation=use_interpolation)
+    emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
 
     sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=pixel_edge_angle)
 end
