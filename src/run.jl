@@ -142,17 +142,16 @@ function sample(
     priors::AbstractVector{U},
     nHcol::SurfaceDensity,
     redshift::Real;
+    bin_size::Real=10,
     use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
 
     observation, observed_background = load_data(data)
 
-    # TODO: Binning as sample argument
-    step = 5
-    obs = bin_events(data, observation.first, energy_range, 3700:step:4200, 4100:step:4550)
-    bg = bin_events(data, observed_background.first, energy_range, 3700:step:4200, 4100:step:4550)
-    pixel_edge_angle = step * data.pixel_edge_angle
+    obs = bin_events(data, observation.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
+    bg = bin_events(data, observed_background.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
+    pixel_edge_angle = bin_size * data.pixel_edge_angle
     @mpidebug "Done binning events"
 
     @assert size(obs) == size(bg)
