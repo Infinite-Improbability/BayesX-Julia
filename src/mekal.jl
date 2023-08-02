@@ -164,8 +164,8 @@ function prepare_model_mekal(
     nHcol::SurfaceDensity,
     energy_bins::AbstractRange{T},
     z::Real;
-    temperatures::AbstractRange{U}=(1e-30:0.005:9.0)u"keV",
-    hydrogen_densities::AbstractRange{V}=(1e-30:0.005:1.0)u"cm^-3",
+    temperatures::AbstractRange{U}=(1e-30:0.05:9.0)u"keV",
+    hydrogen_densities::AbstractRange{V}=(1e-30:0.01:1.0)u"cm^-3",
     use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
@@ -291,10 +291,10 @@ function prepare_surrogate_mekal(
 
     lb = [1e-30, 1e-30]
     ub = [9.0, 1.0]
-    xys = Surrogates.sample(60, lb, ub, SobolSample())
+    xys = Surrogates.sample(120, lb, ub, SobolSample())
     zs = volume_emissivity.(xys)
     surr = SecondOrderPolynomialSurrogate(xys, zs, lb, ub)
-    surrogate_optimize(volume_emissivity, SMB(), lb, ub, surr, SobolSample())
+    surrogate_optimize(volume_emissivity, SMB(), lb, ub, surr, SobolSample(), maxiters=20)
 
     return surr
 end

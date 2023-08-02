@@ -164,8 +164,47 @@ function sample(
     response_function = load_response(data, energy_range)
 
     @mpiinfo "Generating emissions model"
-
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
+
+    @mpiinfo "Testing emissions model"
+    em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
+
+    model = Model_NFW_GNFW(
+        5e14u"Msun",
+        0.13,
+        1.062,
+        5.4807,
+        0.3292,
+        1.156,
+        redshift,
+        [64, 64],
+        0.492u"arcsecondᵃ",
+        emission_model,
+        100e3u"s",
+        response_function,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+    )
+    model_direct = Model_NFW_GNFW(
+        5e14u"Msun",
+        0.13,
+        1.062,
+        5.4807,
+        0.3292,
+        1.156,
+        redshift,
+        [64, 64],
+        0.492u"arcsecondᵃ",
+        em_direct,
+        100e3u"s",
+        response_function,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+    )
+    replace!(model, NaN => 0)
+    replace!(model_direct, NaN => 0)
+
+    err = sum(abs2.(model - model_direct))
+    @mpiinfo "Error in emission model is" err
+
 
     sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=pixel_edge_angle)
 end

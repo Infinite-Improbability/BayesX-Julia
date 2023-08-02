@@ -41,8 +41,6 @@ em = prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
     redshift,
-    temperatures=(0.001:0.1:10)u"keV",
-    hydrogen_densities=(1e-20:0.5:50)u"cm^-3",
     use_interpolation=true
 )
 model = Model_NFW_GNFW(
@@ -66,73 +64,73 @@ replace!(model, NaN => 0.0)
 
 noisy = pois_rand.(model)
 
-@profview Model_NFW_GNFW(
-    mass,
-    fg,
-    1.062,
-    5.4807,
-    0.3292,
-    1.156,
-    redshift,
-    shape,
-    pixel_size,
-    em,
-    exposure_time,
-    response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
-)
-@profview_allocs Model_NFW_GNFW(
-    mass,
-    fg,
-    1.062,
-    5.4807,
-    0.3292,
-    1.156,
-    redshift,
-    shape,
-    pixel_size,
-    em,
-    exposure_time,
-    response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
-)
-display(
-    @benchmark Model_NFW_GNFW(
-        mass,
-        fg,
-        1.062,
-        5.4807,
-        0.3292,
-        1.156,
-        redshift,
-        shape,
-        pixel_size,
-        em,
-        exposure_time,
-        response,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
-    )
-)
+# @profview Model_NFW_GNFW(
+#     mass,
+#     fg,
+#     1.062,
+#     5.4807,
+#     0.3292,
+#     1.156,
+#     redshift,
+#     shape,
+#     pixel_size,
+#     em,
+#     exposure_time,
+#     response,
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+# )
+# @profview_allocs Model_NFW_GNFW(
+#     mass,
+#     fg,
+#     1.062,
+#     5.4807,
+#     0.3292,
+#     1.156,
+#     redshift,
+#     shape,
+#     pixel_size,
+#     em,
+#     exposure_time,
+#     response,
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+# )
+# display(
+#     @benchmark Model_NFW_GNFW(
+#         mass,
+#         fg,
+#         1.062,
+#         5.4807,
+#         0.3292,
+#         1.156,
+#         redshift,
+#         shape,
+#         pixel_size,
+#         em,
+#         exposure_time,
+#         response,
+#         (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+#     )
+# )
 
-bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
-avg_eff_area = 250u"cm^2";
-n_channels = size(model, 1);
-bg_count = bg_rate * exposure_time * avg_eff_area *
-           pixel_size^2 / n_channels;
-bg = fill(upreferred(bg_count), size(model));
+# bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
+# avg_eff_area = 250u"cm^2";
+# n_channels = size(model, 1);
+# bg_count = bg_rate * exposure_time * avg_eff_area *
+#            pixel_size^2 / n_channels;
+# bg = fill(upreferred(bg_count), size(model));
 
-display(
-    heatmap(
-        dropdims(sum(model + bg, dims=1), dims=1),
-        title="Model"
-    )
-)
-display(
-    heatmap(
-        dropdims(sum(noisy + bg, dims=1), dims=1),
-        title="Noisy"
-    )
-)
+# display(
+#     heatmap(
+#         dropdims(sum(model + bg, dims=1), dims=1),
+#         title="Model"
+#     )
+# )
+# display(
+#     heatmap(
+#         dropdims(sum(noisy + bg, dims=1), dims=1),
+#         title="Noisy"
+#     )
+# )
 
 # s = sample(
 #     round.(Int, noisy + bg),
