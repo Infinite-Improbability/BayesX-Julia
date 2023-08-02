@@ -32,7 +32,9 @@ function surface_brightness(
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
 
-        # TODO: Switch to in place
+        # if hydrogen_number_density(density(r)) > 1u"cm^-3"
+        #     @error("Density overload at $r")
+        # end
 
         @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
 

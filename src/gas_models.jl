@@ -183,9 +183,16 @@ function Model_NFW_GNFW(
         abs(hypot(x, y))
     end
 
-    @mpirankeddebug "Creating brightness interpolation"
+    # min_radius = r_500 * 0.1
+    min_radius = 4 * pixel_edge_length
 
-    brightness_radii = (0u"Mpc"):pixel_edge_length:((radii_x+radii_y)*pixel_edge_length)
+    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
+    if shortest_radius <= min_radius
+        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
+    end
+
+    @mpirankeddebug "Creating brightness interpolation"
+    brightness_radii = min_radius:pixel_edge_length:(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
     brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
         brightness_radii,
         gas_temperature,
@@ -195,19 +202,12 @@ function Model_NFW_GNFW(
         Ref(emission_model),
         pixel_edge_angle
     )]
-    brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Line())
+    brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
     @mpirankeddebug "Calculating counts"
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
     counts = Array{Float64}(undef, size(resp, 1), shape...)
-    # min_radius = r_500 * 0.1
-    min_radius = 4 * pixel_edge_length
-
-    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
-    if shortest_radius <= min_radius
-        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
-    end
 
     for j in 1:shape[2]
         for i in 1:shape[1]
@@ -215,6 +215,9 @@ function Model_NFW_GNFW(
             if radius < min_radius
                 counts[:, i, j] .= NaN
             else
+                # if hydrogen_number_density(gas_density(radius)) > 1u"cm^-3"
+                #     @error "Extreme gas density at" radius min_radius r_500 pixel_edge_angle pixel_edge_length
+                # end
                 brightness = brightness_interpolation(radius)
                 counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
             end
