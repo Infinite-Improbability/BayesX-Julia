@@ -201,7 +201,8 @@ function Model_NFW_GNFW(
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
     counts = Array{Float64}(undef, size(resp, 1), shape...)
-    min_radius = r_500 * 0.1
+    # min_radius = r_500 * 0.1
+    min_radius = 4 * pixel_edge_length
 
     shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
     if shortest_radius <= min_radius
