@@ -40,8 +40,8 @@ response = load_response(data, energy_range)
 em = prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
-    temperatures=(0.001:0.1:20)u"keV",
-    hydrogen_densities=(1e-20:0.1:10)u"cm^-3",
+    temperatures=(0.001:0.1:10)u"keV",
+    hydrogen_densities=(1e-20:0.5:50)u"cm^-3",
     use_interpolation=true
 )
 model = Model_NFW_GNFW(
@@ -133,23 +133,23 @@ display(
     )
 )
 
-s = sample(
-    round.(Int, noisy + bg),
-    round.(Int, bg),
-    response,
-    make_cube_transform(
-        UniformPrior(1e14, 1e15),
-        UniformPrior(0.08, 0.2),
-        UniformPrior(-1, 1),
-        UniformPrior(-1, 1)),
-    exposure_time,
-    exposure_time,
-    redshift,
-    emission_model=em,
-    pixel_edge_angle=pixel_size,
-    background_rate=bg_rate,
-    average_effective_area=avg_eff_area
-)
+# s = sample(
+#     round.(Int, noisy + bg),
+#     round.(Int, bg),
+#     response,
+#     make_cube_transform(
+#         UniformPrior(1e14, 1e15),
+#         UniformPrior(0.08, 0.2),
+#         UniformPrior(-1, 1),
+#         UniformPrior(-1, 1)),
+#     exposure_time,
+#     exposure_time,
+#     redshift,
+#     emission_model=em,
+#     pixel_edge_angle=pixel_size,
+#     background_rate=bg_rate,
+#     average_effective_area=avg_eff_area
+# )
 
-posterior = s[2]["posterior"]
-@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
+# posterior = s[2]["posterior"]
+# @assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)

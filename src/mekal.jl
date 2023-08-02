@@ -183,7 +183,10 @@ function prepare_model_mekal(
     @assert all(isfinite, absorption)
 
     if !use_interpolation
-        function volume_emissivity_direct(t, nH)
+        function volume_emissivity_direct(
+            t::U,
+            nH::N
+        ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
             let
                 energy_bins = energy_bins
                 absorption = absorption
@@ -218,7 +221,10 @@ function prepare_model_mekal(
 
     @mpidebug "Emission model generation complete."
 
-    function volume_emissivity(t, nH)
+    function volume_emissivity(
+        t::U,
+        nH::N
+    ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
         let
             interpol = interpol
             energy_bins = energy_bins
