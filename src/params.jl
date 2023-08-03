@@ -3,7 +3,7 @@ using Unitful
 using PhysicalConstants.CODATA2018: m_p
 
 """Cosmology assumed by BayesX"""
-const cosmo = cosmology()
+const cosmo = cosmology() # todo: make configurable
 
 """Mean mass per gas particle"""
 const μ = 0.6 * m_p

@@ -32,7 +32,7 @@ DEALINGS IN THE SOFTWARE.
 using FITSIO
 import FITSIO.fits_get_col_info
 
-const CFITSIO_COLTYPE = Dict{Int,DataType}()
+const CFITSIO_COLTYPE_var = Dict{Int,DataType}()
 for (T, tform, code) in ((Nothing, 'X', 1),
     (UInt8, 'B', 11),
     (Int8, 'S', 12),
@@ -48,7 +48,7 @@ for (T, tform, code) in ((Nothing, 'X', 1),
     (ComplexF32, 'C', 83),
     (ComplexF64, 'M', 163))
     @eval fits_tform_char(::Type{$T}) = $tform
-    CFITSIO_COLTYPE[code] = T
+    CFITSIO_COLTYPE_var[code] = T
 end
 
 ## Arrr me hearties, we're doing some type piracy
@@ -59,7 +59,7 @@ function fits_get_col_info(f::FITSIO.FITSFile, colnum::Integer)
 
     (eqtypecode == 1) && @warn ("BitArray ('X') columns not yet supported. Column $colnum will not be readable.")
 
-    T = CFITSIO_COLTYPE[eqtypecode]
+    T = CFITSIO_COLTYPE_var[eqtypecode]
 
     if isvariable
         if T !== String
