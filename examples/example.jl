@@ -16,4 +16,4 @@ data = FITSData(
 )
 
 priors = [UniformPrior(1.0e14, 1.0e15), UniformPrior(0.01, 1.0), UniformPrior(-10, 10), UniformPrior(-10, 10)]
-sample(data, (0.7:0.01:7.0)u"keV", priors, 3.89e20u"cm^-2", 0.164, bin_size=10)
+sample(data, (0.7:0.01:7.0)u"keV", priors, 3.89e20u"cm^-2", 0.164, bin_size=5)
