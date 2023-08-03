@@ -41,7 +41,9 @@ em = prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
     redshift,
-    use_interpolation=true
+    use_interpolation=true,
+    temperatures=(1e-30:0.05:9.0)u"keV",
+    hydrogen_densities=(1e-30:0.005:1.0)u"cm^-3"
 )
 model = Model_NFW_GNFW(
     mass,
