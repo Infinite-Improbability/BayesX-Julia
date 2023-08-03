@@ -85,20 +85,20 @@ noisy = pois_rand.(model)
 #     response,
 #     (0u"arcsecondᵃ", 0u"arcsecondᵃ")
 # )
-# display(
-#     @benchmark Model_NFW_GNFW(
-#         mass,
-#         fg,
-#         gnfw...,
-#         redshift,
-#         shape,
-#         pixel_size,
-#         em,
-#         exposure_time,
-#         response,
-#         (0u"arcsecondᵃ", 0u"arcsecondᵃ")
-#     )
-# )
+display(
+    @benchmark Model_NFW_GNFW(
+        mass,
+        fg,
+        gnfw...,
+        redshift,
+        shape,
+        pixel_size,
+        em,
+        exposure_time,
+        response,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+    )
+)
 
 # bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 # avg_eff_area = 250u"cm^2";
