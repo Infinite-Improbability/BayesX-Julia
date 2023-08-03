@@ -82,23 +82,15 @@ function Model_NFW_GNFW(
     # Calculate NFW characteristic overdensity
     ρ_s = ρ_crit_z * (200 / 3) * c_200^3 / (log(1 + c_200) - c_200 / (1 + c_200))
 
-    function m(r, p)
-        x = r[1] * 1u"Mpc"
-        return abs(ustrip(u"Msun", 4π * ρ_s * r_s^3 * (log(1 + x / r_s) - (1 + r_s / x)^(-1)) - 4π / 3 * x^3 * p[1] * ρ_crit_z))
-    end
+    # function m(r, p)
+    #     x = r[1] * 1u"Mpc"
+    #     return abs(ustrip(u"Msun", 4π * ρ_s * r_s^3 * (log(1 + x / r_s) - (1 + r_s / x)^(-1)) - 4π / 3 * x^3 * p[1] * ρ_crit_z))
+    # end
 
-    opf = OptimizationFunction(m, AutoForwardDiff())
-    op = OptimizationProblem(opf, [ustrip(u"Mpc", r_200 / 1.5)], [500], lb=[0], ub=[ustrip(u"Mpc", r_200)])
-    r_500 = solve(op, GradientDescent()).u[1] * 1u"Mpc"
-
-    # Sketchy way to get R500 from r200
-    # TODO: Do better
-    # r_500 = r_200 / 1.5
-    # c_500 = r_500 / r_s
-
-    # diff = ustrip(u"Msun", 4π * ρ_s * r_s^3 * (log(1 + r_500 / r_s) - (1 + r_s / r_500)^(-1)) - 4π / 3 * ρ_crit_z * 500 * r_500^3)
-
-    # @info r_500_op r_500 diff
+    # opf = OptimizationFunction(m, AutoForwardDiff())
+    # op = OptimizationProblem(opf, [ustrip(u"Mpc", r_200 / 1.5)], [500], lb=[0], ub=[ustrip(u"Mpc", r_200)])
+    # r_500 = solve(op, GradientDescent()).u[1] * 1u"Mpc"
+    r_500 = r_200 / 1.5
 
     # Set GNFW scale radius
     r_p = uconvert(u"Mpc", r_500 / c_500_GNFW)
