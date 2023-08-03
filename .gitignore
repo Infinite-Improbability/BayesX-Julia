@@ -31,3 +31,4 @@ LocalPreferences.toml
 testbed/*
 .env
 data/*
+todo.md
