@@ -172,6 +172,7 @@ function prepare_model_mekal(
 
     if MPI.Comm_rank(comm) == 0
         @mpidebug "Checking for model data"
+        SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=false, progress=true)
         SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
     end
     MPI.Barrier(comm)
@@ -264,6 +265,7 @@ function prepare_surrogate_mekal(
 
     if MPI.Comm_rank(comm) == 0
         @mpidebug "Checking for model data"
+        SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=false, progress=true)
         SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
     end
     MPI.Barrier(comm)
