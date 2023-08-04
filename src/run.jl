@@ -56,9 +56,9 @@ function sample(
 
     shape = [i for i in size(observed)][2:3]
 
-    @mpidebug "Observation has shape $(size(observed))"
-    @mpidebug "Background has shape $(size(observed_background))"
-    @mpidebug "Response matrix has shape $(size(response_function))"
+    @mpiinfo "Observation has shape $(size(observed))"
+    @mpiinfo "Background has shape $(size(observed_background))"
+    @mpiinfo "Response matrix has shape $(size(response_function))"
 
     # a wrapper to handle running the gas model and likelihood calculation
     @mpidebug "Generating likelihood wrapper"
