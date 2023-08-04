@@ -67,7 +67,7 @@ function sample(
 
         predicted = Model_NFW_GNFW(
             params[1],
-            0.13,
+            params[2],
             1.0510, # Using universal values from Arnaud 2010
             5.4905,
             0.3081,
@@ -102,7 +102,7 @@ function sample(
     # ultranest setup
     @mpidebug "Creating sampler"
     # paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
-    paramnames = ["MT_200"]
+    paramnames = ["MT_200", "fg_200"]
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
