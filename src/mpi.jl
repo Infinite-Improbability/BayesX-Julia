@@ -21,14 +21,49 @@ macro mpierror(exs...)
     return :(MPI.Comm_rank(comm) > 0 ? nothing : @error $(esc.(exs)...))
 end
 
-macro mpirankeddebug(msg, exs...)
-    return :(@debug "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] $($msg)" $(esc.(exs)...))
+# This was so troublesome until I found https://discourse.julialang.org/t/loggingextras-jl-how-to-add-custom-log-macro/64679/7
+function make_kwargs(ex)
+    if ex isa Expr && ex.head === :(=) ||
+       ex isa Expr && ex.head === :...
+        return ex
+    else
+        Expr(:(=), ex, esc(ex))
+    end
 end
 
-macro mpirankedinfo(msg, exs...)
-    return :(@info "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] $($msg)" $(esc.(exs)...))
+function get_rank_msg()::String
+    return "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))]"
 end
 
-macro mpirankedwarn(msg, exs...)
-    return :(@warn "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] $($msg)" $(esc.(exs)...))
+macro mpirankeddebug(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Debug
+    message = get_rank_msg() * " " * string(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
+
+macro mpirankedinfo(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Info
+    message = get_rank_msg() * " " * string(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
+macro mpirankedwarn(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Warn
+    message = get_rank_msg() * " " * string(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
+macro mpirankederror(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Error
+    message = get_rank_msg() * " " * string(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
