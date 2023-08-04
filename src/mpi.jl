@@ -31,6 +31,38 @@ function make_kwargs(ex)
     end
 end
 
+macro mpidebug(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Debug
+    message = esc(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
+macro mpiinfo(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Info
+    message = esc(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
+macro mpiwarn(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Warn
+    message = esc(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
+macro mpierror(exs...)
+    location = LineNumberNode(__source__.line, __source__.file)
+    level = Base.CoreLogging.Error
+    message = esc(exs[1])
+    kwargs = map(make_kwargs, exs[2:end])
+    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+end
+
 function get_rank_msg()::String
     return "[Process $(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))]"
 end
