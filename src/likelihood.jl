@@ -1,7 +1,5 @@
 export DeltaPrior, LogUniformPrior, UniformPrior
 
-include("mpi.jl")
-
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
 

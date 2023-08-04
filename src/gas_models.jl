@@ -7,7 +7,6 @@ using OptimizationOptimJL
 
 include("params.jl")
 include("emission.jl")
-include("mpi.jl")
 
 
 """

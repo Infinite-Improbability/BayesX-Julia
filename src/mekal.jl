@@ -9,8 +9,6 @@ using Surrogates
 @derived_dimension NumberDensity Unitful.𝐋^-3
 @derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓
 
-include("mpi.jl")
-
 """Mekal model using SpectralFitting.jl framework. Kept around so we can borrow the model data downloading functions."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
     "Normalisation"
