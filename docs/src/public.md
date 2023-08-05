@@ -10,7 +10,6 @@ Pages = ["public.md"]
 
 ```@autodocs
 Modules = [BayesJ]
-Order   = [:function, :type]
 Public  = true
 Private = false
 ```

@@ -85,11 +85,11 @@ end
 Applies the response function ``RSP(PI, E) = RMF(PI, E) ∘ ARF(E)`` to all energy bins and returns adjusted counts per bin.
 ```math
 \\begin{aligned}
-C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E)sum ⋅ S(E) dE \\
+C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) ⋅ dE \\\\
 &≈ T \\sum_{j} R_{ij} A{j} S{j}
 \\end{aligned}
 ```
-with `C(PI)`` is the observed counts in a detector channel `PI`, `T` is the observation time,
+with `C(PI)` is the observed counts in a detector channel `PI`, `T` is the observation time,
 `ARF(E)` is the effective area of the instrument and `RMF(E, PI)` is the unitless response matrix.
 (Handbook of X-ray Astronomy Chapter 2011, Chapter 5 pg 87, by K. Arnaud, R. Smith and A. Siemiginowska)
 
