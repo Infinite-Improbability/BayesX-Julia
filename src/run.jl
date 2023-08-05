@@ -38,7 +38,8 @@ function sample(
     emission_model,
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
-    average_effective_area=250u"cm^2"
+    average_effective_area=250u"cm^2",
+    center_radius
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -79,7 +80,8 @@ function sample(
             obs_exposure_time,
             response_function,
             # (params[3], params[4])
-            (0, 0)
+            (0, 0),
+            center_radius
         ) .+ predicted_obs_bg
 
 
@@ -126,6 +128,8 @@ function sample(
     # print("result has these keys:", keys(results), "\n")
     sampler.print_results()
     sampler.plot_corner()
+    sampler.plot_trace()
+    sampler.plot_run()
 
     return (sampler, results)
 end
@@ -143,7 +147,8 @@ function sample(
     nHcol::SurfaceDensity,
     redshift::Real;
     bin_size::Real=10,
-    use_interpolation::Bool=true
+    use_interpolation::Bool=true,
+    center_radius=4
 ) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
 
@@ -181,7 +186,8 @@ function sample(
         emission_model,
         100e3u"s",
         response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        center_radius
     )
     model_direct = Model_NFW_GNFW(
         5e14u"Msun",
@@ -196,14 +202,25 @@ function sample(
         em_direct,
         100e3u"s",
         response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        center_radius
     )
     replace!(model, NaN => 0)
     replace!(model_direct, NaN => 0)
 
-    err = sum(abs2.(model - model_direct))
+    err = sum(abs2, model - model_direct)
     @mpiinfo "Error in emission model is" err
 
-
-    sample(obs, bg, response_function, transform, observation.second, observed_background.second, redshift; emission_model=emission_model, pixel_edge_angle=pixel_edge_angle)
+    sample(
+        obs,
+        bg,
+        response_function,
+        transform,
+        observation.second,
+        observed_background.second,
+        redshift;
+        emission_model=emission_model,
+        pixel_edge_angle=pixel_edge_angle,
+        center_radius=center_radius
+    )
 end

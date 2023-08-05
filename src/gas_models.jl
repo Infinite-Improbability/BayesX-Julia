@@ -43,6 +43,7 @@ function Model_NFW_GNFW(
     exposure_time::Unitful.Time{T},
     response_function::Matrix,
     centre,
+    center_radius
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into a struct?
 
@@ -189,7 +190,7 @@ function Model_NFW_GNFW(
     end
 
     # min_radius = r_500 * 0.1
-    min_radius = 4 * pixel_edge_length
+    min_radius = center_radius * pixel_edge_length
 
     shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
     if shortest_radius <= min_radius
@@ -249,6 +250,7 @@ function Model_NFW_GNFW(
     exposure_time::Unitful.Time,
     response_function::Matrix,
     centre,
+    center_radius
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
@@ -263,6 +265,7 @@ function Model_NFW_GNFW(
         emission_model,
         exposure_time,
         response_function,
-        ustrip.(u"arcsecondᵃ", centre)
+        ustrip.(u"arcsecondᵃ", centre),
+        center_radius
     )
 end

@@ -28,9 +28,11 @@ function log_likelihood(
     t1 = @. observed * log(predicted) - predicted
     t2 = @. observed_background * log(predicted_background) - predicted_background
 
-    replace!(t2, NaN => 0) # for some reason log(0) sometimes produces NaN not -Inf
+    # replace!(t2, NaN => 0) # for some reason log(0) sometimes produces NaN not -Inf
 
-    t = @. t1 + t2 - observed_log_factorial
+    t = t1 + t2 - observed_log_factorial
+
+    # @info count(isfinite, t)
 
     # If we have zero counts we can't take the log so
     # we'll just skip over it.
@@ -46,7 +48,7 @@ end
 """
     log_factorial(n)
 
-Finds the natural logarithm of the factorial of `n`.
+Finds ``\\ln{n!}`` the natural logarithm of the factorial of `n`.
 
 `n` rapidly gets to large to quickly and directly calculate the factorial
 so we exploit logarithm rules to expand it out to a series of sums.

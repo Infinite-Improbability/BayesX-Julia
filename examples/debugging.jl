@@ -31,9 +31,9 @@ energy_range = range(0.3u"keV", 7.0u"keV", 33)
 exposure_time = 300e3u"s"
 pixel_size = 0.492e1u"arcsecondᵃ"
 redshift = 0.164
-shape = [64, 64]
+shape = [16, 16]
 gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Using universal values from Arnaud 2010
-mass = 3e14u"Msun"
+mass = 5e14u"Msun"
 fg = 0.13
 
 response = load_response(data, energy_range)
@@ -55,11 +55,12 @@ model = Model_NFW_GNFW(
     em,
     exposure_time,
     response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    0
 )
 replace!(model, NaN => 0.0)
 
-@assert all(isfinite.(model))
+@assert all(isfinite, model)
 
 noisy = pois_rand.(model)
 
@@ -71,9 +72,9 @@ noisy = pois_rand.(model)
 #     shape,
 #     pixel_size,
 #     em,
-#     exposure_time,
-#     response,
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+#     exposure_time,128
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#     0
 # )
 # @profview_allocs Model_NFW_GNFW(
 #     mass,
@@ -85,22 +86,24 @@ noisy = pois_rand.(model)
 #     em,
 #     exposure_time,
 #     response,
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ")
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#     0
 # )
-display(
-    @benchmark Model_NFW_GNFW(
-        mass,
-        fg,
-        gnfw...,
-        redshift,
-        shape,
-        pixel_size,
-        em,
-        exposure_time,
-        response,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ")
-    )
-)
+# display(
+#     @benchmark Model_NFW_GNFW(
+#         mass,
+#         fg,
+#         gnfw...,
+#         redshift,
+#         shape,
+#         pixel_size,
+#         em,
+#         exposure_time,
+#         response,
+#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#         0
+#     )
+# )
 
 bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 avg_eff_area = 250u"cm^2";
@@ -109,18 +112,18 @@ bg_count = bg_rate * exposure_time * avg_eff_area *
            pixel_size^2 / n_channels;
 bg = fill(upreferred(bg_count), size(model));
 
-display(
-    heatmap(
-        dropdims(sum(model + bg, dims=1), dims=1),
-        title="Model"
-    )
-)
-display(
-    heatmap(
-        dropdims(sum(noisy + bg, dims=1), dims=1),
-        title="Noisy"
-    )
-)
+# display(
+#     heatmap(
+#         dropdims(sum(model + bg, dims=1), dims=1),
+#         title="Model"
+#     )
+# )
+# display(
+#     heatmap(
+#         dropdims(sum(noisy + bg, dims=1), dims=1),
+#         title="Noisy"
+#     )
+# )
 
 s = sample(
     round.(Int, noisy + bg),
@@ -128,16 +131,16 @@ s = sample(
     response,
     make_cube_transform(
         UniformPrior(1e14, 1e15),
-        UniformPrior(0.08, 0.2),
-        UniformPrior(-1, 1),
-        UniformPrior(-1, 1)),
+        UniformPrior(0.08, 0.2)
+    ),
     exposure_time,
     exposure_time,
     redshift,
     emission_model=em,
     pixel_edge_angle=pixel_size,
     background_rate=bg_rate,
-    average_effective_area=avg_eff_area
+    average_effective_area=avg_eff_area,
+    center_radius=0
 )
 
 posterior = s[2]["posterior"]
