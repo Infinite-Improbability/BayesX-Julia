@@ -6,9 +6,9 @@
         {
             "label": "Build Documentation",
             "type": "shell",
-            "command": "julia --project=@. make.jl",
+            "command": "julia --project=@. docs/make.jl",
             "options": {
-                "cwd": "${workspaceFolder}/docs"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [],
             "group": {
