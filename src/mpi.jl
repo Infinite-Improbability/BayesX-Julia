@@ -5,22 +5,6 @@ MPI.Init()
 
 const comm::MPI.Comm = MPI.COMM_WORLD
 
-macro mpidebug(exs...)
-    return :(MPI.Comm_rank(comm) > 0 ? nothing : @debug $(esc.(exs)...))
-end
-
-macro mpiinfo(exs...)
-    return :(MPI.Comm_rank(comm) > 0 ? nothing : @info $(esc.(exs)...))
-end
-
-macro mpiwarn(exs...)
-    return :(MPI.Comm_rank(comm) > 0 ? nothing : @warn $(esc.(exs)...))
-end
-
-macro mpierror(exs...)
-    return :(MPI.Comm_rank(comm) > 0 ? nothing : @error $(esc.(exs)...))
-end
-
 # This was so troublesome until I found https://discourse.julialang.org/t/loggingextras-jl-how-to-add-custom-log-macro/64679/7
 function make_kwargs(ex)
     if ex isa Expr && ex.head === :(=) ||

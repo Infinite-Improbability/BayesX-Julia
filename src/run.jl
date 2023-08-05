@@ -8,10 +8,10 @@ stepsampler = pyimport_conda("ultranest.stepsampler", "ultranest")
 
 export sample
 
+include("mpi.jl")
 include("gas_models.jl")
 include("io.jl")
 include("likelihood.jl")
-include("mpi.jl")
 
 """
     sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area)
