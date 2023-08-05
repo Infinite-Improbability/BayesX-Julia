@@ -12,6 +12,6 @@ makedocs(
     ]
 )
 
-deploydocs(deploydocs(
+deploydocs(
     repo="github.com/b.com/Infinite-Improbability/BayesX-Julia.git",
-))
+)
