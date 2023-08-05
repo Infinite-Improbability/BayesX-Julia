@@ -24,28 +24,31 @@ function surface_brightness(
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
+    pixel_edge_length = ustrip(u"Mpc", ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z))
+    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
+    lb = [-pixel_edge_length / 2, -pixel_edge_length / 2, 0]
+    ub = [pixel_edge_length / 2, pixel_edge_length / 2, ustrip(u"Mpc", limit)]
+
+    nout = length(model(1.0u"keV", 0.1u"cm^-3"))
+
     function integrand(l, params)
-        s, temp = params
-        r = hypot(s, l)
+        x, y, los = l
+        # assume projected radius is aligned with x and y is perpendicular
+        s = hypot((params[1] + x), y)
+        r = hypot(s, los) * 1u"Mpc"
 
-        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
-        f = model(temp(r), hydrogen_number_density(density(r)))
-
-        # if hydrogen_number_density(density(r)) > 1u"cm^-3"
-        #     @error("Density overload at $r")
-        # end
+        f = ustrip.(u"Mpc^-3/s", model(temperature(r), hydrogen_number_density(density(r))))
 
         @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
 
         return f
     end
 
-    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
-    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
+    problem = IntegralProblem(integrand, lb, ub, [ustrip(u"Mpc", projected_radius)]; nout=nout)
+    sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
     @assert all(isfinite, sol.u)
 
-    # sol is volume emissivity per face area of column
+    # sol is photons/second per face area of column
     # because of how we defined the limits we have to double it
     # [photons/s/m^2]
     # u::Vector{Quantity} = 2 * sol.u
@@ -76,7 +79,7 @@ function surface_brightness(
 
     # doubling solution to account for integral bounds
     # applying exposure area
-    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+    return 2 * sol.u * 1u"s^-1" / (4π * angular_diameter_dist(cosmo, z)^2 * (1 + z)^2)
 end
 
 """

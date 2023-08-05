@@ -31,7 +31,7 @@ energy_range = range(0.3u"keV", 7.0u"keV", 33)
 exposure_time = 300e3u"s"
 pixel_size = 0.492e1u"arcsecondᵃ"
 redshift = 0.164
-shape = [16, 16]
+shape = [32, 32]
 gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Using universal values from Arnaud 2010
 mass = 5e14u"Msun"
 fg = 0.13
@@ -140,7 +140,7 @@ s = sample(
     pixel_edge_angle=pixel_size,
     background_rate=bg_rate,
     average_effective_area=avg_eff_area,
-    center_radius=0
+    center_radius=12
 )
 
 posterior = s[2]["posterior"]
