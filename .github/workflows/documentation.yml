@@ -21,6 +21,8 @@ jobs:
         run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
       - name: Install dependencies
         run: julia --project=@. -e 'using Pkg; Pkg.instantiate()'
+        env:
+          PYTHON: ""
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
