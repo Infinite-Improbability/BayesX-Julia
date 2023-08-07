@@ -67,7 +67,7 @@ function Model_NFW_GNFW(
     # Why does it have the redshift dependence?
 
     # Calculate gas mass
-    Mg_200_DM = MT_200 * fg_200
+    Mg_200 = MT_200 * fg_200
 
     # Calculate critical density at current redshift
     ρ_crit_z = ρ_crit(z)
@@ -143,7 +143,7 @@ function Model_NFW_GNFW(
         [r_s, r_p, α, β, γ]
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
-    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
+    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200 / vol_int_200
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
 
@@ -177,8 +177,50 @@ function Model_NFW_GNFW(
         end
     end
 
+    function gas_mass_first_order(r)
+        integral = IntegralProblem(
+            (x) -> 4π * gas_density(x) * x^2,
+            0.0u"Mpc",
+            r,
+            [r_s, r_p, α, β, γ]
+        )
+        return integral.u
+    end
+    function dPdr(r)
+        (μ_e / μ) * Pei_GNFW * (r / r_p)^(-γ) * (1 + (r / r_p)^α)^(-(α + β - γ) / α) * (β * (r / r_p)^α + γ) / r
+    end
+
+    function generic_gas_density(M, r)
+        dPdr(r) * r^2 / (G * M)
+    end
+
+    ρ_points = [gas_density(r_200)]
+    r_points = [r_200]
+    dr = 0.01r_200
+    r = r_200 - dr
+
+    while r >= 0u"Mpc"
+        ρ_inital = gas_density(r)
+        m_g = gas_mass_first_order(r)
+        m_dm = dm_mass(r)
+
+        Δρ = ρ_inital
+        ρ_old = ρ_inital
+
+        while abs(Δρ) > 0.001ρ_inital
+            ρ = generic_gas_density(m_g + m_dm, r)
+            m_g += 4π * r_points[end]^2 * dr * ρ
+            Δρ = ρ - ρ_old
+            ρ_old = ρ
+        end
+
+        push!(ρ_points, ρ)
+        push!(r_points, r)
+
+        r -= dr
+    end
+
     # Calculate source brightness at various points
-    # TODO: Moving center
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
     radii_x, radii_y = shape ./ 2
