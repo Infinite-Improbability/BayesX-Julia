@@ -186,7 +186,7 @@ function prepare_model_mekal(
     # But the cluster isn't
     # This means we need to apply redshift to the observed energy bins and
     # time dilation to the count rate
-    energy_bins .*= (1 + z) # redshift
+    energy_bins = energy_bins * (1 + z) # redshift
     absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
