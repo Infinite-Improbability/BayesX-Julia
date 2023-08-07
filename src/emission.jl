@@ -5,15 +5,86 @@ using DimensionfulAngles
 include("mekal.jl")
 
 """
-    surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_length)
+    surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_angle)
 
 Calculate the observed surface_brightness at some projected radius on the sky.
 
-The temperature and density functions should take the true distance from origin (cluster centre) and return the appropriate value, with units.
+The temperature and density functions should take the distance from origin (cluster centre) and return the appropriate value, with units.
+
+The model should take these functions as input and return a vector of volume emissivities, where the vector element correspond with
+the energy bins used to generate the mode. It should include the effects of redshift on the bins and time dilation on the count rate.
+
 The limit controls limits on LOS radius during integration. Theoretically it should be ±infinity, but we may approximate it as a finite value.
-The pixel edge length is the distance observed on the sky, determined from the pixel_edge_angle at source redshift.
+
+The pixel edge angle is the angular size of a single pixel.
+
+The result returned is the expected count rate per unit observing area, as a vector corresponding to the energy bins as used in the model.
 """
 function surface_brightness(
+    projected_radius::Unitful.Length,
+    temperature::Function,
+    density::Function,
+    z::Float64,
+    limit::Unitful.Length,
+    model,
+    pixel_edge_angle::DimensionfulAngles.Angle,
+)::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
+    @argcheck limit > 0u"Mpc"
+
+    function integrand(l, params)
+        s, temp = params
+        r = hypot(s, l)
+
+        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
+        f = model(temp(r), hydrogen_number_density(density(r)))
+
+        @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
+
+        return f
+    end
+
+    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
+    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
+    @assert all(isfinite, sol.u)
+
+    # sol is volume emissivity per face area of column
+    # because of how we defined the limits we have to double it
+    # [photons/s/m^2]
+    # u::Vector{Quantity} = 2 * sol.u
+
+    # add in surface area of column end
+    # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
+    # [photons/s]
+    # u *= (dₐ * pixel_edge_angle)^2
+
+    # time dilation and redshift are already factored into model
+    # because redshift needs to be applied directly to the energy bins
+    # and time dilation felt more connected to that than the spatial expansion at play here
+
+    # get emission per solid angle, assuming uniformly distributed over a sphere
+    # u /= 4π u"sr"
+
+    # but this is the solid angle at the source
+    # for the observer θ₀ = θₛ / (1 + z)
+    # u /= (1+z)^2
+
+    # convert from solid angle to area using angular diameter distance
+    # u /= (4π * dₐ^2)
+    # notice dₐ cancels out
+
+    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+end
+
+
+"""
+    smoothed_surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_angle)
+
+Calculate the observed surface brightness at some projected radius on the sky with pixel smoothing.
+
+Modifies [`surface_brightness`](@ref).
+"""
+function smoothed_surface_brightness(
     projected_radius::Unitful.Length,
     temperature::Function,
     density::Function,
@@ -31,6 +102,8 @@ function surface_brightness(
 
     nout = length(model(1.0u"keV", 0.1u"cm^-3"))
 
+    # Integrating over column line of sight and face area
+    # This gives us a photons/second for the volume contained in the column
     function integrand(l, params)
         x, y, los = l
         # assume projected radius is aligned with x and y is perpendicular
@@ -48,37 +121,25 @@ function surface_brightness(
     sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
     @assert all(isfinite, sol.u)
 
-    # sol is photons/second per face area of column
+    # sol is photons/second
     # because of how we defined the limits we have to double it
     # [photons/s/m^2]
     # u::Vector{Quantity} = 2 * sol.u
 
-    # add in surface area of column end
-    # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
-    # [photons/s]
-    # u *= (angular_diameter_dist(cosmo, z) * ustrip(u"radᵃ", pixel_edge_angle))^2
-
-    # factor in time dilation and redshift
-    # [photons/s]
-    # u /= (1 + z)^2
-    # This wil be implicit in the luminosity distance
+    # time dilation and redshift are already factored into model
+    # because redshift needs to be applied directly to the energy bins
+    # and time dilation felt more connected to that than the spatial expansion at play here
 
     # assume emission is uniformly distributed over a sphere
     # [photons/s/steradian]
-    # u /= (4π * 1u"rad^2")
-    # Luminosity distance will also help with that
+    # u /= (4π u"sr")
 
-    # Model already includes energy redshift and time dilation
+    # correct for the observed angle being smaller than the source angle
+    # u /= (1+z)^2
 
-    # convert from solid angle to area
-    # remembering there are redshift effects on observed angle
-    # we choose to use the luminosity distance as it helpfully handles this
-    # u /= (4π * luminosity_dist(cosmo, z)^2)
+    # apply convert to linear area
+    # u /= angular_diameter_dist^2
 
-    # return u
-
-    # doubling solution to account for integral bounds
-    # applying exposure area
     return 2 * sol.u * 1u"s^-1" / (4π * angular_diameter_dist(cosmo, z)^2 * (1 + z)^2)
 end
 

@@ -186,7 +186,8 @@ function prepare_model_mekal(
     # But the cluster isn't
     # This means we need to apply redshift to the observed energy bins and
     # time dilation to the count rate
-    energy_bins = energy_bins * (1 + z) # redshift
+    energy_bins .*= (1 + z) # redshift
+    absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
         function volume_emissivity_direct(
@@ -207,7 +208,7 @@ function prepare_model_mekal(
     points = [(ustrip(u"keV", t), ustrip(u"cm^-3", nH)) for t in temperatures, nH in hydrogen_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)) / (1 + z), # time dilation
+        x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
         points
     )
 
@@ -280,6 +281,7 @@ function prepare_surrogate_mekal(
     # This means we need to apply redshift to the observed energy bins and
     # time dilation to the count rate
     energy_bins = energy_bins * (1 + z) # redshift
+    absorption ./= (1 + z) # time dilation
 
     function volume_emissivity(x)
         let
