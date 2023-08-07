@@ -198,6 +198,7 @@ function Model_NFW_GNFW(
     r_points = [r_200]
     dr = 0.01r_200
     r = r_200 - dr
+    # TODO: Is this really correct for working from r200 in?
 
     while r >= 0u"Mpc"
         ρ_inital = gas_density(r)
