@@ -139,8 +139,8 @@ end
 
 abstract type ModelPriors end
 
-struct PriorSet{S<:AbstractString}
-    prior_names::Vector{S}
+struct PriorSet
+    prior_names::Vector{Symbol}
     cube_transform::Function
     cube_to_name::Function
 end
@@ -152,9 +152,9 @@ Turns a dictionary of name => [`Prior`](@ref)` pairs into a [`PriorSet`](@ref).
 
 Prior names should match argument names for the gas model being used.
 """
-function generate_transform(priors::Dict{<:AbstractString,<:Prior})::PriorSet
+function generate_transform(priors::Dict{Symbol,<:Prior})::PriorSet
     # Seperate out delta priors
-    delta_priors = Dict{String,DeltaPrior}()
+    delta_priors = Dict{Symbol,Union{Number,Float64}}()
     for n in keys(priors)
         p = priors[n]
         if isa(p, DeltaPrior)
@@ -186,7 +186,7 @@ function generate_transform(priors::Dict{<:AbstractString,<:Prior})::PriorSet
         end
     end
 
-    return PriorSet(cube_transform, prior_names, cube_to_name)
+    return PriorSet(prior_names, cube_transform, cube_to_name)
 end
 """
     generate_transform(priors::ModelPriors)

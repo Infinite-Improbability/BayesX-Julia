@@ -237,19 +237,20 @@ function Model_NFW_GNFW(;
 
     return counts
 end
-function Model_NFW_GNFW(;
-    MT_200,
-    centre_x,
-    centre_y,
-    kwargs...
-)::Array{Float64}
-    Model_NFW_GNFW(
-        MT_200=MT_200 * 1u"Msun", # values passed in as priors may lack units
-        centre_x=centre_x .* 1u"arcsecondᵃ",
-        centre_y=centre_y .* 1u"arcsecondᵃ",
-        kwargs...
-    )
-end
+# function Model_NFW_GNFW(;
+#     MT_200,
+#     centre_x,
+#     centre_y,
+#     kwargs...
+# )::Array{Float64}
+#     display(kwargs)
+#     Model_NFW_GNFW(
+#         MT_200=MT_200 * 1u"Msun", # values passed in as priors may lack units
+#         centre_x=centre_x .* 1u"arcsecondᵃ",
+#         centre_y=centre_y .* 1u"arcsecondᵃ",
+#         kwargs...
+#     )
+# end
 
 struct Model_NFW_GNFW_Priors{M<:Prior,F<:Prior,A<:Prior,B<:Prior,G<:Prior,C<:Prior,X<:Prior,Y<:Prior} <: ModelPriors
     MT_200::M

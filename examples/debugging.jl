@@ -69,7 +69,8 @@ model = Model_NFW_GNFW(
     emission_model=em,
     exposure_time=exposure_time,
     response_function=response,
-    centre_coordinates=(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    centre_x=0u"arcsecondᵃ",
+    centre_y=0u"arcsecondᵃ",
     centre_radius=0
 )
 replace!(model, NaN => 0.0)
@@ -78,46 +79,9 @@ replace!(model, NaN => 0.0)
 
 noisy = pois_rand.(model)
 
-# @profview Model_NFW_GNFW(
-#     mass,
-#     fg,
-#     gnfw...,
-#     redshift,
-#     shape,
-#     pixel_size,
-#     em,
-#     exposure_time,128
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#     0
-# )
-# @profview_allocs Model_NFW_GNFW(
-#     mass,
-#     fg,
-#     gnfw...,
-#     redshift,
-#     shape,
-#     pixel_size,
-#     em,
-#     exposure_time,
-#     response,
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#     0
-# )
-# display(
-#     @benchmark Model_NFW_GNFW(
-#         mass,
-#         fg,
-#         gnfw...,
-#         redshift,
-#         shape,
-#         pixel_size,
-#         em,
-#         exposure_time,
-#         response,
-#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#         0
-#     )
-# )
+# @profview
+# @profview_allocs
+# display()
 
 bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 avg_eff_area = 250u"cm^2";

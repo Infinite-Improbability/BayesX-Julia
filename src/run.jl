@@ -68,7 +68,7 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        prior_pairs = priors.cube_to_name(params)::Dict{<:AbstractString,<:Prior}
+        prior_pairs = priors.cube_to_name(params)::Dict{Symbol,Union{Prior,Float64}}
 
         predicted = Model_NFW_GNFW(;
             prior_pairs...,
@@ -101,7 +101,7 @@ function sample(
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
-        transform=priors.transform,
+        transform=priors.cube_transform,
         vectorized=false,
         log_dir="logs"
     )
