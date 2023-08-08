@@ -1,3 +1,5 @@
+using ArgCheck
+
 export DeltaPrior, LogUniformPrior, UniformPrior
 
 """
@@ -152,7 +154,7 @@ Prior names should match argument names for the gas model being used.
 """
 function generate_transform(priors::Dict{<:AbstractString,<:Prior})::PriorSet
     # Seperate out delta priors
-    delta_priors = {}
+    delta_priors = Dict{String,DeltaPrior}()
     for n in keys(priors)
         p = priors[n]
         if isa(p, DeltaPrior)

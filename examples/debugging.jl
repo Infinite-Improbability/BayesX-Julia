@@ -57,17 +57,20 @@ em = prepare_model_mekal(
     hydrogen_densities=(1e-30:0.005:1.0)u"cm^-3"
 )
 model = Model_NFW_GNFW(
-    mass,
-    fg,
-    gnfw...,
-    redshift,
-    shape,
-    pixel_size,
-    em,
-    exposure_time,
-    response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    0
+    MT_200=mass,
+    fg_200=fg,
+    α=gnfw[1],
+    β=gnfw[2],
+    γ=gnfw[3],
+    c_500_GNFW=gnfw[4],
+    z=redshift,
+    shape=shape,
+    pixel_edge_angle=pixel_size,
+    emission_model=em,
+    exposure_time=exposure_time,
+    response_function=response,
+    centre_coordinates=(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    centre_radius=0
 )
 replace!(model, NaN => 0.0)
 

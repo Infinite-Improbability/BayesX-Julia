@@ -19,7 +19,7 @@ Calculate the critical density at some redshift `z`.
 
 
 """
-    Model_NFW_GNFW_GNFW(; MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre_coordinates, centre_radius)
+    Model_NFW_GNFW_GNFW(; MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre_x, centre_y, centre_radius)
 
 Calculate predicted counts using a physical model based NFW-GNFW profiles as described in Olamaie 2012.
 
@@ -43,7 +43,8 @@ function Model_NFW_GNFW(;
     emission_model,
     exposure_time::Unitful.Time{<:Real},
     response_function::Matrix,
-    centre_coordinates::NTuple{2,DimensionfulAngles.Angle{<:Real}},
+    centre_x::DimensionfulAngles.Angle{<:Real},
+    centre_y::DimensionfulAngles.Angle{<:Real},
     centre_radius
 )::Array{Float64}
     # Move some parameters into a struct?
@@ -55,6 +56,8 @@ function Model_NFW_GNFW(;
     @argcheck α > 0
     @argcheck c_500_GNFW > 0
     @argcheck (β - c_500_GNFW) > 0
+
+    centre_coordinates = (centre_x, centre_y)
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -236,22 +239,14 @@ function Model_NFW_GNFW(;
 end
 function Model_NFW_GNFW(;
     MT_200,
-    centre_coordinates,
-    kwargs...
-)::Array{Float64}
-    Model_NFW_GNFW(
-        MT_200=MT_200 * 1u"Msun", # values passed in as priors may lack units
-        centre_coordinates=centre_coordinates .* 1u"arcsecondᵃ",
-        kwargs...
-    )
-end
-function Model_NFW_GNFW(;
     centre_x,
     centre_y,
     kwargs...
 )::Array{Float64}
     Model_NFW_GNFW(
-        centre_coordinates=(centre_x, centre_y),
+        MT_200=MT_200 * 1u"Msun", # values passed in as priors may lack units
+        centre_x=centre_x .* 1u"arcsecondᵃ",
+        centre_y=centre_y .* 1u"arcsecondᵃ",
         kwargs...
     )
 end
