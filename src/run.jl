@@ -14,24 +14,26 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area)
+    sample(observed::Array, observed_background::Array, response_function::Matrix, priors::PriorSet, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area, center_radius)
 
 Configure some necessary variables and launch ultranest.
 
 * The observed array includes the background.
 * The response function includes both the RMF and ARF, as described in `apply_response_function`.
 * The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
+* Prior names should match arguments for the gas model.
 * The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
  This area is assumed to be square with the edge angle giving the side length.
 * The average effective area is the effective area of the telescope averaged across energies,
  used with the total background rate across all channels (counts per unit telescope area per sky angle per second)
  to calculate the background counts per second per channel per pixel.
+ * `center_radius` controls how many pixels are excluded from the core.
 """
 function sample(
     observed::T,
     observed_background::T,
     response_function::Matrix,
-    transform::Function,
+    priors::PriorSet,
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
     redshift::Real;
@@ -108,7 +110,7 @@ function sample(
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
-        transform=transform,
+        transform=priors.transform,
         vectorized=false,
         log_dir="logs"
     )
@@ -135,21 +137,24 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range, priors, nhCol, redshift)
+    sample(data::Dataset, energy_range, priors::Dict, nhCol, redshift; bin_size, use_interpolation, center_radius)
 
-Run Bayesian inference on a given set of `data`, considering only the selected
-energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
+Run Bayesian inference on a given set of `data`, considering only the selected energy range.
+
+* `bin_size` controls spatial size of bins, in pixels
+* `use_interpolation` controls whether the gas emission model uses interpolation
+* `center_radius` controls the excluded area in the core, in pixels
 """
 function sample(
     data::Dataset,
-    energy_range::AbstractRange{T},
-    priors::AbstractVector{U},
+    energy_range::AbstractRange{<:Unitful.Energy},
+    priors::Dict{<:AbstractString,<:Prior},
     nHcol::SurfaceDensity,
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
     center_radius=4
-) where {T<:Unitful.Energy,U<:Prior}
+)
     @mpiinfo "Loading data"
 
     observation, observed_background = load_data(data)
@@ -162,7 +167,7 @@ function sample(
     @assert size(obs) == size(bg)
 
     @mpidebug "Making transform"
-    transform = make_cube_transform(priors...)
+    prior_set = generate_transform(priors)
 
     @mpidebug "Calling load_response"
     response_function = load_response(data, energy_range)
@@ -215,7 +220,7 @@ function sample(
         obs,
         bg,
         response_function,
-        transform,
+        prior_set,
         observation.second,
         observed_background.second,
         redshift;

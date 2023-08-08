@@ -121,13 +121,6 @@ function make_cube_transform(priors::Prior...)
     row is a complete sample of the set of priors.
     """
     function transform_cube(cube::AbstractVector)
-        # MT_200::Unitful.Mass,
-        # fg_200,
-        # a_GNFW,
-        # b_GNFW,
-        # c_GNFW,
-        # c_500_GNFW,
-
         @mpirankeddebug "Transform started"
 
         for (c, p) in zip(axes(cube, 1), priors)
@@ -142,4 +135,52 @@ function make_cube_transform(priors::Prior...)
     return transform_cube
 end
 
+struct PriorSet{S<:AbstractString}
+    prior_names::Vector{S}
+    cube_transform::Function
+    cube_to_name::Function
+end
 
+"""
+    generate_transform(priors::Dict{<:AbstractString, <:Prior})
+
+Turns a dictonary of name => Prior pairs into a cube transform.
+
+Prior names should match argument names for the gas model being used.
+"""
+function generate_transform(priors::Dict{<:AbstractString,<:Prior})::PriorSet
+    # Seperate out delta priors
+    delta_priors = {}
+    for n in keys(priors)
+        p = priors[n]
+        if isa(p, DeltaPrior)
+            delta_priors[n] = p.value
+            delete!(priors, n)
+        end
+    end
+
+    # Sort priors because we want to keep the order consistent with the cube
+    prior_names = sort!(collect(keys(priors)))
+    # And grab the ones that are fixed
+    transforms = [priors[n] for n in prior_names]
+    # Then make the cube
+    cube_transform = make_cube_transform(transforms...)
+
+    """
+        cube_to_name(prior_sample::AbstractVector)
+
+    Given a vector of prior values returns a dictionary of name => value pairs.
+    """
+    function cube_to_name(prior_sample::AbstractVector)
+        let
+            priors = delta_priors
+            prior_names = prior_names
+            for (n, v) in zip(prior_names, prior_sample)
+                priors[n] = v
+            end
+            return priors
+        end
+    end
+
+    return PriorSet(cube_transform, prior_names, cube_to_name)
+end
