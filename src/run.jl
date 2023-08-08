@@ -14,7 +14,7 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed::Array, observed_background::Array, response_function::Matrix, priors::PriorSet, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area, center_radius)
+    sample(observed::Array, observed_background::Array, response_function::Matrix, priors::PriorSet, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area, centre_radius)
 
 Configure some necessary variables and launch ultranest.
 
@@ -27,7 +27,7 @@ Configure some necessary variables and launch ultranest.
 * The average effective area is the effective area of the telescope averaged across energies,
  used with the total background rate across all channels (counts per unit telescope area per sky angle per second)
  to calculate the background counts per second per channel per pixel.
- * `center_radius` controls how many pixels are excluded from the core.
+ * `centre_radius` controls how many pixels are excluded from the core.
 """
 function sample(
     observed::T,
@@ -41,7 +41,7 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
-    center_radius
+    centre_radius
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -83,7 +83,7 @@ function sample(
             response_function,
             # (params[3], params[4])
             (0, 0),
-            center_radius
+            centre_radius
         ) .+ predicted_obs_bg
 
 
@@ -137,13 +137,13 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range, priors::Dict, nhCol, redshift; bin_size, use_interpolation, center_radius)
+    sample(data::Dataset, energy_range, priors::Dict, nhCol, redshift; bin_size, use_interpolation, centre_radius)
 
 Run Bayesian inference on a given set of `data`, considering only the selected energy range.
 
 * `bin_size` controls spatial size of bins, in pixels
 * `use_interpolation` controls whether the gas emission model uses interpolation
-* `center_radius` controls the excluded area in the core, in pixels
+* `centre_radius` controls the excluded area in the core, in pixels
 """
 function sample(
     data::Dataset,
@@ -153,7 +153,7 @@ function sample(
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
-    center_radius=4
+    centre_radius=4
 )
     @mpiinfo "Loading data"
 
@@ -192,7 +192,7 @@ function sample(
         100e3u"s",
         response_function,
         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        center_radius
+        centre_radius
     )
     model_direct = Model_NFW_GNFW(
         5e14u"Msun",
@@ -208,7 +208,7 @@ function sample(
         100e3u"s",
         response_function,
         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        center_radius
+        centre_radius
     )
     replace!(model, NaN => 0)
     replace!(model_direct, NaN => 0)
@@ -226,6 +226,6 @@ function sample(
         redshift;
         emission_model=emission_model,
         pixel_edge_angle=pixel_edge_angle,
-        center_radius=center_radius
+        centre_radius=centre_radius
     )
 end

@@ -18,7 +18,7 @@ Calculate the critical density at some redshift `z`.
 
 
 """
-    Model_NFW_GNFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function)
+    Model_NFW_GNFW_GNFW(; MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre_coordinates, centre_radius)
 
 Calculate predicted counts using a physical model based NFW-GNFW profiles as described in Olamaie 2012.
 
@@ -29,34 +29,31 @@ This area is assumed to be square with the edge angle giving the side length.
 The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
 The response function includes both the RMF and ARF, as described in `apply_response_function`.
 """
-function Model_NFW_GNFW(
-    MT_200::T,
-    fg_200::T,
-    α::T,
-    β::T,
-    γ::T,
-    c_500_GNFW::T,
-    z::T,
-    shape::Vector{N},
-    pixel_edge_angle::DimensionfulAngles.Angle{T},
+function Model_NFW_GNFW(;
+    MT_200::Unitful.Mass{<:Real},
+    fg_200,
+    α,
+    β,
+    γ,
+    c_500_GNFW,
+    z,
+    shape::AbstractVector{<:Integer},
+    pixel_edge_angle::DimensionfulAngles.Angle{<:Real},
     emission_model,
-    exposure_time::Unitful.Time{T},
+    exposure_time::Unitful.Time{<:Real},
     response_function::Matrix,
-    centre,
-    center_radius
-)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
+    centre_coordinates::NTuple{2,DimensionfulAngles.Angle{<:Real}},
+    centre_radius
+)::Array{Float64}
     # Move some parameters into a struct?
 
     @mpirankeddebug "Model" MT_200 fg_200
 
-    @argcheck MT_200 > 0
+    @argcheck MT_200 > 0u"Msun"
     @argcheck 1 > fg_200 > 0
     @argcheck α > 0
     @argcheck c_500_GNFW > 0
     @argcheck (β - c_500_GNFW) > 0
-
-    MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
-    centre = centre .* 1u"arcsecondᵃ"
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -180,7 +177,7 @@ function Model_NFW_GNFW(
     # Calculate source brightness at various points
     # TODO: Moving center
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
-    centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
+    centre_length = ustrip.(u"radᵃ", centre_coordinates) .* angular_diameter_dist(cosmo, z)
     radii_x, radii_y = shape ./ 2
 
     function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
@@ -190,7 +187,7 @@ function Model_NFW_GNFW(
     end
 
     # min_radius = r_500 * 0.1
-    min_radius = center_radius * pixel_edge_length
+    min_radius = centre_radius * pixel_edge_length
 
     shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
     if shortest_radius <= min_radius
@@ -236,36 +233,36 @@ function Model_NFW_GNFW(
 
     return counts
 end
-function Model_NFW_GNFW(
-    MT_200::Unitful.Mass,
+function Model_NFW_GNFW(;
+    MT_200,
     fg_200,
     α,
     β,
     γ,
     c_500_GNFW,
     z,
-    shape::Vector{N},
-    pixel_edge_angle::DimensionfulAngles.Angle{T},
+    shape::Vector{<:Integer},
+    pixel_edge_angle::DimensionfulAngles.Angle{<:Real},
     emission_model,
-    exposure_time::Unitful.Time,
+    exposure_time::Unitful.Time{<:Real},
     response_function::Matrix,
-    centre,
-    center_radius
-)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
+    centre_coordinates,
+    centre_radius
+)::Array{Float64}
     Model_NFW_GNFW(
-        ustrip(u"Msun", MT_200),
-        fg_200,
-        α,
-        β,
-        γ,
-        c_500_GNFW,
-        z,
-        shape,
-        pixel_edge_angle,
-        emission_model,
-        exposure_time,
-        response_function,
-        ustrip.(u"arcsecondᵃ", centre),
-        center_radius
+        MT_200=MT_200 * 1u"M_sun", # values passed in as priors may lack units
+        fg_200=fg_200,
+        α=α,
+        β=β,
+        γ=γ,
+        c_500_GNFW=c_500_GNFW,
+        z=z,
+        z=shape,
+        pixel_edge_angle=pixel_edge_angle,
+        emission_model=emission_model,
+        exposure_time=exposure_time,
+        response_function=response_function,
+        centre_coordinates=centre_coordinates .* 1u"arcsecondᵃ",
+        centre_radius=centre_radius
     )
 end
