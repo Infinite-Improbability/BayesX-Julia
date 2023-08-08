@@ -135,6 +135,8 @@ function make_cube_transform(priors::Prior...)
     return transform_cube
 end
 
+abstract type ModelPriors end
+
 struct PriorSet{S<:AbstractString}
     prior_names::Vector{S}
     cube_transform::Function
@@ -144,7 +146,7 @@ end
 """
     generate_transform(priors::Dict{<:AbstractString, <:Prior})
 
-Turns a dictonary of name => Prior pairs into a cube transform.
+Turns a dictionary of name => [`Prior`](@ref)` pairs into a [`PriorSet`](@ref).
 
 Prior names should match argument names for the gas model being used.
 """
@@ -183,4 +185,13 @@ function generate_transform(priors::Dict{<:AbstractString,<:Prior})::PriorSet
     end
 
     return PriorSet(cube_transform, prior_names, cube_to_name)
+end
+"""
+    generate_transform(priors::ModelPriors)
+
+Turns [`ModelPrior`](@ref) object into a a [`PriorSet`](@ref).
+"""
+function generate_transform(priors::T)::PriorSet where {T<:ModelPriors}
+    names = fieldnames(T)
+    generate_transform(Dict(names .=> getfield.(Ref(priors), fieldnames(T))))
 end

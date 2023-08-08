@@ -68,31 +68,22 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        predicted = Model_NFW_GNFW(
-            params[1],
-            params[2],
-            1.0510, # Using universal values from Arnaud 2010
-            5.4905,
-            0.3081,
-            1.177,
-            redshift,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            obs_exposure_time,
-            response_function,
-            # (params[3], params[4])
-            (0, 0),
-            centre_radius
-        ) .+ predicted_obs_bg
+        prior_pairs = priors.cube_to_name(params)::Dict{<:AbstractString,<:Prior}
 
+        predicted = Model_NFW_GNFW(;
+            prior_pairs...,
+            redshift=redshift,
+            shape=shape,
+            pixel_edge_angle=pixel_edge_angle,
+            emission_model=emission_model,
+            obs_exposure_time=obs_exposure_time,
+            response_function=response_function,
+            centre_radius=centre_radius
+        )
+
+        predicted .+= predicted_obs_bg
 
         @mpirankeddebug "Predicted results generated"
-
-        # @mpirankedinfo "Taking heap snapshot"
-        # Profile.take_heap_snapshot()
-        # @mpirankedinfo "Snapshot made"
-        # [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
         return log_likelihood(
             observed,
@@ -148,7 +139,7 @@ Run Bayesian inference on a given set of `data`, considering only the selected e
 function sample(
     data::Dataset,
     energy_range::AbstractRange{<:Unitful.Energy},
-    priors::Dict{<:AbstractString,<:Prior},
+    priors,
     nHcol::SurfaceDensity,
     redshift::Real;
     bin_size::Real=10,
@@ -179,36 +170,36 @@ function sample(
     em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
 
     model = Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0510, # Using universal values from Arnaud 2010
-        5.4905,
-        0.3081,
-        1.177,
-        redshift,
-        [64, 64],
-        0.492u"arcsecondᵃ",
-        emission_model,
-        100e3u"s",
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius
+        MT_200=5e14u"Msun",
+        fg_200=0.13,
+        α=1.0510, # Using universal values from Arnaud 2010
+        β=5.4905,
+        γ=0.3081,
+        c_500_GNFW=1.177,
+        z=redshift,
+        shape=[64, 64],
+        pixel_edge_angle=0.492u"arcsecondᵃ",
+        emission_model=emission_model,
+        exposure_time=100e3u"s",
+        response_function=response_function,
+        centre_coordinates=(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        centre_radius=centre_radius
     )
-    model_direct = Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0510, # Using universal values from Arnaud 2010
-        5.4905,
-        0.3081,
-        1.177,
-        redshift,
-        [64, 64],
-        0.492u"arcsecondᵃ",
-        em_direct,
-        100e3u"s",
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius
+    model_direct = model = Model_NFW_GNFW(
+        MT_200=5e14u"Msun",
+        fg_200=0.13,
+        α=1.0510, # Using universal values from Arnaud 2010
+        β=5.4905,
+        γ=0.3081,
+        c_500_GNFW=1.177,
+        z=redshift,
+        shape=[64, 64],
+        pixel_edge_angle=0.492u"arcsecondᵃ",
+        emission_model=em_direct,
+        exposure_time=100e3u"s",
+        response_function=response_function,
+        centre_coordinates=(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        centre_radius=centre_radius
     )
     replace!(model, NaN => 0)
     replace!(model_direct, NaN => 0)

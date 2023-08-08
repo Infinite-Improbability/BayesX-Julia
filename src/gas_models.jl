@@ -8,6 +8,7 @@ using OptimizationOptimJL
 include("params.jl")
 include("emission.jl")
 
+export Model_NFW_GNFW_Priors
 
 """
     p_crit(z)
@@ -235,34 +236,33 @@ function Model_NFW_GNFW(;
 end
 function Model_NFW_GNFW(;
     MT_200,
-    fg_200,
-    α,
-    β,
-    γ,
-    c_500_GNFW,
-    z,
-    shape::Vector{<:Integer},
-    pixel_edge_angle::DimensionfulAngles.Angle{<:Real},
-    emission_model,
-    exposure_time::Unitful.Time{<:Real},
-    response_function::Matrix,
     centre_coordinates,
-    centre_radius
+    kwargs...
 )::Array{Float64}
     Model_NFW_GNFW(
-        MT_200=MT_200 * 1u"M_sun", # values passed in as priors may lack units
-        fg_200=fg_200,
-        α=α,
-        β=β,
-        γ=γ,
-        c_500_GNFW=c_500_GNFW,
-        z=z,
-        z=shape,
-        pixel_edge_angle=pixel_edge_angle,
-        emission_model=emission_model,
-        exposure_time=exposure_time,
-        response_function=response_function,
+        MT_200=MT_200 * 1u"Msun", # values passed in as priors may lack units
         centre_coordinates=centre_coordinates .* 1u"arcsecondᵃ",
-        centre_radius=centre_radius
+        kwargs...
     )
+end
+function Model_NFW_GNFW(;
+    centre_x,
+    centre_y,
+    kwargs...
+)::Array{Float64}
+    Model_NFW_GNFW(
+        centre_coordinates=(centre_x, centre_y),
+        kwargs...
+    )
+end
+
+struct Model_NFW_GNFW_Priors{M<:Prior,F<:Prior,A<:Prior,B<:Prior,G<:Prior,C<:Prior,X<:Prior,Y<:Prior} <: ModelPriors
+    MT_200::M
+    fg_200::F
+    α::A
+    β::B
+    γ::G
+    c_500_GNFW::C
+    x::X
+    y::Y
 end
