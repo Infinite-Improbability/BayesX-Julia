@@ -2,8 +2,8 @@ using ArgCheck
 using Unitful, UnitfulAstro, DimensionfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
-using Optimization
-using OptimizationOptimJL
+# using Optimization
+# using OptimizationOptimJL
 
 include("params.jl")
 include("emission.jl")

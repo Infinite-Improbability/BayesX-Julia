@@ -3,7 +3,6 @@ using Interpolations
 using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
-using Surrogates
 
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
@@ -252,51 +251,4 @@ function prepare_model_mekal(
     end
 
     return volume_emissivity
-end
-
-
-function prepare_surrogate_mekal(
-    nHcol::SurfaceDensity,
-    energy_bins::AbstractRange{<:Unitful.Energy},
-    z::Real
-)
-    @mpidebug "Preparing MEKAL surrogate model"
-
-    if MPI.Comm_rank(comm) == 0
-        @mpidebug "Checking for model data"
-        SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=false, progress=true)
-        SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
-    end
-    MPI.Barrier(comm)
-
-    # Generate transmission fractions
-    @mpidebug "Invoking absorption model"
-    absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
-    absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
-
-    @assert all(isfinite, absorption)
-
-    # We approximate the absorping hydrogen as at rest w.r.t. observer
-    # But the cluster isn't
-    # This means we need to apply redshift to the observed energy bins and
-    # time dilation to the count rate
-    energy_bins = energy_bins * (1 + z) # redshift
-    absorption ./= (1 + z) # time dilation
-
-    function volume_emissivity(x)
-        let
-            energy_bins = energy_bins
-            absorption = absorption
-            return ustrip.(u"cm^-3/s", absorption .* call_mekal(energy_bins, x[1], x[2]))
-        end
-    end
-
-    lb = [1e-30, 1e-30]
-    ub = [9.0, 1.0]
-    xys = Surrogates.sample(120, lb, ub, SobolSample())
-    zs = volume_emissivity.(xys)
-    surr = SecondOrderPolynomialSurrogate(xys, zs, lb, ub)
-    surrogate_optimize(volume_emissivity, SMB(), lb, ub, surr, SobolSample(), maxiters=20)
-
-    return surr
 end

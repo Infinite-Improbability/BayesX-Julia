@@ -4,14 +4,9 @@ using BenchmarkTools
 using DotEnv
 using Unitful, DimensionfulAngles
 using PoissonRandom
-# using FortranFiles
 
 # We use include instead of importing the module for easy access to internal methods
 include("../src/run.jl")
-
-# f = FortranFile("../BayesX/log.dat", "r")
-# fm = reshape(read(f, (Float64, 64 * 64 * 32)), (32, 64, 64))
-
 DotEnv.config()
 
 data = PlaintextData(
@@ -45,10 +40,14 @@ em = prepare_model_mekal(
     temperatures=(1e-30:0.05:9.0)u"keV",
     hydrogen_densities=(1e-30:0.005:1.0)u"cm^-3"
 )
-model = Model_NFW_GNFW(
+cluster = Model_NFW_GNFW(
     mass,
     fg,
     gnfw...,
+    redshift,
+)
+obs = make_observation(
+    cluster...,
     redshift,
     shape,
     pixel_size,
@@ -58,72 +57,26 @@ model = Model_NFW_GNFW(
     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
     0
 )
-replace!(model, NaN => 0.0)
 
-@assert all(isfinite, model)
+replace!(obs, NaN => 0.0)
 
-noisy = pois_rand.(model)
+@assert all(isfinite, obs)
 
-# @profview Model_NFW_GNFW(
-#     mass,
-#     fg,
-#     gnfw...,
-#     redshift,
-#     shape,
-#     pixel_size,
-#     em,
-#     exposure_time,128
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#     0
-# )
-# @profview_allocs Model_NFW_GNFW(
-#     mass,
-#     fg,
-#     gnfw...,
-#     redshift,
-#     shape,
-#     pixel_size,
-#     em,
-#     exposure_time,
-#     response,
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#     0
-# )
-# display(
-#     @benchmark Model_NFW_GNFW(
-#         mass,
-#         fg,
-#         gnfw...,
-#         redshift,
-#         shape,
-#         pixel_size,
-#         em,
-#         exposure_time,
-#         response,
-#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#         0
-#     )
-# )
+noisy = pois_rand.(obs)
+
+# @profview
+# @profview_allocs
+# display
 
 bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 avg_eff_area = 250u"cm^2";
-n_channels = size(model, 1);
+n_channels = size(obs, 1);
 bg_count = bg_rate * exposure_time * avg_eff_area *
            pixel_size^2 / n_channels;
-bg = fill(upreferred(bg_count), size(model));
+bg = fill(upreferred(bg_count), size(obs));
 
-# display(
-#     heatmap(
-#         dropdims(sum(model + bg, dims=1), dims=1),
-#         title="Model"
-#     )
-# )
-# display(
-#     heatmap(
-#         dropdims(sum(noisy + bg, dims=1), dims=1),
-#         title="Noisy"
-#     )
-# )
+# display(heatmap(dropdims(sum(model + bg, dims=1), dims=1),title="Model"))
+# display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1),title="Noisy"))
 
 s = sample(
     round.(Int, noisy + bg),

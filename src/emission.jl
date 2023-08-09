@@ -203,14 +203,13 @@ function make_observation(
     density::Function,
     z,
     shape,
-    pixel_edge_angle::DimensionfulAngles.Angle{T},
+    pixel_edge_angle::A,
     emission_model,
-    exposure_time::Unitful.Time{T},
+    exposure_time::T,
     response_function,
     centre,
     centre_radius
-)::Array{Float64,3}
-    centre = centre .* 1u"arcsecondᵃ"
+)::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
     radii_x, radii_y = shape ./ 2
