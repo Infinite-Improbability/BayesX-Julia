@@ -37,13 +37,6 @@ function Model_NFW_GNFW(
     γ::T,
     c_500_GNFW::T,
     z::T,
-    shape::Vector{N},
-    pixel_edge_angle::DimensionfulAngles.Angle{T},
-    emission_model,
-    exposure_time::Unitful.Time{T},
-    response_function::Matrix,
-    centre,
-    center_radius
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     # Move some parameters into a struct?
 
@@ -56,7 +49,6 @@ function Model_NFW_GNFW(
     @argcheck (β - c_500_GNFW) > 0
 
     MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
-    centre = centre .* 1u"arcsecondᵃ"
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -177,64 +169,7 @@ function Model_NFW_GNFW(
         end
     end
 
-    # Calculate source brightness at various points
-    # TODO: Moving center
-    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
-    centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
-    radii_x, radii_y = shape ./ 2
-
-    function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
-        x = (i - radii_x) * pixel_edge_length - centre_length[1]
-        y = (j - radii_y) * pixel_edge_length - centre_length[2]
-        abs(hypot(x, y))
-    end
-
-    # min_radius = r_500 * 0.1
-    min_radius = center_radius * pixel_edge_length
-
-    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
-    if shortest_radius <= min_radius
-        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
-    end
-
-    @mpirankeddebug "Creating brightness interpolation"
-    brightness_radii = min_radius:pixel_edge_length:(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
-    brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-        brightness_radii,
-        gas_temperature,
-        gas_density,
-        z,
-        Quantity(Inf, u"Mpc"),
-        Ref(emission_model),
-        pixel_edge_angle
-    )]
-    brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
-
-    @mpirankeddebug "Calculating counts"
-    resp = ustrip.(u"cm^2", response_function)
-    exp_time = ustrip(u"s", exposure_time)
-    counts = Array{Float64}(undef, size(resp, 1), shape...)
-
-    for j in 1:shape[2]
-        for i in 1:shape[1]
-            radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
-            if radius < min_radius
-                counts[:, i, j] .= NaN
-            else
-                # if hydrogen_number_density(gas_density(radius)) > 1u"cm^-3"
-                #     @error "Extreme gas density at" radius min_radius r_500 pixel_edge_angle pixel_edge_length
-                # end
-                brightness = brightness_interpolation(radius)
-                counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
-            end
-        end
-    end
-
-    # replace!(i -> i < 0 ? 0 : i, counts)
-
-    # @assert all(i -> i >= 0, counts)
-
-    return counts
+    return gas_temperature, gas_density
 end
 function Model_NFW_GNFW(
     MT_200::Unitful.Mass,
@@ -250,7 +185,7 @@ function Model_NFW_GNFW(
     exposure_time::Unitful.Time,
     response_function::Matrix,
     centre,
-    center_radius
+    centre_radius
 )::Array{Float64} where {N<:Integer,T<:AbstractFloat}
     Model_NFW_GNFW(
         ustrip(u"Msun", MT_200),
@@ -266,6 +201,6 @@ function Model_NFW_GNFW(
         exposure_time,
         response_function,
         ustrip.(u"arcsecondᵃ", centre),
-        center_radius
+        centre_radius
     )
 end

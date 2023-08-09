@@ -39,7 +39,7 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
-    center_radius
+    centre_radius
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -81,7 +81,7 @@ function sample(
             response_function,
             # (params[3], params[4])
             (0, 0),
-            center_radius
+            centre_radius
         ) .+ predicted_obs_bg
 
 
@@ -148,7 +148,7 @@ function sample(
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
-    center_radius=4
+    centre_radius=4
 ) where {T<:Unitful.Energy,U<:Prior}
     @mpiinfo "Loading data"
 
@@ -187,7 +187,7 @@ function sample(
         100e3u"s",
         response_function,
         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        center_radius
+        centre_radius
     )
     model_direct = Model_NFW_GNFW(
         5e14u"Msun",
@@ -203,7 +203,7 @@ function sample(
         100e3u"s",
         response_function,
         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        center_radius
+        centre_radius
     )
     replace!(model, NaN => 0)
     replace!(model_direct, NaN => 0)
@@ -221,6 +221,6 @@ function sample(
         redshift;
         emission_model=emission_model,
         pixel_edge_angle=pixel_edge_angle,
-        center_radius=center_radius
+        centre_radius=centre_radius
     )
 end

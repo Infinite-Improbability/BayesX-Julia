@@ -140,7 +140,7 @@ s = sample(
     pixel_edge_angle=pixel_size,
     background_rate=bg_rate,
     average_effective_area=avg_eff_area,
-    center_radius=12
+    centre_radius=12
 )
 
 posterior = s[2]["posterior"]

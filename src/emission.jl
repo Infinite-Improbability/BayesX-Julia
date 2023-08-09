@@ -143,6 +143,7 @@ function smoothed_surface_brightness(
     return 2 * sol.u * 1u"s^-1" / (4π * angular_diameter_dist(cosmo, z)^2 * (1 + z)^2)
 end
 
+
 """
     apply_response_function(counts_per_bin::Vector, response::Matrix, exposure_time::Unitful.Time)::Vector{Float64}
 
@@ -178,9 +179,80 @@ function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T},
     return mult
 end
 
+
 function hydrogen_number_density(gas_density)
     # Abundances of elements, relative to nH. Taken from Anders & Grevesse (1989) https://doi.org/10.1016/0016-7037(89)90286-X
     abundance = 10 .^ ([12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25] .- 12)
     nucleon_total = [1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0]
     return gas_density / (m_p * dot(abundance, nucleon_total))
+end
+
+"""
+    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius)
+
+Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
+"""
+function make_observation(
+    temperature::Function,
+    density::Function,
+    z,
+    shape,
+    pixel_edge_angle::DimensionfulAngles.Angle{T},
+    emission_model,
+    exposure_time::Unitful.Time{T},
+    response_function,
+    centre,
+    centre_radius
+)::Array{Float64,3}
+    centre = centre .* 1u"arcsecondᵃ"
+    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
+    radii_x, radii_y = shape ./ 2
+
+    function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
+        x = (i - radii_x) * pixel_edge_length - centre_length[1]
+        y = (j - radii_y) * pixel_edge_length - centre_length[2]
+        abs(hypot(x, y))
+    end
+
+    # Setting the min radius proportional to R500 throws off the results in favour of large mass
+    # by varying the number of pixels contributing to the likelihood.
+    min_radius = centre_radius * pixel_edge_length
+
+    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
+    if shortest_radius <= min_radius
+        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
+    end
+
+    @mpirankeddebug "Creating brightness interpolation"
+    brightness_radii = min_radius:pixel_edge_length:(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
+    brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
+        brightness_radii,
+        temperature,
+        density,
+        z,
+        Quantity(Inf, u"Mpc"),
+        Ref(emission_model),
+        pixel_edge_angle
+    )]
+    brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
+
+    @mpirankeddebug "Calculating counts"
+    resp = ustrip.(u"cm^2", response_function)
+    exp_time = ustrip(u"s", exposure_time)
+    counts = Array{Float64}(undef, size(resp, 1), shape...)
+
+    for j in 1:shape[2]
+        for i in 1:shape[1]
+            radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
+            if radius < min_radius
+                counts[:, i, j] .= NaN
+            else
+                brightness = brightness_interpolation(radius)
+                counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
+            end
+        end
+    end
+
+    return counts
 end
