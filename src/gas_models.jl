@@ -18,37 +18,31 @@ Calculate the critical density at some redshift `z`.
 
 
 """
-    Model_NFW_GNFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function)
+    Model_NFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z)
 
-Calculate predicted counts using a physical model based NFW-GNFW profiles as described in Olamaie 2012.
+Create functions for gas temperature and electron density as a function of radius.
 
-The first six parameters are model priors. 
-`z` is redshift and `shape` describes the size of the source number as a number of spatial bins in each dimension.
-The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
-This area is assumed to be square with the edge angle giving the side length.
-The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
-The response function includes both the RMF and ARF, as described in `apply_response_function`.
+Uses the model from Olamaie 2012 (doi:10.1111/j.1365-2966.2012.20980.x),
+which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 """
 function Model_NFW_GNFW(
-    MT_200::T,
-    fg_200::T,
-    α::T,
-    β::T,
-    γ::T,
-    c_500_GNFW::T,
-    z::T,
-)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
+    MT_200,
+    fg_200,
+    α,
+    β,
+    γ,
+    c_500_GNFW,
+    z,
+)::NTuple{2,Function}
     # Move some parameters into a struct?
 
     @mpirankeddebug "Model" MT_200 fg_200
 
-    @argcheck MT_200 > 0
+    @argcheck MT_200 > 0u"Msun"
     @argcheck 1 > fg_200 > 0
     @argcheck α > 0
     @argcheck c_500_GNFW > 0
     @argcheck (β - c_500_GNFW) > 0
-
-    MT_200 *= 1u"Msun" # todo: unitful as primary method, with wrapper to add units?
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -78,7 +72,6 @@ function Model_NFW_GNFW(
     #     x = r[1] * 1u"Mpc"
     #     return abs(ustrip(u"Msun", 4π * ρ_s * r_s^3 * (log(1 + x / r_s) - (1 + r_s / x)^(-1)) - 4π / 3 * x^3 * p[1] * ρ_crit_z))
     # end
-
     # opf = OptimizationFunction(m, AutoForwardDiff())
     # op = OptimizationProblem(opf, [ustrip(u"Mpc", r_200 / 1.5)], [500], lb=[0], ub=[ustrip(u"Mpc", r_200)])
     # r_500 = solve(op, GradientDescent()).u[1] * 1u"Mpc"
@@ -170,37 +163,4 @@ function Model_NFW_GNFW(
     end
 
     return gas_temperature, gas_density
-end
-function Model_NFW_GNFW(
-    MT_200::Unitful.Mass,
-    fg_200,
-    α,
-    β,
-    γ,
-    c_500_GNFW,
-    z,
-    shape::Vector{N},
-    pixel_edge_angle::DimensionfulAngles.Angle{T},
-    emission_model,
-    exposure_time::Unitful.Time,
-    response_function::Matrix,
-    centre,
-    centre_radius
-)::Array{Float64} where {N<:Integer,T<:AbstractFloat}
-    Model_NFW_GNFW(
-        ustrip(u"Msun", MT_200),
-        fg_200,
-        α,
-        β,
-        γ,
-        c_500_GNFW,
-        z,
-        shape,
-        pixel_edge_angle,
-        emission_model,
-        exposure_time,
-        response_function,
-        ustrip.(u"arcsecondᵃ", centre),
-        centre_radius
-    )
 end

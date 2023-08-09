@@ -191,6 +191,12 @@ end
     make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius)
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
+
+`shape` describes the size of the source number as a number of spatial bins in each dimension.
+The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
+This area is assumed to be square with the edge angle giving the side length.
+The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
+The response function includes both the RMF and ARF, as described in `apply_response_function`.
 """
 function make_observation(
     temperature::Function,

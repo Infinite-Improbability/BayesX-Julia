@@ -66,13 +66,19 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        predicted = Model_NFW_GNFW(
+        gas_temperature, gas_density = Model_NFW_GNFW(
             params[1],
             params[2],
             1.0510, # Using universal values from Arnaud 2010
             5.4905,
             0.3081,
             1.177,
+            redshift
+        )
+
+        predicted = make_observation(
+            gas_temperature,
+            gas_density,
             redshift,
             shape,
             pixel_edge_angle,
@@ -86,11 +92,6 @@ function sample(
 
 
         @mpirankeddebug "Predicted results generated"
-
-        # @mpirankedinfo "Taking heap snapshot"
-        # Profile.take_heap_snapshot()
-        # @mpirankedinfo "Snapshot made"
-        # [display(heatmap(dropdims(sum(p, dims=1), dims=1))) for p in predicted]
 
         return log_likelihood(
             observed,
