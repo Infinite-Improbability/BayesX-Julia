@@ -207,7 +207,7 @@ function make_observation(
     emission_model,
     exposure_time::T,
     response_function,
-    centre,
+    centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
@@ -260,4 +260,33 @@ function make_observation(
     end
 
     return counts
+end
+"""
+Centre position is given in arcseconds.
+"""
+function make_observation(
+    temperature::Function,
+    density::Function,
+    z,
+    shape,
+    pixel_edge_angle::A,
+    emission_model,
+    exposure_time::T,
+    response_function,
+    centre::NTuple{2,Real},
+    centre_radius
+)::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
+    @mpidebug "Called make_observation wrapper"
+    make_observation(
+        temperature,
+        density,
+        z,
+        shape,
+        pixel_edge_angle,
+        emission_model,
+        exposure_time,
+        response_function,
+        centre .* 1u"arcsecondᵃ",
+        centre_radius
+    )
 end

@@ -26,7 +26,7 @@ Uses the model from Olamaie 2012 (doi:10.1111/j.1365-2966.2012.20980.x),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 """
 function Model_NFW_GNFW(
-    MT_200,
+    MT_200::Unitful.Mass,
     fg_200,
     α,
     β,
@@ -163,4 +163,26 @@ function Model_NFW_GNFW(
     end
 
     return gas_temperature, gas_density
+end
+"""
+Mass is in solar masses.
+"""
+function Model_NFW_GNFW(
+    MT_200::Real,
+    fg_200,
+    α,
+    β,
+    γ,
+    c_500_GNFW,
+    z,
+)::NTuple{2,Function}
+    Model_NFW_GNFW(
+        MT_200 * 1u"Msun",
+        fg_200,
+        α,
+        β,
+        γ,
+        c_500_GNFW,
+        z
+    )
 end

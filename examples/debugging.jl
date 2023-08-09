@@ -5,6 +5,8 @@ using DotEnv
 using Unitful, DimensionfulAngles
 using PoissonRandom
 
+ENV["JULIA_DEBUG"] = "Main"
+
 # We use include instead of importing the module for easy access to internal methods
 include("../src/run.jl")
 DotEnv.config()
@@ -46,6 +48,7 @@ cluster = Model_NFW_GNFW(
     gnfw...,
     redshift,
 )
+@info "Profiles generated"
 obs = make_observation(
     cluster...,
     redshift,
@@ -59,15 +62,42 @@ obs = make_observation(
 )
 
 replace!(obs, NaN => 0.0)
-
 @assert all(isfinite, obs)
+@info "Observation generated"
+ENV["JULIA_DEBUG"] = ""
 
-noisy = pois_rand.(obs)
+@info "Running tests"
+
+test_func() = make_observation(
+    Model_NFW_GNFW(
+        mass,
+        fg,
+        gnfw...,
+        redshift,
+    )...,
+    redshift,
+    shape,
+    pixel_size,
+    em,
+    exposure_time,
+    response,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    0
+)
+
+display(
+    @benchmark test_func()
+)
+
+@profview test_func()
 
 # @profview
 # @profview_allocs
 # display
 
+@info "Preparing data for sampling"
+
+noisy = pois_rand.(obs)
 bg_rate = 8.4e-6u"cm^-2/arcminuteᵃ^2/s";
 avg_eff_area = 250u"cm^2";
 n_channels = size(obs, 1);
@@ -78,23 +108,23 @@ bg = fill(upreferred(bg_count), size(obs));
 # display(heatmap(dropdims(sum(model + bg, dims=1), dims=1),title="Model"))
 # display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1),title="Noisy"))
 
-s = sample(
-    round.(Int, noisy + bg),
-    round.(Int, bg),
-    response,
-    make_cube_transform(
-        UniformPrior(1e14, 1e15),
-        UniformPrior(0.08, 0.2)
-    ),
-    exposure_time,
-    exposure_time,
-    redshift,
-    emission_model=em,
-    pixel_edge_angle=pixel_size,
-    background_rate=bg_rate,
-    average_effective_area=avg_eff_area,
-    centre_radius=12
-)
+# s = sample(
+#     round.(Int, noisy + bg),
+#     round.(Int, bg),
+#     response,
+#     make_cube_transform(
+#         UniformPrior(1e14, 1e15),
+#         UniformPrior(0.08, 0.2)
+#     ),
+#     exposure_time,
+#     exposure_time,
+#     redshift,
+#     emission_model=em,
+#     pixel_edge_angle=pixel_size,
+#     background_rate=bg_rate,
+#     average_effective_area=avg_eff_area,
+#     centre_radius=12
+# )
 
-posterior = s[2]["posterior"]
-@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
+# posterior = s[2]["posterior"]
+# @assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
