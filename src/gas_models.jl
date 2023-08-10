@@ -188,7 +188,10 @@ function Model_NFW_GNFW(
 end
 
 
-function Model_Vikhlinin2006()::NTuple{2,Function}
+function Model_Vikhlinin2006(
+    n0, n02, rc, rc2, α, β, β2, ϵ, rs, T0, Tmin, rcool, acool, rt, a, b, c;
+    γ=3
+)::NTuple{2,Function}
 
     """
         np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
@@ -230,8 +233,8 @@ function Model_Vikhlinin2006()::NTuple{2,Function}
             β2 = β2
             ϵ = ϵ
             rs = rs
-            ne_np2(r) = ne_np(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs)
-            gas_density(r, ne_np2(r))
+            γ = γ
+            gas_density(r, ne_np(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ))
         end
     end
 
