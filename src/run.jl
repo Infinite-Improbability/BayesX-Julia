@@ -108,7 +108,8 @@ function sample(
     # ultranest setup
     @mpidebug "Creating sampler"
     # paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
-    paramnames = ["MT_200", "fg_200"]
+    # paramnames = ["MT_200", "fg_200"]
+    paramnames = ["x", "y", "n0", "n02", "rc", "rc2", "α", "β", "β2", "ϵ", "rs", "T0", "Tmin/T0", "rcool", "acool", "rt", "a", "b", "c"]
     sampler = ultranest.ReactiveNestedSampler(
         paramnames,
         likelihood_wrapper,
