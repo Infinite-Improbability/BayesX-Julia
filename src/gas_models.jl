@@ -20,7 +20,7 @@ Calculate the critical density at some redshift `z`.
 """
     Model_NFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z)
 
-Create functions for gas temperature and electron density as a function of radius.
+Create functions for gas temperature and gas mass density as a function of radius.
 
 Uses the model from Olamaie 2012 (doi:10.1111/j.1365-2966.2012.20980.x),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
@@ -185,4 +185,102 @@ function Model_NFW_GNFW(
         c_500_GNFW,
         z
     )
+end
+
+
+function Model_Vikhlinin2006()::NTuple{2,Function}
+
+    """
+        np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
+
+    Equation 3 from Vikhlinin et al. 2006. Calculates emission measure.
+
+    They constain ϵ<5 to exclude unphysically sharp density breaks.
+    """
+    function np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
+        n0^2 *
+        (r / rc)^(-α) / (1 + r^2 / rc^2)^(3β - α / 2) *
+        1 / (1 + r^γ / rs^γ)^(ϵ / γ) +
+        n02^2 / (1 + r^2 / rc2^2)^(3β2)
+    end
+
+    """
+        gas_density(r, ne_np)
+
+    Calculates gas density from the emission measure.
+
+    Vikhlinin et al. 2006 says
+    > For the cosmic plasma with primordial He abundance and
+    > abundances of heavier elements Z = 0.2 Z⊙
+    > ``ρ_g = 1.624 m_p (n_p n_e)^{1/2}``
+    I'm trying 1.14mₚ instead to match our other models
+    and the metallicity assumptions in MEKAL.
+    """
+    function gas_density(r, ne_np::Function)
+        μ_e * sqrt(ne_np(r))
+    end
+    function gas_density(r)
+        let
+            n0 = n0
+            n02 = n02
+            rc = rc
+            rc2 = rc2
+            α = α
+            β = β
+            β2 = β2
+            ϵ = ϵ
+            rs = rs
+            ne_np2(r) = ne_np(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs)
+            gas_density(r, ne_np2(r))
+        end
+    end
+
+    """
+        t(r, rt, a, b, c)
+
+    Equation 4 from Vikhlinin et al. 2006. Models temperature profile outside
+    central cooling region.
+    """
+    function t(r, rt, a, b, c)
+        (r / rt)^(-a) / (1 + (r / rt)^b)^(c / b)
+    end
+
+    """
+        tcool(r, rcool, acool, Tmin, T0)
+
+    Equation 5 from Vikhlinin et al. 2006. Models temperature profile in 
+    cluster core.
+    """
+    function tcool(r, rcool, acool, Tmin, T0)
+        x = (r / rcool)^acool
+        (x + Tmin / T0) / (x + 1)
+    end
+
+    """
+        T3D(r, T0, Tmin, rcool, acool, rt, a, b, c)
+
+    Equation 6 from Vikhlinin et al. 2006. Combines [`t`](@ref) and [`tcool`](@ref)
+    to model the temperature profile throughout the cluster.
+    """
+    function gas_temperature(r, T0, Tmin, rcool, acool, rt, a, b, c)
+        T0 *
+        tcool(r, rcool, acool, Tmin, T0) *
+        t(r, rt, a, b, c)
+    end
+    function gas_temperature(r)
+        let
+            T0 = T0
+            Tmin = Tmin
+            rcool = rcool
+            acool = acool
+            rt = rt
+            a = a
+            b = b
+            c = c
+            gas_temperature(r, T0, Tmin, rcool, acool, rt, a, b, c)
+        end
+    end
+
+    return gas_temperature, gas_density
+
 end
