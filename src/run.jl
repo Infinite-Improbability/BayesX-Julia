@@ -177,43 +177,43 @@ function sample(
     @mpiinfo "Testing emissions model"
     em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
 
-    model = Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0510, # Using universal values from Arnaud 2010
-        5.4905,
-        0.3081,
-        1.177,
-        redshift,
-        [64, 64],
-        0.492u"arcsecondᵃ",
-        emission_model,
-        100e3u"s",
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius
-    )
-    model_direct = Model_NFW_GNFW(
-        5e14u"Msun",
-        0.13,
-        1.0510, # Using universal values from Arnaud 2010
-        5.4905,
-        0.3081,
-        1.177,
-        redshift,
-        [64, 64],
-        0.492u"arcsecondᵃ",
-        em_direct,
-        100e3u"s",
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius
-    )
-    replace!(model, NaN => 0)
-    replace!(model_direct, NaN => 0)
+    # model = Model_NFW_GNFW(
+    #     5e14u"Msun",
+    #     0.13,
+    #     1.0510, # Using universal values from Arnaud 2010
+    #     5.4905,
+    #     0.3081,
+    #     1.177,
+    #     redshift,
+    #     [64, 64],
+    #     0.492u"arcsecondᵃ",
+    #     emission_model,
+    #     100e3u"s",
+    #     response_function,
+    #     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    #     centre_radius
+    # )
+    # model_direct = Model_NFW_GNFW(
+    #     5e14u"Msun",
+    #     0.13,
+    #     1.0510, # Using universal values from Arnaud 2010
+    #     5.4905,
+    #     0.3081,
+    #     1.177,
+    #     redshift,
+    #     [64, 64],
+    #     0.492u"arcsecondᵃ",
+    #     em_direct,
+    #     100e3u"s",
+    #     response_function,
+    #     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    #     centre_radius
+    # )
+    # replace!(model, NaN => 0)
+    # replace!(model_direct, NaN => 0)
 
-    err = sum(abs2, model - model_direct)
-    @mpiinfo "Error in emission model is" err
+    # err = sum(abs2, model - model_direct)
+    # @mpiinfo "Error in emission model is" err
 
     sample(
         obs,
