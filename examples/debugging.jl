@@ -40,13 +40,13 @@ em = prepare_model_mekal(
     redshift,
     use_interpolation=true,
     temperatures=(1e-30:0.05:9.0)u"keV",
-    hydrogen_densities=(1e-30:0.005:1.0)u"cm^-3"
+    hydrogen_densities=(1e-30:0.005:3.0)u"cm^-3"
 )
 # cluster = Model_NFW_GNFW(
 #     mass,
 #     fg,
 #     gnfw...,
-#     redshift,
+#     redshift,ulltext/55351.text.html
 # )
 cluster = Model_Vikhlinin2006(
     4.705e-3u"cm^-3",
@@ -78,7 +78,7 @@ obs = make_observation(
     exposure_time,
     response,
     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    0
+    1
 )
 
 replace!(obs, NaN => 0.0)
@@ -88,32 +88,26 @@ ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
-test_func() = make_observation(
-    Model_NFW_GNFW(
-        mass,
-        fg,
-        gnfw...,
-        redshift,
-    )...,
-    redshift,
-    shape,
-    pixel_size,
-    em,
-    exposure_time,
-    response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    0
-)
-
-display(
-    @benchmark test_func()
-)
-
-@profview test_func()
-
-# @profview
-# @profview_allocs
-# display
+# test_func() = make_observation(
+#     Model_NFW_GNFW(
+#         mass,
+#         fg,
+#         gnfw...,
+#         redshift,
+#     )...,
+#     redshift,
+#     shape,
+#     pixel_size,
+#     em,
+#     exposure_time,
+#     response,
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#     0
+# )
+# display(
+#     @benchmark test_func()
+# )
+# @profview test_func()
 
 @info "Preparing data for sampling"
 
@@ -125,26 +119,29 @@ bg_count = bg_rate * exposure_time * avg_eff_area *
            pixel_size^2 / n_channels;
 bg = fill(upreferred(bg_count), size(obs));
 
-# display(heatmap(dropdims(sum(model + bg, dims=1), dims=1),title="Model"))
-# display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1),title="Noisy"))
+display(heatmap(dropdims(sum(obs + bg, dims=1), dims=1), title="Model"))
+display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
 
-# s = sample(
-#     round.(Int, noisy + bg),
-#     round.(Int, bg),
-#     response,
-#     make_cube_transform(
-#         UniformPrior(1e14, 1e15),
-#         UniformPrior(0.08, 0.2)
-#     ),
-#     exposure_time,
-#     exposure_time,
-#     redshift,
-#     emission_model=em,
-#     pixel_edge_angle=pixel_size,
-#     background_rate=bg_rate,
-#     average_effective_area=avg_eff_area,
-#     centre_radius=12
-# )
+T(r) = uconvert(u"keV", cluster[1](r))
+n(r) = uconvert(u"cm^-3", cluster[2](r))
 
-# posterior = s[2]["posterior"]
-# @assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
+s = sample(
+    round.(Int, noisy + bg),
+    round.(Int, bg),
+    response,
+    make_cube_transform(
+        UniformPrior(1e14, 1e15),
+        UniformPrior(0.08, 0.2)
+    ),
+    exposure_time,
+    exposure_time,
+    redshift,
+    emission_model=em,
+    pixel_edge_angle=pixel_size,
+    background_rate=bg_rate,
+    average_effective_area=avg_eff_area,
+    centre_radius=1
+)
+
+posterior = s[2]["posterior"]
+@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
