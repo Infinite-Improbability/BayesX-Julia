@@ -315,6 +315,9 @@ function Model_Vikhlinin2006(
     return gas_temperature, gas_density
 
 end
+"""
+Densities are in cm^-3 and radii are in kpc. Temperature in keV.
+"""
 function Model_Vikhlinin2006(
     n0::Real,
     n02::Real,
