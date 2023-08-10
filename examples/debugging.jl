@@ -42,12 +42,32 @@ em = prepare_model_mekal(
     temperatures=(1e-30:0.05:9.0)u"keV",
     hydrogen_densities=(1e-30:0.005:1.0)u"cm^-3"
 )
-cluster = Model_NFW_GNFW(
-    mass,
-    fg,
-    gnfw...,
-    redshift,
+# cluster = Model_NFW_GNFW(
+#     mass,
+#     fg,
+#     gnfw...,
+#     redshift,
+# )
+cluster = Model_Vikhlinin2006(
+    4.705e-3u"cm^-3",
+    0.247e-1u"cm^-3",
+    94.6u"kpc",
+    75.83u"kpc",
+    0.916,
+    0.526,
+    3.607,
+    4.943,
+    1239.9u"kpc",
+    3.61u"keV",
+    0.27,
+    57u"kpc",
+    3.88,
+    1.42u"Mpc",
+    0.12,
+    5.00,
+    10.0
 )
+
 @info "Profiles generated"
 obs = make_observation(
     cluster...,

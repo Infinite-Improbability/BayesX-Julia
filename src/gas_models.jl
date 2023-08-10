@@ -189,7 +189,23 @@ end
 
 
 function Model_Vikhlinin2006(
-    n0, n02, rc, rc2, α, β, β2, ϵ, rs, T0, Tmin, rcool, acool, rt, a, b, c;
+    n0::NumberDensity,
+    n02::NumberDensity,
+    rc::Unitful.Length,
+    rc2::Unitful.Length,
+    α,
+    β,
+    β2,
+    ϵ,
+    rs::Unitful.Length,
+    T0::Unitful.Energy,
+    TminT0,
+    rcool::Unitful.Length,
+    acool,
+    rt::Unitful.Length,
+    a,
+    b,
+    c;
     γ=3
 )::NTuple{2,Function}
 
@@ -200,7 +216,19 @@ function Model_Vikhlinin2006(
 
     They constain ϵ<5 to exclude unphysically sharp density breaks.
     """
-    function np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
+    function np_ne(
+        r,
+        n0::NumberDensity,
+        n02::NumberDensity,
+        rc,
+        rc2,
+        α,
+        β,
+        β2,
+        ϵ,
+        rs;
+        γ=3
+    )
         n0^2 *
         (r / rc)^(-α) / (1 + r^2 / rc^2)^(3β - α / 2) *
         1 / (1 + r^γ / rs^γ)^(ϵ / γ) +
@@ -219,10 +247,7 @@ function Model_Vikhlinin2006(
     I'm trying 1.14mₚ instead to match our other models
     and the metallicity assumptions in MEKAL.
     """
-    function gas_density(r, ne_np::Function)
-        μ_e * sqrt(ne_np(r))
-    end
-    function gas_density(r)
+    function gas_density(r::Unitful.Length)::Unitful.Density
         let
             n0 = n0
             n02 = n02
@@ -234,7 +259,8 @@ function Model_Vikhlinin2006(
             ϵ = ϵ
             rs = rs
             γ = γ
-            gas_density(r, ne_np(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ))
+            np_ne = np_ne
+            μ_e * sqrt(np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ))
         end
     end
 
@@ -253,10 +279,12 @@ function Model_Vikhlinin2006(
 
     Equation 5 from Vikhlinin et al. 2006. Models temperature profile in 
     cluster core.
+
+    TminT0 = Tmin/T0
     """
-    function tcool(r, rcool, acool, Tmin, T0)
+    function tcool(r, rcool, acool, TminT0)
         x = (r / rcool)^acool
-        (x + Tmin / T0) / (x + 1)
+        (x + TminT0) / (x + 1)
     end
 
     """
@@ -265,25 +293,66 @@ function Model_Vikhlinin2006(
     Equation 6 from Vikhlinin et al. 2006. Combines [`t`](@ref) and [`tcool`](@ref)
     to model the temperature profile throughout the cluster.
     """
-    function gas_temperature(r, T0, Tmin, rcool, acool, rt, a, b, c)
+    function gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)::Unitful.Energy
         T0 *
-        tcool(r, rcool, acool, Tmin, T0) *
+        tcool(r, rcool, acool, TminT0) *
         t(r, rt, a, b, c)
     end
-    function gas_temperature(r)
+    function gas_temperature(r::Unitful.Length)::Unitful.Energy
         let
             T0 = T0
-            Tmin = Tmin
+            TminT0 = TminT0
             rcool = rcool
             acool = acool
             rt = rt
             a = a
             b = b
             c = c
-            gas_temperature(r, T0, Tmin, rcool, acool, rt, a, b, c)
+            gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)
         end
     end
 
     return gas_temperature, gas_density
 
+end
+function Model_Vikhlinin2006(
+    n0::Real,
+    n02::Real,
+    rc::Real,
+    rc2::Real,
+    α,
+    β,
+    β2,
+    ϵ,
+    rs::Real,
+    T0::Real,
+    TminT0,
+    rcool::Real,
+    acool,
+    rt::Real,
+    a,
+    b,
+    c;
+    γ=3
+)::NTuple{2,Function}
+    Model_Vikhlinin2006(
+        n0 * 1u"cm^-3",
+        n02 * 1u"cm^-3",
+        rc * 1u"kpc",
+        rc2 * 1u"kpc",
+        α,
+        β,
+        β2,
+        ϵ,
+        rs * 1u"kpc",
+        T0 * 1u"keV",
+        TminT0,
+        rcool * 1u"kpc",
+        acool,
+        rt * 1u"kpc",
+        a,
+        b,
+        c;
+        γ=γ
+    )
 end
