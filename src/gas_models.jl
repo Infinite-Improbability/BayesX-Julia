@@ -209,6 +209,8 @@ function Model_Vikhlinin2006(
     γ=3
 )::NTuple{2,Function}
 
+    @mpidebug "Model Vikhlinin2006 called with" n0 n02 rc rc2 α β β2 ϵ rs T0 TminT0 rcool acool rt a b c γ
+
     """
         np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
 
@@ -311,6 +313,9 @@ function Model_Vikhlinin2006(
             gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)
         end
     end
+
+    @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ])"
+    @assert isfinite(gas_temperature(1u"kpc")) "Gas temperature not finite: $([T0, TminT0, rcool, acool, rt, a, b, c])"
 
     return gas_temperature, gas_density
 

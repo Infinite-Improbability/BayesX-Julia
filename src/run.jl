@@ -171,12 +171,13 @@ function sample(
 
     @mpidebug "Calling load_response"
     response_function = load_response(data, energy_range)
+    # @assert size(response_function, 1) == length(energy_range) - 1
 
     @mpiinfo "Generating emissions model"
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
 
-    @mpiinfo "Testing emissions model"
-    em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
+    # @mpiinfo "Testing emissions model"
+    # em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
 
     # model = Model_NFW_GNFW(
     #     5e14u"Msun",
