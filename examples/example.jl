@@ -18,7 +18,7 @@ data = FITSData(
 priors = [
     UniformPrior(-10, 10), # x
     UniformPrior(-10, 10), # y
-    UniformPrior(0.1, 40 / 0),
+    UniformPrior(0.1, 40.0),
     UniformPrior(0.01, 6.0),
     UniformPrior(1.0, 600.0),
     UniformPrior(1.0, 100.0),
