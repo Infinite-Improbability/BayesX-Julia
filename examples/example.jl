@@ -36,4 +36,4 @@ priors = [
     UniformPrior(0.1, 6.0),
     UniformPrior(0.1, 12.0),
 ]
-sample(data, (0.7:0.01:2.0)u"keV", priors, 3.89e20u"cm^-2", 0.160, bin_size=10, centre_radius=1)
+sample(data, (0.7:0.01:2.0)u"keV", priors, 3.89e20u"cm^-2", 0.160, bin_size=10, centre_radius=4)

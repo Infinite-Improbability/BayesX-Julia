@@ -20,6 +20,10 @@ function log_likelihood(
 )
     @mpirankeddebug "Calculating log likelihood"
 
+    if all(!isfinite, predicted)
+        return -1e20
+    end
+
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()

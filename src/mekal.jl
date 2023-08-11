@@ -241,7 +241,7 @@ function prepare_model_mekal(
                 if isa(e, BoundsError)
                     t = uconvert(u"keV", t)
                     nH = uconvert(u"cm^-3", nH)
-                    @mpirankedwarn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
+                    # @mpirankedwarn "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
                     return absorption .* call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
                 else
                     throw(e)
