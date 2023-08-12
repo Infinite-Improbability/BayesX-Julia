@@ -115,7 +115,8 @@ function sample(
         likelihood_wrapper,
         transform=transform,
         vectorized=false,
-        log_dir="logs"
+        log_dir="logs/run46",
+        resume="resume"
     )
 
     @mpidebug "Creating stepsampler"
