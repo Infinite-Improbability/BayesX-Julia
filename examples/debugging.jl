@@ -88,26 +88,39 @@ ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
-# test_func() = make_observation(
-#     Model_NFW_GNFW(
-#         mass,
-#         fg,
-#         gnfw...,
-#         redshift,
-#     )...,
-#     redshift,
-#     shape,
-#     pixel_size,
-#     em,
-#     exposure_time,
-#     response,
-#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-#     0
-# )
-# display(
-#     @benchmark test_func()
-# )
-# @profview test_func()
+test_func() = make_observation(
+    Model_Vikhlinin2006(
+        4.705e-3u"cm^-3",
+        0.247e-1u"cm^-3",
+        94.6u"kpc",
+        75.83u"kpc",
+        0.916,
+        0.526,
+        3.607,
+        4.943,
+        1239.9u"kpc",
+        3.61u"keV",
+        0.27,
+        57u"kpc",
+        3.88,
+        1.42u"Mpc",
+        0.12,
+        5.00,
+        10.0
+    )...,
+    redshift,
+    shape,
+    pixel_size,
+    em,
+    exposure_time,
+    response,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    0
+)
+display(
+    @benchmark test_func()
+)
+@profview test_func()
 
 @info "Preparing data for sampling"
 
@@ -125,23 +138,23 @@ display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
 T(r) = uconvert(u"keV", cluster[1](r))
 n(r) = uconvert(u"cm^-3", cluster[2](r))
 
-s = sample(
-    round.(Int, noisy + bg),
-    round.(Int, bg),
-    response,
-    make_cube_transform(
-        UniformPrior(1e14, 1e15),
-        UniformPrior(0.08, 0.2)
-    ),
-    exposure_time,
-    exposure_time,
-    redshift,
-    emission_model=em,
-    pixel_edge_angle=pixel_size,
-    background_rate=bg_rate,
-    average_effective_area=avg_eff_area,
-    centre_radius=1
-)
+# s = sample(
+#     round.(Int, noisy + bg),
+#     round.(Int, bg),
+#     response,
+#     make_cube_transform(
+#         UniformPrior(1e14, 1e15),
+#         UniformPrior(0.08, 0.2)
+#     ),
+#     exposure_time,
+#     exposure_time,
+#     redshift,
+#     emission_model=em,
+#     pixel_edge_angle=pixel_size,
+#     background_rate=bg_rate,
+#     average_effective_area=avg_eff_area,
+#     centre_radius=1
+# )
 
-posterior = s[2]["posterior"]
-@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
+# posterior = s[2]["posterior"]
+# @assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)

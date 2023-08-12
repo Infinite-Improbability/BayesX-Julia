@@ -209,6 +209,13 @@ function Model_Vikhlinin2006(
     γ=3
 )::NTuple{2,Function}
 
+    # Performance of exponents sucks if we don't strip units
+    n0 = ustrip(u"cm^-3", n0)
+    n02 = ustrip(u"cm^-3", n02)
+    rc = ustrip(u"kpc", rc)
+    rc2 = ustrip(u"kpc", rc2)
+    rs = ustrip(u"kpc", rs)
+
     @mpidebug "Model Vikhlinin2006 called with" n0 n02 rc rc2 α β β2 ϵ rs T0 TminT0 rcool acool rt a b c γ
 
     """
@@ -220,8 +227,8 @@ function Model_Vikhlinin2006(
     """
     function np_ne(
         r,
-        n0::NumberDensity,
-        n02::NumberDensity,
+        n0,
+        n02,
         rc,
         rc2,
         α,
@@ -250,21 +257,25 @@ function Model_Vikhlinin2006(
     and the metallicity assumptions in MEKAL.
     """
     function gas_density(r::Unitful.Length)::Unitful.Density
-        let
-            n0 = n0
-            n02 = n02
-            rc = rc
-            rc2 = rc2
-            α = α
-            β = β
-            β2 = β2
-            ϵ = ϵ
-            rs = rs
-            γ = γ
-            np_ne = np_ne
-            μ_e * sqrt(np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ))
-        end
+        n0 = n0
+        n02 = n02
+        rc = rc
+        rc2 = rc2
+        α = α
+        β = β
+        β2 = β2
+        ϵ = ϵ
+        rs = rs
+        γ = γ
+        μ_e * 1u"cm^-3" * sqrt(
+            np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
+        )
+
     end
+
+    T0 = ustrip(u"keV", T0)
+    rcool = ustrip(u"kpc", rcool)
+    rt = ustrip(u"kpc", rt)
 
     """
         t(r, rt, a, b, c)
@@ -295,7 +306,7 @@ function Model_Vikhlinin2006(
     Equation 6 from Vikhlinin et al. 2006. Combines [`t`](@ref) and [`tcool`](@ref)
     to model the temperature profile throughout the cluster.
     """
-    function gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)::Unitful.Energy
+    function gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)
         T0 *
         tcool(r, rcool, acool, TminT0) *
         t(r, rt, a, b, c)
@@ -310,7 +321,9 @@ function Model_Vikhlinin2006(
             a = a
             b = b
             c = c
-            gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)
+            1u"keV" * gas_temperature(
+                ustrip(u"kpc", r), T0, TminT0, rcool, acool, rt, a, b, c
+            )
         end
     end
 

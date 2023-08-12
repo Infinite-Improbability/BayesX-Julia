@@ -35,10 +35,19 @@ function surface_brightness(
         s, temp = params
         r = hypot(s, l)
 
+        # T = uconvert(u"keV", temp(r))
+        # ρ = uconvert(u"g/cm^3", density(r))
+        # nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
+        # # @assert isfinite(T) "T isn't finite T=$T, r=$r"
+        # @assert isfinite(ρ) "ρ isn't finite ρ=$ρ, r=$r"
+        # @assert isfinite(nH) "nH isn't finite nH=$nH, r=$r"
+
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
 
-        # @assert all(isfinite, f) "f with l=$l, s=$s (∴ r=$s, kbT=$kbT and ρ=$ρ) is $f"
+        all(isfinite, f) ? f : replace!(f, NaN * 1u"m^-3/s" => 0u"m^-3/s") # when T is very low we get NaN not 0
+        # @assert all(isfinite, f) f
+        # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
 
         return f
     end
@@ -232,27 +241,22 @@ function make_observation(
     @mpirankeddebug "Creating brightness interpolation"
     brightness_radii = min_radius:pixel_edge_length:(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
 
-    counts = Array{Float64}(undef, size(response_function, 1), shape...)
-    try
-        brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-            brightness_radii,
-            temperature,
-            density,
-            z,
-            Quantity(Inf, u"Mpc"),
-            Ref(emission_model),
-            pixel_edge_angle
-        )]
-    catch e
-        counts .= NaN
-        return counts
-    end
+    brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
+        brightness_radii,
+        temperature,
+        density,
+        z,
+        Quantity(Inf, u"Mpc"),
+        Ref(emission_model),
+        pixel_edge_angle
+    )]
 
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
     @mpirankeddebug "Calculating counts"
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
+    counts = Array{Float64}(undef, size(response_function, 1), shape...)
 
     for j in 1:shape[2]
         for i in 1:shape[1]
@@ -265,8 +269,6 @@ function make_observation(
             end
         end
     end
-
-
 
     return counts
 end
