@@ -161,8 +161,8 @@ function prepare_model_mekal(
     nHcol::SurfaceDensity,
     energy_bins::AbstractRange{T},
     z::Real;
-    temperatures::AbstractRange{U}=(0:0.05:6.0)u"keV",
-    hydrogen_densities::AbstractRange{V}=(0:0.002:80.0)u"cm^-3",
+    temperatures::AbstractRange{U}=(0:0.05:10.0)u"keV",
+    hydrogen_densities::AbstractRange{V}=(0:0.05:180.0)u"cm^-3",
     use_interpolation::Bool=true
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
