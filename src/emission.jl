@@ -32,7 +32,7 @@ function surface_brightness(
     @argcheck limit > 0u"Mpc"
 
     function integrand(l, params)
-        s, temp = params
+        s, temp, density = params
         r = hypot(s, l)
 
         # T = uconvert(u"keV", temp(r))
@@ -53,9 +53,20 @@ function surface_brightness(
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, [projected_radius, temperature])
-    sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
-    @assert all(isfinite, sol.u)
+    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, (projected_radius, temperature, density))
+    try
+        sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
+        @assert all(isfinite, sol.u)
+        return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+    catch e
+        if isa(e, DomainError)
+            @mpirankedwarn "Domain error in integral"
+            return model(temperature(1u"Mpc"), hydrogen_number_density(density(1u"Mpc"))) * 0u"Mpc"
+        else
+            throw(e)
+        end
+    end
+
 
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
@@ -82,7 +93,7 @@ function surface_brightness(
     # u /= (4π * dₐ^2)
     # notice dₐ cancels out
 
-    return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+
 end
 
 
