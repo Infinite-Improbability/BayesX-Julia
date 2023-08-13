@@ -1,6 +1,4 @@
 using Unitful, DimensionfulAngles
-using Plots
-using Profile
 
 using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
