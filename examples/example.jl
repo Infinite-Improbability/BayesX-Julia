@@ -15,7 +15,7 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
-priors = [
+priors_v2006 = [
     UniformPrior("x0", -10, 10), # x
     UniformPrior("y0", -10, 10), # y
     UniformPrior("n0", 0.1, 40.0),
@@ -36,11 +36,23 @@ priors = [
     UniformPrior("b", 0.1, 6.0),
     UniformPrior("c", 0.1, 12.0),
 ]
+priors_eiansto = [
+    UniformPrior("x0", -10.0, 10.0),
+    UniformPrior("y0", -10.0, 10.0),
+    UniformPrior("MT_200", 1.0e14, 1.0e15),
+    UniformPrior("fg_200", 0.08, 0.2),
+    UniformPrior("α", 0.1, 10.0),
+    DeltaPrior("a", 1.0510),
+    DeltaPrior("b", 5.4905),
+    DeltaPrior("c", 0.3081),
+    DeltaPrior("c_500_GNFW", 1.177)
+]
+
 sample(
     data,
     (0.7:0.01:2.0)u"keV",
-    Model_Vikhlinin2006,
-    priors,
+    Model_Einasto,
+    priors_eiansto,
     3.89e20u"cm^-2",
     0.160;
     bin_size=10,
