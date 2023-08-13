@@ -9,12 +9,12 @@ stepsampler = pyimport_conda("ultranest.stepsampler", "ultranest")
 export sample
 
 include("mpi.jl")
-include("gas_models.jl")
+include("cluster_models.jl")
 include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; emission_model, pixel_edge_angle, background_rate, average_effective_area)
+    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, pixel_edge_angle, background_rate, average_effective_area)
 
 Configure some necessary variables and launch ultranest.
 
@@ -26,6 +26,9 @@ Configure some necessary variables and launch ultranest.
 * The average effective area is the effective area of the telescope averaged across energies,
  used with the total background rate across all channels (counts per unit telescope area per sky angle per second)
  to calculate the background counts per second per channel per pixel.
+* The first two priors should always be "x0" and "y0", giving cluster centre position and the order of prior_names must match the transform.
+* The cluster model should be a function that takes the parameters (and redshift as a kwarg) and returns `(gas_temperature,gas_density)` as functions of
+radius which return their respective quantities with units.
 """
 function sample(
     observed::T,
@@ -35,6 +38,8 @@ function sample(
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
     redshift::Real;
+    prior_names::Vector{<:AbstractString},
+    cluster_model::Function,
     emission_model,
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
@@ -66,18 +71,9 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        # gas_temperature, gas_density = Model_NFW_GNFW(
-        #     params[1],
-        #     params[2],
-        #     1.0510, # Using universal values from Arnaud 2010
-        #     5.4905,
-        #     0.3081,
-        #     1.177,
-        #     redshift
-        # )
-
-        gas_temperature, gas_density = Model_Vikhlinin2006(
-            params[3:end]...
+        gas_temperature, gas_density = cluster_model(
+            params[3:end]...;
+            z=redshift
         )
 
         predicted = make_observation(
@@ -107,11 +103,11 @@ function sample(
 
     # ultranest setup
     @mpidebug "Creating sampler"
-    # paramnames = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
-    # paramnames = ["MT_200", "fg_200"]
-    paramnames = ["x", "y", "n0", "n02", "rc", "rc2", "α", "β", "β2", "ϵ", "rs", "T0", "Tmin/T0", "rcool", "acool", "rt", "a", "b", "c"]
+    # prior_names = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
+    # prior_names = ["MT_200", "fg_200"]
+    # prior_names = ["x", "y", "n0", "n02", "rc", "rc2", "α", "β", "β2", "ϵ", "rs", "T0", "Tmin/T0", "rcool", "acool", "rt", "a", "b", "c"]
     sampler = ultranest.ReactiveNestedSampler(
-        paramnames,
+        prior_names,
         likelihood_wrapper,
         transform=transform,
         vectorized=false,
@@ -141,82 +137,44 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range, priors, nhCol, redshift)
+    sample(data::Dataset, energy_range::AbstractRange{Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift)
 
-Run Bayesian inference on a given set of `data`, considering only the selected
-energy range. An gas emission model `(density, temperature) → emissivity` can be provided.
+Run Bayesian inference on a given set of `data` considering only the selected
+energy range.
+
+* An gas emission model `(density, temperature) → emissivity` can be provided.
+* The first two priors should always be `x0` and `y0`, giving cluster centre position.
 """
 function sample(
     data::Dataset,
-    energy_range::AbstractRange{T},
-    priors::AbstractVector{U},
+    energy_range::AbstractRange{<:Unitful.Energy},
+    cluster_model::Function,
+    priors::AbstractVector{<:Prior},
     nHcol::SurfaceDensity,
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
     centre_radius=4
-) where {T<:Unitful.Energy,U<:Prior}
+)
+    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
+
     @mpiinfo "Loading data"
-
     observation, observed_background = load_data(data)
-
     obs = bin_events(data, observation.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
     bg = bin_events(data, observed_background.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
     pixel_edge_angle = bin_size * data.pixel_edge_angle
-    @mpidebug "Done binning events"
-
     @assert size(obs) == size(bg)
 
     @mpidebug "Making transform"
+    prior_names = [p.name for p in priors]
     transform = make_cube_transform(priors...)
 
     @mpidebug "Calling load_response"
     response_function = load_response(data, energy_range)
-    # @assert size(response_function, 1) == length(energy_range) - 1
+    @assert size(response_function, 2) == (length(energy_range) - 1)
 
     @mpiinfo "Generating emissions model"
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
-
-    # @mpiinfo "Testing emissions model"
-    # em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
-
-    # model = Model_NFW_GNFW(
-    #     5e14u"Msun",
-    #     0.13,
-    #     1.0510, # Using universal values from Arnaud 2010
-    #     5.4905,
-    #     0.3081,
-    #     1.177,
-    #     redshift,
-    #     [64, 64],
-    #     0.492u"arcsecondᵃ",
-    #     emission_model,
-    #     100e3u"s",
-    #     response_function,
-    #     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    #     centre_radius
-    # )
-    # model_direct = Model_NFW_GNFW(
-    #     5e14u"Msun",
-    #     0.13,
-    #     1.0510, # Using universal values from Arnaud 2010
-    #     5.4905,
-    #     0.3081,
-    #     1.177,
-    #     redshift,
-    #     [64, 64],
-    #     0.492u"arcsecondᵃ",
-    #     em_direct,
-    #     100e3u"s",
-    #     response_function,
-    #     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    #     centre_radius
-    # )
-    # replace!(model, NaN => 0)
-    # replace!(model_direct, NaN => 0)
-
-    # err = sum(abs2, model - model_direct)
-    # @mpiinfo "Error in emission model is" err
 
     sample(
         obs,
@@ -226,8 +184,54 @@ function sample(
         observation.second,
         observed_background.second,
         redshift;
+        prior_names=prior_names,
+        cluster_model=cluster_model,
         emission_model=emission_model,
         pixel_edge_angle=pixel_edge_angle,
         centre_radius=centre_radius
     )
 end
+
+
+# function test_emissions_model()
+#     @mpiinfo "Testing emissions model"
+#     em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
+
+#     model = Model_NFW_GNFW(
+#         5e14u"Msun",
+#         0.13,
+#         1.0510, # Using universal values from Arnaud 2010
+#         5.4905,
+#         0.3081,
+#         1.177,
+#         redshift,
+#         [64, 64],
+#         0.492u"arcsecondᵃ",
+#         emission_model,
+#         100e3u"s",
+#         response_function,
+#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#         centre_radius
+#     )
+#     model_direct = Model_NFW_GNFW(
+#         5e14u"Msun",
+#         0.13,
+#         1.0510, # Using universal values from Arnaud 2010
+#         5.4905,
+#         0.3081,
+#         1.177,
+#         redshift,
+#         [64, 64],
+#         0.492u"arcsecondᵃ",
+#         em_direct,
+#         100e3u"s",
+#         response_function,
+#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#         centre_radius
+#     )
+#     replace!(model, NaN => 0)
+#     replace!(model_direct, NaN => 0)
+
+#     err = sum(abs2, model - model_direct)
+#     @mpiinfo "Error in emission model is" err
+# end

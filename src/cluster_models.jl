@@ -5,6 +5,9 @@ using Integrals
 # using Optimization
 # using OptimizationOptimJL
 
+export Model_NFW_GNFW
+export Model_Vikhlinin2006
+
 include("params.jl")
 include("emission.jl")
 
@@ -31,8 +34,8 @@ function Model_NFW_GNFW(
     α,
     β,
     γ,
-    c_500_GNFW,
-    z,
+    c_500_GNFW;
+    z
 )::NTuple{2,Function}
     # Move some parameters into a struct?
 
@@ -173,8 +176,8 @@ function Model_NFW_GNFW(
     α,
     β,
     γ,
-    c_500_GNFW,
-    z,
+    c_500_GNFW;
+    z
 )::NTuple{2,Function}
     Model_NFW_GNFW(
         MT_200 * 1u"Msun",
@@ -182,8 +185,8 @@ function Model_NFW_GNFW(
         α,
         β,
         γ,
-        c_500_GNFW,
-        z
+        c_500_GNFW;
+        z=z
     )
 end
 
@@ -206,7 +209,8 @@ function Model_Vikhlinin2006(
     a,
     b,
     c;
-    γ=3
+    γ=3,
+    kwargs...
 )::NTuple{2,Function}
 
     # Performance of exponents sucks if we don't strip units
@@ -354,7 +358,8 @@ function Model_Vikhlinin2006(
     a,
     b,
     c;
-    γ=3
+    γ=3,
+    kwargs...
 )::NTuple{2,Function}
     Model_Vikhlinin2006(
         n0 * 1u"cm^-3",
