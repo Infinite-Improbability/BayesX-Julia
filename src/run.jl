@@ -113,11 +113,11 @@ function sample(
         # resume="resume"
     )
 
-    @mpidebug "Creating stepsampler"
-    sampler.stepsampler = stepsampler.SliceSampler(
-        nsteps=100,
-        generate_direction=stepsampler.generate_mixture_random_direction,
-    )
+    # @mpidebug "Creating stepsampler"
+    # sampler.stepsampler = stepsampler.SliceSampler(
+    #     nsteps=2 * length(prior_names),
+    #     generate_direction=stepsampler.generate_mixture_random_direction,
+    # )
 
     # run Ultranest
     @mpiinfo "Launching sampler"

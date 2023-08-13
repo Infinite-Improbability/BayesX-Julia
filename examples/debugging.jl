@@ -89,24 +89,12 @@ ENV["JULIA_DEBUG"] = ""
 @info "Running tests"
 
 function test_func()
-    cluster = Model_Vikhlinin2006(
-        4.705e-3u"cm^-3",
-        0.247e-1u"cm^-3",
-        94.6u"kpc",
-        75.83u"kpc",
-        0.916,
-        0.526,
-        3.607,
-        4.943,
-        1239.9u"kpc",
-        3.61u"keV",
-        0.27,
-        57u"kpc",
-        3.88,
-        1.42u"Mpc",
-        0.12,
-        5.00,
-        10.0
+    cluster = Model_Einasto(
+        mass,
+        fg,
+        0.5,
+        gnfw...,
+        z=0.5
     )
     make_observation(
         cluster...,
