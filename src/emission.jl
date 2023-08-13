@@ -55,6 +55,7 @@ function surface_brightness(
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     problem = IntegralProblem(integrand, 0.0u"Mpc", limit, (projected_radius, temperature, density))
     try
+        # TODO: Try multidimensional integration algorithm?
         sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
         @assert all(isfinite, sol.u)
         return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2

@@ -88,8 +88,8 @@ ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
-test_func() = make_observation(
-    Model_Vikhlinin2006(
+function test_func()
+    cluster = Model_Vikhlinin2006(
         4.705e-3u"cm^-3",
         0.247e-1u"cm^-3",
         94.6u"kpc",
@@ -107,16 +107,20 @@ test_func() = make_observation(
         0.12,
         5.00,
         10.0
-    )...,
-    redshift,
-    shape,
-    pixel_size,
-    em,
-    exposure_time,
-    response,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    0
-)
+    )
+    make_observation(
+        cluster...,
+        redshift,
+        shape,
+        pixel_size,
+        em,
+        exposure_time,
+        response,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        1
+    )
+end
+
 display(
     @benchmark test_func()
 )
@@ -143,12 +147,16 @@ n(r) = uconvert(u"cm^-3", cluster[2](r))
 #     round.(Int, bg),
 #     response,
 #     make_cube_transform(
-#         UniformPrior(1e14, 1e15),
-#         UniformPrior(0.08, 0.2)
+#         UniformPrior("x0", -1.0, 1.0),
+#         UniformPrior("y0", -1.0, 1.0),
+#         UniformPrior("MT_200", 1e14, 1e15),
+#         UniformPrior("fg_200", 0.08, 0.2),
 #     ),
 #     exposure_time,
 #     exposure_time,
 #     redshift,
+#     prior_names=["x0", "y0", "MT_200", "fg_200"],
+#     cluster_model=Model_NFW_GNFW,
 #     emission_model=em,
 #     pixel_edge_angle=pixel_size,
 #     background_rate=bg_rate,
