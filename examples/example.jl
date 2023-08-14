@@ -47,12 +47,22 @@ priors_eiansto = [
     DeltaPrior("c", 0.3081),
     DeltaPrior("c_500_GNFW", 1.177)
 ]
+priors_nfw = [
+    UniformPrior("x0", -10.0, 10.0),
+    UniformPrior("y0", -10.0, 10.0),
+    UniformPrior("MT_200", 1.0e14, 1.0e15),
+    UniformPrior("fg_200", 0.08, 0.2),
+    UniformPrior("a", 0.3, 10.0),
+    UniformPrior("b", 2.0, 15.0),
+    UniformPrior("c", 0.01, 1.0),
+    UniformPrior("c_500_GNFW", 0.01, 6.0)
+]
 
 sample(
     data,
-    (0.7:0.01:2.0)u"keV",
-    Model_Einasto,
-    priors_eiansto,
+    (0.7:0.01:7.0)u"keV",
+    Model_NFW_GNFW,
+    priors_nfw,
     3.89e20u"cm^-2",
     0.160;
     bin_size=10,

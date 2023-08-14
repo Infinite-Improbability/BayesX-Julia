@@ -69,34 +69,42 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        gas_temperature, gas_density = cluster_model(
-            params[3:end]...;
-            z=redshift
-        )
+        try
+            gas_temperature, gas_density = cluster_model(
+                params[3:end]...;
+                z=redshift
+            )
 
-        predicted = make_observation(
-            gas_temperature,
-            gas_density,
-            redshift,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            obs_exposure_time,
-            response_function,
-            (params[1], params[2]),
-            centre_radius
-        ) .+ predicted_obs_bg
+            predicted = make_observation(
+                gas_temperature,
+                gas_density,
+                redshift,
+                shape,
+                pixel_edge_angle,
+                emission_model,
+                obs_exposure_time,
+                response_function,
+                (params[1], params[2]),
+                centre_radius
+            ) .+ predicted_obs_bg
 
 
-        @mpirankeddebug "Predicted results generated"
+            @mpirankeddebug "Predicted results generated"
 
-        return log_likelihood(
-            observed,
-            observed_background,
-            predicted,
-            predicted_bg_bg,
-            log_obs_factorial
-        )
+            return log_likelihood(
+                observed,
+                observed_background,
+                predicted,
+                predicted_bg_bg,
+                log_obs_factorial
+            )
+        catch e
+            if isa(e, ArgumentError)
+                return -1e300 * abs(params[8] - params[6])
+            else
+                throw(e)
+            end
+        end
     end
 
     # ultranest setup
