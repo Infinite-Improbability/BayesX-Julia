@@ -439,7 +439,14 @@ function Model_Einasto(
     # Set GNFW scale radius
     rp = uconvert(u"Mpc", r_500 / c_500_GNFW)
 
-    lower_gamma(s, x) = gamma(s) - gamma(s, x)
+    function lower_gamma(s, x)
+        try
+            return gamma(s) - gamma(s, x)
+        catch e
+            @error("Gamma error, s cannot be over 51", s, x)
+            throw(e)
+        end
+    end
 
     function pei_integrand(r, params)
         rs, α, rp, a, b, c = params
@@ -450,7 +457,7 @@ function Model_Einasto(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     @mpirankeddebug "Integrating to find Pei"
-    integral = IntegralProblem(pei_integrand, 0.0u"Mpc", r_200, (rs, a, rp, a, b, c))
+    integral = IntegralProblem(pei_integrand, 0.0u"Mpc", r_200, (rs, α, rp, a, b, c))
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * rs^3 / α *
                                           (α / 2)^(3 / α) * exp(2 / α) *
@@ -464,7 +471,7 @@ function Model_Einasto(
             ρ_s = ρ_s
             rs = rs
             rp = rp
-            α = a
+            α = α
             a = a
             b = b
             c = c
