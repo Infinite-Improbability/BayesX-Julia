@@ -31,9 +31,14 @@ function surface_brightness(
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
+    lim = ustrip(u"Mpc", limit)
+    pr = ustrip(u"Mpc", projected_radius)
+
+    nout = length(model(1.0u"keV", 0.1u"cm^-3"))
+
     function integrand(l, params)
         s, temp, density = params
-        r = hypot(s, l)
+        r = hypot(s, l) * 1u"Mpc"
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
@@ -48,16 +53,15 @@ function surface_brightness(
         # @assert all(isfinite, f) f
         # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
 
-        return f
+        return ustrip.(u"Mpc^-3/s", f)
     end
 
-    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    problem = IntegralProblem(integrand, 0.0u"Mpc", limit, (projected_radius, temperature, density))
     try
-        # TODO: Try multidimensional integration algorithm?
-        sol = solve(problem, QuadGKJL(); reltol=1e-3, abstol=1.0u"m^(-2)/s")
+        # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
+        problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
+        sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
         @assert all(isfinite, sol.u)
-        return 2 * sol.u / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+        return 2 * sol.u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
     catch e
         if isa(e, DomainError)
             @mpirankedwarn "Domain error in integral"
