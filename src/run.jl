@@ -47,6 +47,7 @@ function sample(
     centre_radius
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
+    @argcheck prior_names[1:2] == ["x0", "y0"]
 
     predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
     predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
@@ -71,48 +72,46 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        # try
-        # gas_temperature, gas_density = cluster_model(
-        #     params[3:end]...;
-        #     z=redshift
-        # )
-        gas_temperature, gas_density = cluster_model(
-            param_wrapper(params)...,
-            z=redshift
-        )
+        full_params = param_wrapper(params)
+        @mpirankeddebug "Full parameters are" full_params
 
-        predicted = make_observation(
-            gas_temperature,
-            gas_density,
-            redshift,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            obs_exposure_time,
-            response_function,
-            # (params[1], params[2]),
-            (0, 0),
-            centre_radius
-        ) .+ predicted_obs_bg
+        try
+            gas_temperature, gas_density = cluster_model(
+                full_params[3:end]...;
+                z=redshift
+            )
+
+            predicted = make_observation(
+                gas_temperature,
+                gas_density,
+                redshift,
+                shape,
+                pixel_edge_angle,
+                emission_model,
+                obs_exposure_time,
+                response_function,
+                (full_params[1], full_params[2]),
+                centre_radius
+            ) .+ predicted_obs_bg
 
 
-        @mpirankeddebug "Predicted results generated"
+            @mpirankeddebug "Predicted results generated"
 
-        return log_likelihood(
-            observed,
-            observed_background,
-            predicted,
-            predicted_bg_bg,
-            log_obs_factorial
-        )
-        # catch e
-        #     if isa(e, ArgumentError)
-        #         return -1e300 * abs(params[8] - params[6])
-        #     else
-        #         throw(e)
-        #     end
-        #     throw(e)
-        # end
+            return log_likelihood(
+                observed,
+                observed_background,
+                predicted,
+                predicted_bg_bg,
+                log_obs_factorial
+            )
+        catch e
+            # if isa(e, ArgumentError)
+            #     return -1e300 * abs(params[8] - params[6])
+            # else
+            #     throw(e)
+            # end
+            throw(e)
+        end
     end
 
     # ultranest setup
