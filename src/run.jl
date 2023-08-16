@@ -203,7 +203,7 @@ end
 #     @mpiinfo "Testing emissions model"
 #     em_direct = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=false)
 
-#     model = Model_NFW_GNFW(
+#     model = Model_NFW(
 #         5e14u"Msun",
 #         0.13,
 #         1.0510, # Using universal values from Arnaud 2010
@@ -219,7 +219,7 @@ end
 #         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
 #         centre_radius
 #     )
-#     model_direct = Model_NFW_GNFW(
+#     model_direct = Model_NFW(
 #         5e14u"Msun",
 #         0.13,
 #         1.0510, # Using universal values from Arnaud 2010

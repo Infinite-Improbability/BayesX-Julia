@@ -1,5 +1,6 @@
 name = "BayesJ"
 authors = ["Ryan Cox ryan.cox@vuw.ac.nz"]
+version = "0.3.0"
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
