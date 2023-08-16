@@ -69,42 +69,52 @@ function sample(
     function likelihood_wrapper(params)
         @mpirankeddebug "Likelihood wrapper called" params
 
-        try
-            gas_temperature, gas_density = cluster_model(
-                params[3:end]...;
-                z=redshift
-            )
+        # try
+        # gas_temperature, gas_density = cluster_model(
+        #     params[3:end]...;
+        #     z=redshift
+        # )
+        gas_temperature, gas_density = cluster_model(
+            params...,
+            1.0510,
+            5.4905,
+            0.3081,
+            1.177,
+            z=redshift
+        )
 
-            predicted = make_observation(
-                gas_temperature,
-                gas_density,
-                redshift,
-                shape,
-                pixel_edge_angle,
-                emission_model,
-                obs_exposure_time,
-                response_function,
-                (params[1], params[2]),
-                centre_radius
-            ) .+ predicted_obs_bg
+        predicted = make_observation(
+            gas_temperature,
+            gas_density,
+            redshift,
+            shape,
+            pixel_edge_angle,
+            emission_model,
+            obs_exposure_time,
+            response_function,
+            # (params[1], params[2]),
+            (0, 0),
+            centre_radius
+        ) .+ predicted_obs_bg
 
 
-            @mpirankeddebug "Predicted results generated"
+        @mpirankeddebug "Predicted results generated"
 
-            return log_likelihood(
-                observed,
-                observed_background,
-                predicted,
-                predicted_bg_bg,
-                log_obs_factorial
-            )
-        catch e
-            if isa(e, ArgumentError)
-                return -1e300 * abs(params[8] - params[6])
-            else
-                throw(e)
-            end
-        end
+        return log_likelihood(
+            observed,
+            observed_background,
+            predicted,
+            predicted_bg_bg,
+            log_obs_factorial
+        )
+        # catch e
+        #     if isa(e, ArgumentError)
+        #         return -1e300 * abs(params[8] - params[6])
+        #     else
+        #         throw(e)
+        #     end
+        #     throw(e)
+        # end
     end
 
     # ultranest setup
@@ -125,11 +135,16 @@ function sample(
     # sampler.stepsampler = stepsampler.SliceSampler(
     #     nsteps=2 * length(prior_names),
     #     generate_direction=stepsampler.generate_mixture_random_direction,
+    #     adaptive_nsteps="move-distance",
+    #     max_nsteps=400,
+    #     region_filter=true
     # )
 
     # run Ultranest
     @mpiinfo "Launching sampler"
-    results = sampler.run()
+    results = sampler.run(
+    # region_class=ultranest.mlfriends.RobustEllipsoidRegion
+    )
 
     # output data
     @mpidebug "Sampler done"
@@ -162,7 +177,7 @@ function sample(
     use_interpolation::Bool=true,
     centre_radius=4
 )
-    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
+    # @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
 
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
