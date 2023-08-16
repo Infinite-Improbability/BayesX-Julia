@@ -35,18 +35,14 @@ function surface_brightness(
         s, temp, density = params
         r = hypot(s, l)
 
-        # T = uconvert(u"keV", temp(r))
-        # ρ = uconvert(u"g/cm^3", density(r))
-        # nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-        # # @assert isfinite(T) "T isn't finite T=$T, r=$r"
-        # @assert isfinite(ρ) "ρ isn't finite ρ=$ρ, r=$r"
-        # @assert isfinite(nH) "nH isn't finite nH=$nH, r=$r"
-
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
 
         all(isfinite, f) ? f : begin
-            @mpirankedwarn "Non finite values in f"
+            T = uconvert(u"keV", temp(r))
+            ρ = uconvert(u"g/cm^3", density(r))
+            nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
+            @mpirankedwarn "Non finite values in f" r T ρ nH
             replace!(f, NaN * 1u"m^-3/s" => 0u"m^-3/s") # when T is very low we get NaN not 0
         end
         # @assert all(isfinite, f) f
@@ -261,7 +257,7 @@ function make_observation(
         temperature,
         density,
         z,
-        Quantity(Inf, u"Mpc"),
+        Quantity(Inf, u"Mpc"), # testing found that using 10Mpc as bound did not affect results
         Ref(emission_model),
         pixel_edge_angle
     )]
