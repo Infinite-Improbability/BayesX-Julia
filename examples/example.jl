@@ -37,15 +37,15 @@ priors_v2006 = [
     UniformPrior("c", 0.1, 12.0),
 ]
 priors_eiansto = [
-    # UniformPrior("x0", -10.0, 10.0),
-    # UniformPrior("y0", -10.0, 10.0),
+    UniformPrior("x0", -10.0, 10.0),
+    UniformPrior("y0", -10.0, 10.0),
     UniformPrior("MT_200", 1.0e14, 1.0e15),
     UniformPrior("fg_200", 0.08, 0.2),
     UniformPrior("α", 0.1, 1.0),
-    # DeltaPrior("a", 1.0510),
-    # DeltaPrior("b", 5.4905),
-    # DeltaPrior("c", 0.3081),
-    # DeltaPrior("c_500_GNFW", 1.177)
+    DeltaPrior("a", 1.0510),
+    DeltaPrior("b", 5.4905),
+    DeltaPrior("c", 0.3081),
+    DeltaPrior("c_500_GNFW", 1.177)
 ]
 priors_nfw = [
     UniformPrior("x0", -10.0, 10.0),

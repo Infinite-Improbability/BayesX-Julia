@@ -12,7 +12,7 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, pixel_edge_angle, background_rate, average_effective_area)
+    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle, background_rate, average_effective_area)
 
 Configure some necessary variables and launch ultranest.
 
@@ -27,6 +27,7 @@ Configure some necessary variables and launch ultranest.
 * The first two priors should always be "x0" and "y0", giving cluster centre position and the order of prior_names must match the transform.
 * The cluster model should be a function that takes the parameters (and redshift as a kwarg) and returns `(gas_temperature,gas_density)` as functions of
 radius which return their respective quantities with units.
+* `param_wrapper` takes the output of the transform function and adds any additional arguements necessary for the model.
 """
 function sample(
     observed::T,
@@ -39,6 +40,7 @@ function sample(
     prior_names::Vector{<:AbstractString},
     cluster_model::Function,
     emission_model,
+    param_wrapper::Function,
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
@@ -75,11 +77,7 @@ function sample(
         #     z=redshift
         # )
         gas_temperature, gas_density = cluster_model(
-            params...,
-            1.0510,
-            5.4905,
-            0.3081,
-            1.177,
+            param_wrapper(params)...,
             z=redshift
         )
 
@@ -119,9 +117,6 @@ function sample(
 
     # ultranest setup
     @mpidebug "Creating sampler"
-    # prior_names = ["MT_200", "fg_200", "x_0", "y_0"] # move to pairs with prior objects?
-    # prior_names = ["MT_200", "fg_200"]
-    # prior_names = ["x", "y", "n0", "n02", "rc", "rc2", "α", "β", "β2", "ϵ", "rs", "T0", "Tmin/T0", "rcool", "acool", "rt", "a", "b", "c"]
     sampler = ultranest.ReactiveNestedSampler(
         prior_names,
         likelihood_wrapper,
@@ -188,7 +183,7 @@ function sample(
 
     @mpidebug "Making transform"
     prior_names = [p.name for p in priors]
-    transform = make_cube_transform(priors...)
+    transform, param_wrapper = make_cube_transform(priors...)
 
     @mpidebug "Calling load_response"
     response_function = load_response(data, energy_range)
@@ -208,6 +203,7 @@ function sample(
         prior_names=prior_names,
         cluster_model=cluster_model,
         emission_model=emission_model,
+        param_wrapper=param_wrapper,
         pixel_edge_angle=pixel_edge_angle,
         centre_radius=centre_radius
     )
