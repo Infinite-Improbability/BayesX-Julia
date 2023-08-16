@@ -6,7 +6,7 @@ using SpecialFunctions
 # using Optimization
 # using OptimizationOptimJL
 
-export Model_NFW_GNFW, Model_Vikhlinin2006, Model_Einasto
+export Model_NFW, Model_Vikhlinin2006, Model_Einasto
 
 include("params.jl")
 include("emission.jl")
@@ -21,14 +21,14 @@ Calculate the critical density at some redshift `z`.
 
 
 """
-    Model_NFW_GNFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z)
+    Model_NFW(MT_200, fg_200, α, β, γ, c_500_GNFW, z)
 
 Create functions for gas temperature and gas mass density as a function of radius.
 
 Uses the model from Olamaie 2012 (doi:10.1111/j.1365-2966.2012.20980.x),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 """
-function Model_NFW_GNFW(
+function Model_NFW(
     MT_200::Unitful.Mass,
     fg_200,
     α,
@@ -86,13 +86,13 @@ function Model_NFW_GNFW(
     # Some helper functions
     """The radius dependent part of the gas density function"""
     function gnfw_gas_radial_term(
-        r::Unitful.Length{T},
-        r_s::Unitful.Length{T}, # NFW
-        r_p::Unitful.Length{T}, # GNFW
+        r::Unitful.Length{<:Real},
+        r_s::Unitful.Length{<:Real}, # NFW
+        r_p::Unitful.Length{<:Real}, # GNFW
         α,
         β,
         γ
-    )::Unitful.Length{T} where {T<:AbstractFloat}
+    )::Unitful.Length{Float64}
         r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
         (r / r_p)^(-γ) *
         (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
@@ -102,13 +102,13 @@ function Model_NFW_GNFW(
     """An integral over radius that is equal to the gas
     density to a proportionality constant"""
     function gnfw_gas_mass_integrand(
-        r::Unitful.Length{T},
-        r_s::Unitful.Length{T}, # NFW
-        r_p::Unitful.Length{T}, # GNFW
+        r::Unitful.Length{<:Real},
+        r_s::Unitful.Length{<:Real}, # NFW
+        r_p::Unitful.Length{<:Real}, # GNFW
         α,
         β,
         γ
-    )::Unitful.Volume{T} where {T<:AbstractFloat}
+    )::Unitful.Volume{Float64}
         s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
 
         @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $α, $β, $γ"
@@ -116,9 +116,9 @@ function Model_NFW_GNFW(
         return s
     end
     function gnfw_gas_mass_integrand(
-        r::Unitful.Length{T},
-        p::Vector{Quantity{T}}
-    ) where {T<:AbstractFloat}
+        r::Unitful.Length{<:Real},
+        p::Tuple
+    )
         gnfw_gas_mass_integrand(r, p...)
     end
 
@@ -128,7 +128,7 @@ function Model_NFW_GNFW(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
         r_200,
-        [r_s, r_p, α, β, γ]
+        (r_s, r_p, α, β, γ)
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
@@ -136,7 +136,8 @@ function Model_NFW_GNFW(
     @mpirankeddebug "Pei calculation complete"
 
     """Calculate gas density at some radius"""
-    function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
+    function gas_density(r::Unitful.Length{<:Real})::Unitful.Density{Float64}
+        r = abs(r)
         let
             ρ_s = ρ_s
             r_s = r_s
@@ -151,7 +152,8 @@ function Model_NFW_GNFW(
     end
 
     """Calculate gas temperature at some radius"""
-    function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
+    function gas_temperature(r::Unitful.Length{<:Real})::Unitful.Energy{Float64}
+        r = abs(r)
         let
             ρ_s = ρ_s
             r_s = r_s
@@ -170,7 +172,7 @@ end
 """
 Mass is in solar masses.
 """
-function Model_NFW_GNFW(
+function Model_NFW(
     MT_200::Real,
     fg_200,
     α,
@@ -179,7 +181,7 @@ function Model_NFW_GNFW(
     c_500_GNFW;
     z
 )::NTuple{2,Function}
-    Model_NFW_GNFW(
+    Model_NFW(
         MT_200 * 1u"Msun",
         fg_200,
         α,

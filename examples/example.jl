@@ -61,7 +61,7 @@ priors_nfw = [
 sample(
     data,
     (0.7:0.01:7.0)u"keV",
-    Model_NFW_GNFW,
+    Model_NFW,
     priors_nfw,
     3.89e20u"cm^-2",
     0.160;

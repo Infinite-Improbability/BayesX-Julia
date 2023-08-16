@@ -42,7 +42,7 @@ em = prepare_model_mekal(
     temperatures=(1e-30:0.05:9.0)u"keV",
     hydrogen_densities=(1e-30:0.005:3.0)u"cm^-3"
 )
-# cluster = Model_NFW_GNFW(
+# cluster = Model_NFW(
 #     mass,
 #     fg,
 #     gnfw...,
@@ -144,7 +144,7 @@ n(r) = uconvert(u"cm^-3", cluster[2](r))
 #     exposure_time,
 #     redshift,
 #     prior_names=["x0", "y0", "MT_200", "fg_200"],
-#     cluster_model=Model_NFW_GNFW,
+#     cluster_model=Model_NFW,
 #     emission_model=em,
 #     pixel_edge_angle=pixel_size,
 #     background_rate=bg_rate,
