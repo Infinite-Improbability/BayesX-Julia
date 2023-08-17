@@ -47,8 +47,8 @@ function surface_brightness(
             T = uconvert(u"keV", temp(r))
             ρ = uconvert(u"g/cm^3", density(r))
             nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-            @mpirankedwarn "Non finite values in f" r T ρ nH
-            replace!(f, NaN * 1u"m^-3/s" => 0u"m^-3/s") # when T is very low we get NaN not 0
+            @mpirankederror "Non finite values in f" r T ρ nH
+            error("Non finite values in f")
         end
         # @assert all(isfinite, f) f
         # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
