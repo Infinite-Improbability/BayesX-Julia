@@ -1,4 +1,9 @@
-# Setup
+# BayesJ
+
+[![Run tests](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml)
+[![Docs](https://infinite-improbability.github.io/BayesX-Julia)](https://img.shields.io/badge/docs-blue)
+
+## Setup
 
 Using Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/) run
 
@@ -16,7 +21,7 @@ After installation the sample analysis can be launched with
 julia --project=@. examples/example.jl
 ```
 
-# MPI Support
+## MPI Support
 Ultranest supports MPI. To use launch your Julia scripts using `mpiexec` or equivalent.
 
 While the Python dependencies will install automatically if not found, this can be cause segfaults as MPI.jl is trying to use one MPI library and mpi4py another. I suggest manually installing `ultranest` and `mpi4py` in a conda environment. This allows you to use [force Conda to use an external MPI library](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries).
