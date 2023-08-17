@@ -70,20 +70,22 @@ function Model_Vikhlinin2006(
     and the metallicity assumptions in MEKAL.
     """
     function gas_density(r::Unitful.Length)::Unitful.Density
-        n0 = n0
-        n02 = n02
-        rc = rc
-        rc2 = rc2
-        α = α
-        β = β
-        β2 = β2
-        ϵ = ϵ
-        rs = rs
-        γ = γ
-        μ_e * 1u"cm^-3" * sqrt(
-            np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
-        )
-
+        r = abs(r)
+        let
+            n0 = n0
+            n02 = n02
+            rc = rc
+            rc2 = rc2
+            α = α
+            β = β
+            β2 = β2
+            ϵ = ϵ
+            rs = rs
+            γ = γ
+            μ_e * 1u"cm^-3" * sqrt(
+                np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
+            )
+        end
     end
 
     T0 = ustrip(u"keV", T0)
@@ -125,6 +127,7 @@ function Model_Vikhlinin2006(
         t(r, rt, a, b, c)
     end
     function gas_temperature(r::Unitful.Length)::Unitful.Energy
+        r = abs(r)
         let
             T0 = T0
             TminT0 = TminT0

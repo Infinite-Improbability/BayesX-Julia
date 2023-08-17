@@ -19,7 +19,7 @@ function Model_Einasto(
 )::NTuple{2,Function}
     # Move some parameters into a struct?
 
-    @mpirankeddebug "Model" MT_200 fg_200
+    @mpirankeddebug "Einasto" MT_200 fg_200 α a b c c_500_GNFW z
 
     @argcheck MT_200 > 0u"Msun"
     @argcheck 1 > fg_200 > 0
@@ -84,6 +84,7 @@ function Model_Einasto(
 
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
+        r = abs(r)
         let
             ρ_s = ρ_s
             rs = rs
@@ -101,6 +102,7 @@ function Model_Einasto(
 
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
+        r = abs(r)
         let
             ρ_s = ρ_s
             rs = rs

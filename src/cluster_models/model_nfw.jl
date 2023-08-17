@@ -19,7 +19,7 @@ function Model_NFW(
 )::NTuple{2,Function}
     # Move some parameters into a struct?
 
-    @mpirankeddebug "Model" MT_200 fg_200
+    @mpirankeddebug "NFW" MT_200 fg_200 α β γ c_500_GNFW z
 
     @argcheck MT_200 > 0u"Msun"
     @argcheck 1 > fg_200 > 0
