@@ -1,11 +1,15 @@
 export Model_Einasto
 
 """
-    Model_Einasto(MT_200, fg_200, a, α, β, γ, c_500_GNFW, z)
+    Model_Einasto(MT_200, fg_200, α, a, b, c, c_500_GNFW, z)
 
-Create functions for gas temperature and gas mass density as a function of radius.
+Generate a cluster profile based on the Einasto mass density profile and the GNFW gas pressure profile.
 
-Based on the Einasto mass density profile and the GNFW gas pressure profile.
+Returns functions for gas temperature and gas mass density as a function of radius.
+See Appendix A, Olamaie et al. 2015 (doi:10.1093/mnras/stu2146)
+
+If `α>2` then the gas temperature starts increasing to physically improbable
+levels (orders exceeding 10¹¹ keV). We thus constrain the value to below that. 
 """
 function Model_Einasto(
     MT_200::Unitful.Mass,
@@ -26,6 +30,8 @@ function Model_Einasto(
     @argcheck a > 0
     @argcheck c_500_GNFW > 0
     @argcheck (b - c_500_GNFW) > 0
+    @argcheck α < 2 # α > 2 leads to temperature going up past some r
+    @argcheck α >= 0.6 # if 3/α > 51 then lower_gamma(3/α, x) throws an error
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
