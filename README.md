@@ -1,7 +1,7 @@
 # BayesJ
 
-[![Run tests](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml)
-[![Docs](https://img.shields.io/badge/docs-blue)](https://infinite-improbability.github.io/BayesX-Julia)
+[![Run tests](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml/badge.svg)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml)
+[![Documentation](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml/badge.svg)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml)
 
 ## Setup
 
