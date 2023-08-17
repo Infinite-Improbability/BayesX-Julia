@@ -5,6 +5,7 @@ using Integrals
 using SpecialFunctions
 
 include("params.jl")
+include("emission.jl")
 
 """
     p_crit(z)
