@@ -22,10 +22,6 @@ function log_likelihood(
 )
     @mpirankeddebug "Calculating log likelihood"
 
-    if all(!isfinite, predicted)
-        return -1e20
-    end
-
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
@@ -38,15 +34,11 @@ function log_likelihood(
 
     t = t1 + t2 - observed_log_factorial
 
-    # @info count(isfinite, t)
-
     # If we have zero counts we can't take the log so
     # we'll just skip over it.
     replace!(t, -Inf => 0, NaN => 0)
 
-    # For some reason 
-
-    @assert all(isfinite, t) display(t)
+    @assert all(isfinite, t)
 
     return sum(t)
 end
