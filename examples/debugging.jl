@@ -33,17 +33,6 @@ gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Using universal values from Arnaud 2010
 mass = 5e14u"Msun"
 fg = 0.13
 
-priors = Model_NFW_GNFW_Priors(
-    UniformPrior(1e14, 1e15),
-    UniformPrior(0.08, 0.2),
-    DeltaPrior(gnfw[1]),
-    DeltaPrior(gnfw[2]),
-    DeltaPrior(gnfw[3]),
-    DeltaPrior(gnfw[4]),
-    DeltaPrior(0),
-    DeltaPrior(0)
-)
-
 response = load_response(data, energy_range)
 em = prepare_model_mekal(
     2.2e20u"cm^-2",

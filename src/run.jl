@@ -9,6 +9,7 @@ export sample
 include("mpi.jl")
 include("cluster_models.jl")
 include("io.jl")
+include("likelihood.jl")
 
 """
     sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle, background_rate, average_effective_area)
@@ -18,7 +19,6 @@ Configure some necessary variables and launch ultranest.
 * The observed array includes the background.
 * The response function includes both the RMF and ARF, as described in `apply_response_function`.
 * The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
-* Prior names should match arguments for the gas model.
 * The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
  This area is assumed to be square with the edge angle giving the side length.
 * The average effective area is the effective area of the telescope averaged across energies,
@@ -33,7 +33,7 @@ function sample(
     observed::T,
     observed_background::T,
     response_function::Matrix,
-    priors::PriorSet,
+    transform::Function,
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
     redshift::Real;
@@ -119,7 +119,7 @@ function sample(
     sampler = ultranest.ReactiveNestedSampler(
         prior_names,
         likelihood_wrapper,
-        transform=priors.cube_transform,
+        transform=transform,
         vectorized=false,
         log_dir="logs",
         # resume="resume"
@@ -195,7 +195,7 @@ function sample(
         obs,
         bg,
         response_function,
-        prior_set,
+        transform,
         observation.second,
         observed_background.second,
         redshift;
