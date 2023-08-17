@@ -20,7 +20,7 @@ macro mpidebug(exs...)
     level = Base.CoreLogging.Debug
     message = esc(exs[1])
     kwargs = map(make_kwargs, exs[2:end])
-    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+    MPI.Comm_rank(comm) > 0 ? nothing : Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
 
 macro mpiinfo(exs...)
@@ -28,7 +28,7 @@ macro mpiinfo(exs...)
     level = Base.CoreLogging.Info
     message = esc(exs[1])
     kwargs = map(make_kwargs, exs[2:end])
-    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+    MPI.Comm_rank(comm) > 0 ? nothing : Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
 
 macro mpiwarn(exs...)
@@ -36,7 +36,7 @@ macro mpiwarn(exs...)
     level = Base.CoreLogging.Warn
     message = esc(exs[1])
     kwargs = map(make_kwargs, exs[2:end])
-    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+    MPI.Comm_rank(comm) > 0 ? nothing : Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
 
 macro mpierror(exs...)
@@ -44,7 +44,7 @@ macro mpierror(exs...)
     level = Base.CoreLogging.Error
     message = esc(exs[1])
     kwargs = map(make_kwargs, exs[2:end])
-    Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
+    MPI.Comm_rank(comm) > 0 ? nothing : Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
 
 function get_rank_msg()::String

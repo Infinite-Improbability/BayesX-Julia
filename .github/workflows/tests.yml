@@ -1,0 +1,26 @@
+name: Unit Tests
+
+on: 
+  push:
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: ['1.9.2']
+        julia-arch: [x64]
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.julia-version }}
+          arch: ${{ matrix.julia-arch }}
+      - name: Add registry
+        run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
+      - uses: julia-actions/julia-buildpkg@v1
+        env:
+          PYTHON: ""
+      - uses: julia-actions/julia-runtest@v1
