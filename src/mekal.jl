@@ -85,6 +85,7 @@ function call_mekal(
     temperature, # keV
     nH, # cm^-3
 )
+
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
     min_energy = Vector{Cfloat}(undef, n_energy_bins)
@@ -92,6 +93,10 @@ function call_mekal(
     for i in 1:n_energy_bins
         min_energy[i] = ustrip(Cfloat, u"keV", energy_range[i])
         max_energy[i] = ustrip(Cfloat, u"keV", energy_range[i+1])
+    end
+
+    if (temperature == 0.0) || (nH == 0.0)
+        return fill(0.0u"m^-3/s", n_energy_bins)
     end
 
     # Scale by volume of and distance to emitting area.
