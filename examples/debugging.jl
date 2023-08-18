@@ -86,7 +86,7 @@ obs = BayesJ.make_observation(
 replace!(obs, NaN => 0.0)
 @assert all(isfinite, obs)
 @info "Observation generated"
-# ENV["JULIA_DEBUG"] = ""
+ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
@@ -140,21 +140,21 @@ priors_v2006 = [
     DeltaPrior("y0", 0.0), # y
     UniformPrior("n0", 0.1e-3, 40.0e-3),
     UniformPrior("n02", 0.001e-1, 6.0e-1),
-    DeltaPrior("rc", 94.6),
-    DeltaPrior("rc2", 75.83),
-    DeltaPrior("α", 0.916),
-    DeltaPrior("β", 0.526),
-    DeltaPrior("β2", 3.607),
-    DeltaPrior("ϵ", 4.943), # constrain ϵ<5
-    DeltaPrior("rs", 1239.9),
-    DeltaPrior("T0", 1.0, 25.0),
-    DeltaPrior("Tmin/T0", 0.27),
-    DeltaPrior("rcool", 57),
-    DeltaPrior("acool", 3.88),
-    DeltaPrior("rt", 1.42),
-    DeltaPrior("a", 0.12),
-    DeltaPrior("b", 5.0),
-    DeltaPrior("c", 10.0),
+    UniformPrior("rc", 1.0, 600.0),
+    UniformPrior("rc2", 1.0, 100.0),
+    UniformPrior("α", 0.1, 3.0),
+    UniformPrior("β", 0.1, 2.0),
+    UniformPrior("β2", 0.1, 5.0),
+    UniformPrior("ϵ", 0.1, 5.0), # constrain ϵ<5
+    UniformPrior("rs", 100.0, 1400.0),
+    UniformPrior("T0", 1.0, 25.0),
+    UniformPrior("Tmin/T0", 0.01, 1.0),
+    UniformPrior("rcool", 1.0, 250.0),
+    UniformPrior("acool", 0.1, 12.0),
+    UniformPrior("rt", 0.01, 5.0),
+    UniformPrior("a", -1.0, 1.0),
+    UniformPrior("b", 0.1, 6.0),
+    UniformPrior("c", 0.1, 12.0),
 ]
 
 transform, wrapper = BayesJ.make_cube_transform(priors_v2006...)

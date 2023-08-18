@@ -53,6 +53,12 @@ function surface_brightness(
         # @assert all(isfinite, f) f
         # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
 
+        f = replace!(
+            f,
+            Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
+            Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
+        )
+
         return ustrip.(u"Mpc^-3/s", f)
     end
 
