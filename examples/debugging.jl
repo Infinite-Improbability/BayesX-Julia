@@ -86,7 +86,7 @@ obs = BayesJ.make_observation(
 replace!(obs, NaN => 0.0)
 @assert all(isfinite, obs)
 @info "Observation generated"
-ENV["JULIA_DEBUG"] = ""
+# ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
@@ -130,7 +130,10 @@ display(heatmap(dropdims(sum(obs + bg, dims=1), dims=1), title="Model"))
 display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
 
 T(r) = uconvert(u"keV", cluster[1](r))
-n(r) = uconvert(u"cm^-3", cluster[2](r))
+n(r) = uconvert(u"cm^-3", BayesJ.hydrogen_number_density(cluster[2](r)))
+
+display(plot((0.1:0.01:10)u"Mpc", T, title="Temperature"))
+display(plot((0.1:0.01:10)u"Mpc", n, title="Density"))
 
 priors_v2006 = [
     DeltaPrior("x0", 0.0), # x
@@ -144,7 +147,7 @@ priors_v2006 = [
     DeltaPrior("β2", 3.607),
     DeltaPrior("ϵ", 4.943), # constrain ϵ<5
     DeltaPrior("rs", 1239.9),
-    DeltaPrior("T0", 3.61),
+    DeltaPrior("T0", 1.0, 25.0),
     DeltaPrior("Tmin/T0", 0.27),
     DeltaPrior("rcool", 57),
     DeltaPrior("acool", 3.88),

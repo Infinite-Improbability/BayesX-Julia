@@ -22,6 +22,8 @@ function log_likelihood(
 )
     @mpirankeddebug "Calculating log likelihood"
 
+    # display(observed)
+
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
@@ -39,6 +41,8 @@ function log_likelihood(
     replace!(t, -Inf => 0, NaN => 0)
 
     @assert all(isfinite, t)
+
+    @mpirankeddebug "likelihood is" sum(t)
 
     return sum(t)
 end
