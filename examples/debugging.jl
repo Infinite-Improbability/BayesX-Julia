@@ -40,9 +40,9 @@ em = BayesJ.prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
     redshift,
-    use_interpolation=true,
+    use_interpolation=false,
     temperatures=(1e-30:0.05:9.0)u"keV",
-    hydrogen_densities=(1e-30:0.005:3.0)u"cm^-3"
+    hydrogen_densities=(1e-30:0.005:3.0)u"cm^-3",
 )
 # cluster = Model_NFW(
 #     mass,
@@ -80,7 +80,7 @@ obs = BayesJ.make_observation(
     exposure_time,
     response,
     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    1
+    0
 )
 
 replace!(obs, NaN => 0.0)
@@ -171,7 +171,7 @@ s = sample(
     pixel_edge_angle=pixel_size,
     background_rate=bg_rate,
     average_effective_area=avg_eff_area,
-    centre_radius=1
+    centre_radius=0
 )
 
 posterior = s[2]["posterior"]

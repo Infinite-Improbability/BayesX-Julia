@@ -147,7 +147,7 @@ end
 
 
 """
-    prepare_model_mekal(nHcol, energy_bins, z; temperatures, hydrogen_densities)
+    prepare_model_mekal(nHcol, energy_bins, z; temperatures, hydrogen_densities, use_interpolation=true)
 
 Create an interpolated alias to the mekal model with photoelectric absorption over specified parameter ranges.
 
