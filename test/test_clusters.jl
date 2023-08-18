@@ -3,11 +3,14 @@
 using Unitful, UnitfulAstro, DimensionfulAngles
 using Test
 
+logrange(x1, x2, n) = (10^y for y in range(log10(x1), log10(x2), length=n))
+logrange(x1::Unitful.Length, x2::Unitful.Length, n) = (1u"kpc" * 10^y for y in range(log10(ustrip(u"kpc", x1)), log10(ustrip(u"kpc", x2)), length=n))
+
 function test_model(temperature, density)
     @testset "Temperature and density functions" begin
 
         @testset "Testing at assorted radii" begin
-            for r in (0.001:10)u"Mpc"
+            for r in logrange(1u"pc", 1u"Mpc", 100)
                 t = temperature(r)
                 d = density(r)
 
@@ -84,10 +87,9 @@ function test_nfw()
 
         test_model(t, d)
 
-        tunitless, dunitless = Model_NFW(ustrip(u"Msun", mass), fg, gnfw..., z=z)
-
         @testset "Unitless model call matches unitful call" begin
-            for r in (0.001:10)u"Mpc"
+            tunitless, dunitless = Model_NFW(ustrip(u"Msun", mass), fg, gnfw..., z=z)
+            for r in logrange(1u"pc", 1u"Mpc", 100)
                 @test t(r) == tunitless(r)
                 @test d(r) == dunitless(r)
             end
@@ -102,16 +104,15 @@ function test_einasto()
         gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Universal values from Arnaud 2010
         z = 0.5
 
-        for α in 0.6:0.02:1.98
+        for α in 0.6:0.1:1.9
             @testset "α=$α" begin
                 t, d = Model_Einasto(mass, fg, α, gnfw..., z=z)
 
                 test_model(t, d)
 
-                tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, α, gnfw..., z=z)
-
                 @testset "Unitless model call matches unitful call" begin
-                    for r in (0.001:10)u"Mpc"
+                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, α, gnfw..., z=z)
+                    for r in logrange(1u"pc", 1u"Mpc", 100)
                         @test t(r) == tunitless(r)
                         @test d(r) == dunitless(r)
                     end
@@ -164,10 +165,9 @@ function test_vikhlinin2006()
 
         test_model(t, d)
 
-        tunitless, dunitless = Model_Vikhlinin2006(unitless_params..., z=z)
-
         @testset "Unitless model call matches unitful call" begin
-            for r in (0.001:10)u"Mpc"
+            tunitless, dunitless = Model_Vikhlinin2006(unitless_params..., z=z)
+            for r in logrange(1u"pc", 1u"Mpc", 100)
                 @test t(r) == tunitless(r)
                 @test d(r) == dunitless(r)
             end

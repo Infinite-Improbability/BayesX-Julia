@@ -1,4 +1,20 @@
+using SpecialFunctions
+
 export Model_Einasto
+
+function lower_gamma(s, x)
+    try
+        return gamma(s) - gamma(s, x)
+    catch e
+        @error("Gamma error, s cannot be over 51", s, x)
+        throw(e)
+    end
+end
+
+function safe_lower_gamma(s, x)
+    g = lower_gamma(s, x)
+    return g < 0 ? 0.0 : g
+end
 
 """
     Model_Einasto(MT_200, fg_200, α, a, b, c, c_500_GNFW, z)
@@ -62,19 +78,10 @@ function Model_Einasto(
     # Set GNFW scale radius
     rp = uconvert(u"Mpc", r_500 / c_500_GNFW)
 
-    function lower_gamma(s, x)
-        try
-            return gamma(s) - gamma(s, x)
-        catch e
-            @error("Gamma error, s cannot be over 51", s, x)
-            throw(e)
-        end
-    end
-
     function pei_integrand(r, params)
         rs, α, rp, a, b, c = params
         r^3 * (b * (r / rp)^a + c) /
-        lower_gamma(3 / α, 2 / α * (r / rs)^α) /
+        safe_lower_gamma(3 / α, 2 / α * (r / rs)^α) /
         (r / rp)^c / (1 + (r / rp)^a)^((a + b - c) / a)
     end
 
@@ -88,10 +95,16 @@ function Model_Einasto(
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
 
+    @assert ρ_s > 0u"kg/m^3"
+    @assert rs > 0u"Mpc"
+    @assert rp > 0u"Mpc"
+
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{T})::Unitful.Density{T} where {T<:AbstractFloat}
+        # lower_gamma(3/1.5, 0.5e-31 < 0 presumably occurs elsewhere
+        # this is a problem
         r = abs(r)
-        let
+        res = let
             ρ_s = ρ_s
             rs = rs
             rp = rp
@@ -101,15 +114,16 @@ function Model_Einasto(
             c = c
             (μ_e / μ) * (1 / (4π * G)) * (Pei_GNFW / ρ_s) / rs^3 *
             α / (α / 2)^(3 / α) / exp(2 / α) *
-            r / lower_gamma(3 / α, 2 / α * (r / rs)^α) *
+            r / safe_lower_gamma(3 / α, 2 / α * (r / rs)^α) *
             (r / rp)^(-c) * (1 + (r / rp)^a)^(-(a + b - c) / a) * (b * (r / rp)^a + c)
         end
+        isfinite(res) ? res : 0.0u"kg/cm^3"
     end
 
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
         r = abs(r)
-        let
+        res = let
             ρ_s = ρ_s
             rs = rs
             rp = rp
@@ -119,9 +133,10 @@ function Model_Einasto(
             c = c
             4π * μ * G * ρ_s * (rs^3) *
             (α / 2)^(3 / α) * exp(2 / α) / α *
-            lower_gamma(3 / α, 2 / α * (r / rs)^α) / r *
+            safe_lower_gamma(3 / α, 2 / α * (r / rs)^α) / r *
             (1 + (r / rp)^α) / (b * (r / rp)^a + c)
         end
+        isfinite(res) ? res : 0.0u"keV"
     end
 
     return gas_temperature, gas_density

@@ -2,7 +2,6 @@ using ArgCheck
 using Unitful, UnitfulAstro, DimensionfulAngles
 using PhysicalConstants.CODATA2018: G
 using Integrals
-using SpecialFunctions
 
 include("params.jl")
 include("emission.jl")
