@@ -47,17 +47,23 @@ function surface_brightness(
             T = uconvert(u"keV", temp(r))
             ρ = uconvert(u"g/cm^3", density(r))
             nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-            @mpirankederror "Non finite values in f" r T ρ nH
-            error("Non finite values in f")
+            @mpirankeddebug "Non finite values in f" r T ρ nH
+            # error("Non finite values in f")
+
+            f = replace!(
+                f,
+                Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
+                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
+            )
         end
         # @assert all(isfinite, f) f
         # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
 
-        f = replace!(
-            f,
-            Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
-            Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
-        )
+        # f = replace!(
+        #     f,
+        #     Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
+        #     Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
+        # )
 
         return ustrip.(u"Mpc^-3/s", f)
     end
