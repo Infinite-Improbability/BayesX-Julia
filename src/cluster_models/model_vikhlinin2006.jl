@@ -71,7 +71,7 @@ function Model_Vikhlinin2006(
     """
     function gas_density(r::Unitful.Length)::Unitful.Density
         r = abs(r)
-        let
+        res = let
             n0 = n0
             n02 = n02
             rc = rc
@@ -86,6 +86,7 @@ function Model_Vikhlinin2006(
                 np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
             )
         end
+        isapprox(res, 0u"g/cm^3", atol=1e-30u"g/cm^3") ? 0.0u"g/cm^3" : res
     end
 
     T0 = ustrip(u"keV", T0)
@@ -128,7 +129,7 @@ function Model_Vikhlinin2006(
     end
     function gas_temperature(r::Unitful.Length)::Unitful.Energy
         r = abs(r)
-        let
+        res = let
             T0 = T0
             TminT0 = TminT0
             rcool = rcool
@@ -141,6 +142,7 @@ function Model_Vikhlinin2006(
                 ustrip(u"kpc", r), T0, TminT0, rcool, acool, rt, a, b, c
             )
         end
+        isapprox(res, 0u"keV", atol=1e-30u"keV") ? 0.0u"keV" : res
     end
 
     @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ])"
