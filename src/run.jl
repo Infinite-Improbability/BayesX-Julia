@@ -181,7 +181,7 @@ function sample(
     @assert size(obs) == size(bg)
 
     @mpidebug "Making transform"
-    prior_names = [p.name for p in priors]
+    prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
     transform, param_wrapper = make_cube_transform(priors...)
 
     @mpidebug "Calling load_response"
