@@ -152,7 +152,7 @@ priors_v2006 = [
     DeltaPrior("c", 10.0),
 ]
 
-transform, wrapper = make_cube_transform(priors_v2006)
+transform, wrapper = make_cube_transform(priors_v2006...)
 
 s = sample(
     round.(Int, noisy + bg),
