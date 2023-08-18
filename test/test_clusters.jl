@@ -121,7 +121,7 @@ function test_einasto()
         end
 
         @test_throws ArgumentError Model_Einasto(mass, fg, 2.1, gnfw..., z=z)
-        @test_throws ArgumentError Model_Einasto(mass, fg, 0.1, gnfw..., z=z)
+        @test_throws ArgumentError Model_Einasto(mass, fg, 0.01, gnfw..., z=z)
     end
 end
 
