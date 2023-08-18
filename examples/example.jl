@@ -18,8 +18,8 @@ data = FITSData(
 priors_v2006 = [
     UniformPrior("x0", -10, 10), # x
     UniformPrior("y0", -10, 10), # y
-    UniformPrior("n0", 0.1, 40.0),
-    UniformPrior("n02", 0.01, 6.0),
+    UniformPrior("n0", 0.1e-3, 40.0e-3),
+    UniformPrior("n02", 0.001e-1, 6.0e-1),
     UniformPrior("rc", 1.0, 600.0),
     UniformPrior("rc2", 1.0, 100.0),
     UniformPrior("α", 0.1, 3.0),
