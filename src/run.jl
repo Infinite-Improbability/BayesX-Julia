@@ -47,7 +47,6 @@ function sample(
     centre_radius
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
-    @argcheck prior_names[1:2] == ["x0", "y0"]
 
     predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
     predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
@@ -171,7 +170,7 @@ function sample(
     use_interpolation::Bool=true,
     centre_radius=4
 )
-    # @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
+    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
 
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
