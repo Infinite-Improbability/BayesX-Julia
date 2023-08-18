@@ -1,6 +1,6 @@
 using Distributions
 
-export DeltaPrior, LogUniformPrior, UniformPrior
+export DeltaPrior, LogUniformPrior, UniformPrior, NormalPrior, GenericPrior
 
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)

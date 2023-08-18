@@ -2,13 +2,15 @@ using Plots
 using Profile
 using BenchmarkTools
 using DotEnv
-using Unitful, DimensionfulAngles
+using Unitful, DimensionfulAngles, UnitfulAstro
 using PoissonRandom
 
-ENV["JULIA_DEBUG"] = "Main"
+include("../src/BayesJ.jl")
 
-# We use include instead of importing the module for easy access to internal methods
-include("../src/run.jl")
+using .BayesJ
+
+ENV["JULIA_DEBUG"] = "BayesJ"
+
 DotEnv.config()
 
 data = PlaintextData(
@@ -33,8 +35,8 @@ gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Using universal values from Arnaud 2010
 mass = 5e14u"Msun"
 fg = 0.13
 
-response = load_response(data, energy_range)
-em = prepare_model_mekal(
+response = BayesJ.load_response(data, energy_range)
+em = BayesJ.prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_range,
     redshift,
@@ -69,7 +71,7 @@ cluster = Model_Vikhlinin2006(
 )
 
 @info "Profiles generated"
-obs = make_observation(
+obs = BayesJ.make_observation(
     cluster...,
     redshift,
     shape,
@@ -88,31 +90,31 @@ ENV["JULIA_DEBUG"] = ""
 
 @info "Running tests"
 
-function test_func()
-    cluster = Model_Einasto(
-        mass,
-        fg,
-        0.5,
-        gnfw...,
-        z=0.5
-    )
-    make_observation(
-        cluster...,
-        redshift,
-        shape,
-        pixel_size,
-        em,
-        exposure_time,
-        response,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        1
-    )
-end
+# function test_func()
+#     cluster = Model_Einasto(
+#         mass,
+#         fg,
+#         0.5,
+#         gnfw...,
+#         z=0.5
+#     )
+#     BayesJ.make_observation(
+#         cluster...,
+#         redshift,
+#         shape,
+#         pixel_size,
+#         em,
+#         exposure_time,
+#         response,
+#         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#         1
+#     )
+# end
 
-display(
-    @benchmark test_func()
-)
-@profview test_func()
+# display(
+#     @benchmark test_func()
+# )
+# @profview test_func()
 
 @info "Preparing data for sampling"
 
@@ -152,7 +154,7 @@ priors_v2006 = [
     DeltaPrior("c", 10.0),
 ]
 
-transform, wrapper = make_cube_transform(priors_v2006...)
+transform, wrapper = BayesJ.make_cube_transform(priors_v2006...)
 
 s = sample(
     round.(Int, noisy + bg),
@@ -163,7 +165,7 @@ s = sample(
     exposure_time,
     redshift,
     prior_names=[p.name for p in priors_v2006 if !isa(p, DeltaPrior)],
-    cluster_model=Model_NFW,
+    cluster_model=Model_Vikhlinin2006,
     emission_model=em,
     param_wrapper=wrapper,
     pixel_edge_angle=pixel_size,
