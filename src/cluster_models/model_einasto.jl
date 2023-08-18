@@ -47,7 +47,7 @@ function Model_Einasto(
     @argcheck c_500_GNFW > 0
     @argcheck (b - c_500_GNFW) > 0
     @argcheck α < 2 # α > 2 leads to temperature going up past some r
-    @argcheck α >= 0.6 # if 3/α > 51 then lower_gamma(3/α, x) throws an error
+    @argcheck α >= 0.06 # if 3/α > 51 then lower_gamma(3/α, x) throws an error
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
