@@ -130,27 +130,47 @@ display(heatmap(dropdims(sum(noisy + bg, dims=1), dims=1), title="Noisy"))
 T(r) = uconvert(u"keV", cluster[1](r))
 n(r) = uconvert(u"cm^-3", cluster[2](r))
 
-# s = sample(
-#     round.(Int, noisy + bg),
-#     round.(Int, bg),
-#     response,
-#     make_cube_transform(
-#         UniformPrior("x0", -1.0, 1.0),
-#         UniformPrior("y0", -1.0, 1.0),
-#         UniformPrior("MT_200", 1e14, 1e15),
-#         UniformPrior("fg_200", 0.08, 0.2),
-#     ),
-#     exposure_time,
-#     exposure_time,
-#     redshift,
-#     prior_names=["x0", "y0", "MT_200", "fg_200"],
-#     cluster_model=Model_NFW,
-#     emission_model=em,
-#     pixel_edge_angle=pixel_size,
-#     background_rate=bg_rate,
-#     average_effective_area=avg_eff_area,
-#     centre_radius=1
-# )
+priors_v2006 = [
+    UniformPrior("x0", -10, 10), # x
+    UniformPrior("y0", -10, 10), # y
+    UniformPrior("n0", 0.1, 40.0),
+    UniformPrior("n02", 0.01, 6.0),
+    UniformPrior("rc", 1.0, 600.0),
+    UniformPrior("rc2", 1.0, 100.0),
+    UniformPrior("α", 0.1, 3.0),
+    UniformPrior("β", 0.1, 2.0),
+    UniformPrior("β2", 0.1, 5.0),
+    UniformPrior("ϵ", 0.1, 5.0), # constrain ϵ<5
+    UniformPrior("rs", 100.0, 1400.0),
+    UniformPrior("T0", 1.0, 25.0),
+    UniformPrior("Tmin/T0", 0.01, 1.0),
+    UniformPrior("rcool", 1.0, 250.0),
+    UniformPrior("acool", 0.1, 12.0),
+    UniformPrior("rt", 0.01, 5.0),
+    UniformPrior("a", -1.0, 1.0),
+    UniformPrior("b", 0.1, 6.0),
+    UniformPrior("c", 0.1, 12.0),
+]
 
-# posterior = s[2]["posterior"]
-# @assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
+transform, wrapper = make_cube_transform(priors_v2006)
+
+s = sample(
+    round.(Int, noisy + bg),
+    round.(Int, bg),
+    response,
+    transform,
+    exposure_time,
+    exposure_time,
+    redshift,
+    prior_names=[p.name for p in priors_v2006 if !isa(p, DeltaPrior)],
+    cluster_model=Model_NFW,
+    emission_model=em,
+    param_wrapper=wrapper,
+    pixel_edge_angle=pixel_size,
+    background_rate=bg_rate,
+    average_effective_area=avg_eff_area,
+    centre_radius=1
+)
+
+posterior = s[2]["posterior"]
+@assert all(posterior["errlo"][1:2] .< [ustrip(mass), fg] .< posterior["errup"][1:2]) display(posterior)
