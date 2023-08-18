@@ -53,7 +53,8 @@ function surface_brightness(
             f = replace!(
                 f,
                 Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
-                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
+                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s",
+                Quantity(-Inf, u"m^-3/s") => 0.0u"m^-3/s"
             )
         end
         # @assert all(isfinite, f) f
