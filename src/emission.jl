@@ -192,11 +192,11 @@ C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) ⋅ dE \\\\
 \\end{aligned}
 ```
 with `C(PI)` is the observed counts in a detector channel `PI`, `T` is the observation time,
-`ARF(E)` is the effective area of the instrument and `RMF(E, PI)` is the unitless response matrix.
+`ARF(E)` is the effective area of the instrument and `RMF(E, PI)` [we use `RMF(PI, E)`] is the unitless response matrix.
 (Handbook of X-ray Astronomy Chapter 2011, Chapter 5 pg 87, by K. Arnaud, R. Smith and A. Siemiginowska)
 
 This function takes the combined RMF and ARF as the response function. This is to recalculating it on every call.
-Some people format the RMF as RMF(PI, E). This convention is used by CIAO, for example.
+Some people format the RMF as RMF(E, PI), others as RMF(PI, E). This latter convention is used by CIAO and by us.
 """
 function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T}, exposure_time::T)::Vector{T} where {T<:AbstractFloat}
     # Argcheck would really be better here but we want it to skip it in high performance situations

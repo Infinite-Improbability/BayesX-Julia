@@ -18,7 +18,11 @@ abstract type Dataset end
 
 # TODO: Be more specific with types
 """
+    FITSData(observation::AbstractString, background::AbstractString, arf::AbstractString, rmf::AbstractString, pixel_edge_angle::DimensionfulAngles.Angle)
+
 Store a collection of observation data from fits files.
+
+Takes paths to the files as inputs.
 """
 struct FITSData{S<:AbstractString,T<:DimensionfulAngles.Angle} <: Dataset
     observation::S
@@ -179,8 +183,13 @@ function bin_events(_::FITSData, events, energy_range, x_edges, y_edges)::Array{
 end
 
 """
+    PlaintextData(observation::AbstractString, background::AbstractString, arf::AbstractString, rmf::AbstractString, shape::NTuple{3,Int}, rmf_shape::NTuple{2,Int}, obs_exposure_time::Unitful.Time, bg_exposure_time::Unitful.Time, pixel_edge_angle::DimensionfulAngles.Angle, rmf_unit::Unitful.Area)
+
 Store preprocessed data from plaintext files with whitespace delimiters.
-This data is assumed to have the appropriate binning and energy ranges already applied."""
+
+Events and response files provided as paths. This data is assumed to have the appropriate binning and energy ranges already applied.
+The `shape` of the event arrays should be `(channels, x, y)` and the `rmf_shape` should be (channels, bins).
+"""
 struct PlaintextData{S<:AbstractString,T<:Unitful.Time,U<:DimensionfulAngles.Angle,V<:Unitful.Area} <: Dataset
     observation::S
     background::S
@@ -234,4 +243,12 @@ Placeholder function, returns events matrix without modification"""
 function bin_events(_::PlaintextData, events, args...)
     @mpiwarn "PlaintextData does not support binning. Data will be used unmodified."
     return events
+end
+
+
+"""
+    load_mask()
+"""
+function load_mask(data::Dataset)::Matrix{Int64}
+    error("load_data is not implemented for these arguments", data)
 end
