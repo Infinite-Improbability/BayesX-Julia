@@ -303,8 +303,8 @@ function load_mask(path::AbstractString, x_edges, y_edges)::Matrix{Bool}
 
     mask = zeros(Bool, length(x_edges), length(y_edges))
 
-    for i in eachindex(x_edges)
-        for j in eachindex(y_edges)
+    for j in eachindex(y_edges)
+        for i in eachindex(x_edges)
             mask[i, j] = any(test_point.(ellipses, x_edges[i], y_edges[j]))
         end
     end

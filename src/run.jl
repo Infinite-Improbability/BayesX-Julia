@@ -44,7 +44,8 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
-    centre_radius
+    centre_radius,
+    mask::Matrix{Bool}=nothing
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -90,9 +91,11 @@ function sample(
                 obs_exposure_time,
                 response_function,
                 (full_params[1], full_params[2]),
-                centre_radius
-            ) .+ predicted_obs_bg
+                centre_radius,
+                mask=mask
+            )
 
+            predicted .= predicted .+ predicted_obs_bg
 
             @mpirankeddebug "Predicted results generated"
 
@@ -126,7 +129,7 @@ function sample(
 
     @mpidebug "Creating stepsampler"
     sampler.stepsampler = stepsampler.SliceSampler(
-        nsteps=2 * length(prior_names),
+        nsteps=1 * length(prior_names),
         generate_direction=stepsampler.generate_mixture_random_direction,
         adaptive_nsteps="move-distance",
         max_nsteps=400,
@@ -136,7 +139,7 @@ function sample(
     # run Ultranest
     @mpiinfo "Launching sampler"
     results = sampler.run(
-    # region_class=ultranest.mlfriends.RobustEllipsoidRegion
+        region_class=ultranest.mlfriends.RobustEllipsoidRegion
     )
 
     # output data
@@ -168,14 +171,17 @@ function sample(
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
-    centre_radius=4
+    centre_radius=4,
+    mask=nothing
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
 
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
-    obs = bin_events(data, observation.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
-    bg = bin_events(data, observed_background.first, energy_range, 3700:bin_size:4200, 4100:bin_size:4550)
+    x_edges = 3700:bin_size:4200
+    y_edges = 4100:bin_size:4550
+    obs = bin_events(data, observation.first, energy_range, x_edges, y_edges)
+    bg = bin_events(data, observed_background.first, energy_range, x_edges, y_edges)
     pixel_edge_angle = bin_size * data.pixel_edge_angle
     @assert size(obs) == size(bg)
 
@@ -190,6 +196,11 @@ function sample(
     @mpiinfo "Generating emissions model"
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
 
+    if mask isa AbstractString
+        @mpiinfo "Loading mask"
+        mask = load_mask(path, x_edges, y_edges)
+    end
+
     sample(
         obs,
         bg,
@@ -203,7 +214,8 @@ function sample(
         emission_model=emission_model,
         param_wrapper=param_wrapper,
         pixel_edge_angle=pixel_edge_angle,
-        centre_radius=centre_radius
+        centre_radius=centre_radius,
+        mask=mask
     )
 end
 

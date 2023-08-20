@@ -65,8 +65,8 @@ priors_nfw = [
 sample(
     data,
     (0.7:0.01:7.0)u"keV",
-    Model_Einasto,
-    priors_eiansto,
+    Model_Vikhlinin2006,
+    priors_v2006,
     3.89e20u"cm^-2",
     0.160;
     bin_size=10,

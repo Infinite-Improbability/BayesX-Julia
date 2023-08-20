@@ -246,7 +246,7 @@ function make_observation(
     response_function,
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
-    mask=nothing
+    mask::Matrix{Bool}=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
@@ -321,7 +321,7 @@ function make_observation(
     response_function,
     centre::NTuple{2,Real},
     centre_radius;
-    mask=nothing
+    mask::Matrix{Bool}=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(
