@@ -43,7 +43,7 @@ function surface_brightness(
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
 
-        all(isfinite, f) ? f : begin
+        if all(isfinite, f)
             T = uconvert(u"keV", temp(r))
             ρ = uconvert(u"g/cm^3", density(r))
             nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
@@ -57,14 +57,6 @@ function surface_brightness(
                 Quantity(-Inf, u"m^-3/s") => 0.0u"m^-3/s"
             )
         end
-        # @assert all(isfinite, f) f
-        # "f with l=$l, s=$s (∴ r=$s, T=$T, ρ=$ρ nH=$nH)"
-
-        # f = replace!(
-        #     f,
-        #     Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
-        #     Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s"
-        # )
 
         return ustrip.(u"Mpc^-3/s", f)
     end
