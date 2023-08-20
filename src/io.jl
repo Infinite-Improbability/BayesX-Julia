@@ -80,8 +80,8 @@ function load_events_from_fits(path::AbstractString)::Pair{Matrix,Unitful.Time{F
     @mpidebug "Selected HDU with EVENTS extension and HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' from $path for events."
 
     live_time = safe_read_key(h, "LIVETIME", "LIVETIME key absent, trying EXPOSURE")[1]
-    if isnothing(live_time[1])
-        live_time = read_key(h, "EXPOSURE") # We don't want safe_read_key because we want an exception if this fails.
+    if isnothing(live_time)
+        live_time = read_key(h, "EXPOSURE")[1] # We don't want safe_read_key because we want an exception if this fails.
     end
 
     return [read(h, "x") read(h, "y") read(h, "pi") read(h, "energy") * 1u"eV"] => live_time * 1u"s" # TODO: manual units bad
