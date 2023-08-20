@@ -225,7 +225,7 @@ function hydrogen_number_density(gas_density)
 end
 
 """
-    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius)
+    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing)
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
 
@@ -246,7 +246,7 @@ function make_observation(
     response_function,
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
-    mask::Matrix{Bool}=nothing
+    mask::Union{Matrix{Bool},Nothing}=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
@@ -288,7 +288,7 @@ function make_observation(
     counts = Array{Float64}(undef, size(response_function, 1), shape...)
 
     if isnothing(mask)
-        mask = zeros(Bool, shape[2:end])
+        mask = zeros(Bool, shape...)
     end
 
     for j in 1:shape[2]
@@ -321,7 +321,7 @@ function make_observation(
     response_function,
     centre::NTuple{2,Real},
     centre_radius;
-    mask::Matrix{Bool}=nothing
+    mask::Union{Matrix{Bool},Nothing}=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(

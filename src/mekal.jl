@@ -1,4 +1,11 @@
+# SpectralFitting outputs the current abundance tables when loaded
+# But we don't use them so it is misleading
+# Redirect output to hide it.
+so = stdout
+redirect_stdout(devnull)
 using SpectralFitting
+redirect_stdout(so)
+
 using Interpolations
 using Unitful, UnitfulAstro
 using ProgressMeter

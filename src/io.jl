@@ -262,10 +262,10 @@ An ellipse centered at `(x, y)` with radii `r1` and `r2` and rotation `θ`.
 `θ` is defined as rotation counterclockwise from the x-axis in radians.
 """
 struct Ellipse{T<:AbstractFloat}
-    x::T,
-    y::T,
-    r1::T,
-    r2::T,
+    x::T
+    y::T
+    r1::T
+    r2::T
     θ::T
 end
 
@@ -278,9 +278,9 @@ The equation for an ellipse in Cartesian coordinates is of the form `f(x,y) = 1`
 any point `(x0, y0)` such that `f(x0, y0) <= 1 + atol` as being within the ellipse.
 """
 function test_point(e::Ellipse, x, y, atol=0)::Bool
-    t1 = (cos(e.θ) * (x - e.x) + sin(e.θ) * (y - e.y)) ^ 2
-    t2 = (sin(e.θ) * (x - e.x) - cos(e.θ) * (y - e.y)) ^ 2
-    
+    t1 = (cos(e.θ) * (x - e.x) + sin(e.θ) * (y - e.y))^2
+    t2 = (sin(e.θ) * (x - e.x) - cos(e.θ) * (y - e.y))^2
+
     return (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
 end
 
@@ -291,6 +291,7 @@ function load_mask(path::AbstractString, x_edges, y_edges)::Matrix{Bool}
         for line in readline(f)
             if "ellipse" ∉ line
                 continue
+            end
             # Currently assuming pixel coordinates. In theory this isn't guaranteed.
             # format is ellipse(x, y, r1, 2, angle)
             # first strip ellipse( to get x, y, r1, 2, angle)
@@ -299,6 +300,7 @@ function load_mask(path::AbstractString, x_edges, y_edges)::Matrix{Bool}
             line = rstrip(line, ")")
             # then split on commas and cast to floats
             push!(ellipses, Ellipse(parse(Float64, el) for el in split(line, ",")))
+        end
     end
 
     mask = zeros(Bool, length(x_edges), length(y_edges))

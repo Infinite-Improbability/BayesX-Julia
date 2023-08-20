@@ -44,8 +44,8 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
-    centre_radius,
-    mask::Matrix{Bool}=nothing
+    centre_radius=0,
+    mask=nothing
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -171,7 +171,7 @@ function sample(
     redshift::Real;
     bin_size::Real=10,
     use_interpolation::Bool=true,
-    centre_radius=4,
+    centre_radius=0,
     mask=nothing
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
@@ -197,8 +197,9 @@ function sample(
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
 
     if mask isa AbstractString
-        @mpiinfo "Loading mask"
+        @mpidebug "Loading mask"
         mask = load_mask(path, x_edges, y_edges)
+        @mpiinfo "Mask size is $(size(mask))"
     end
 
     sample(
