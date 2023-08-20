@@ -47,7 +47,7 @@ function surface_brightness(
             T = uconvert(u"keV", temp(r))
             ρ = uconvert(u"g/cm^3", density(r))
             nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-            @mpirankeddebug "Non finite values in f" r T ρ nH
+            @mpirankederror "Non finite values in f" r T ρ nH f
             # error("Non finite values in f")
 
             f = replace!(
@@ -245,7 +245,8 @@ function make_observation(
     exposure_time::T,
     response_function,
     centre::NTuple{2,<:DimensionfulAngles.Angle},
-    centre_radius
+    centre_radius;
+    mask=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
@@ -286,10 +287,16 @@ function make_observation(
     exp_time = ustrip(u"s", exposure_time)
     counts = Array{Float64}(undef, size(response_function, 1), shape...)
 
+    if isnothing(mask)
+        mask = zeros(Bool, shape[2:end])
+    end
+
     for j in 1:shape[2]
         for i in 1:shape[1]
             radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
             if radius < min_radius
+                counts[:, i, j] .= NaN
+            elseif mask[i, j]
                 counts[:, i, j] .= NaN
             else
                 brightness = brightness_interpolation(radius)
@@ -313,7 +320,8 @@ function make_observation(
     exposure_time::T,
     response_function,
     centre::NTuple{2,Real},
-    centre_radius
+    centre_radius;
+    mask=nothing
 )::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(
@@ -326,6 +334,7 @@ function make_observation(
         exposure_time,
         response_function,
         centre .* 1u"arcsecondᵃ",
-        centre_radius
+        centre_radius;
+        mask=mask
     )
 end
