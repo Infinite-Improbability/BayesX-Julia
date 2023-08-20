@@ -1,6 +1,6 @@
 using Cosmology
 using Unitful
-using PhysicalConstants.CODATA2018: m_p
+using PhysicalConstants.CODATA2018: m_p, G, k_B
 
 """
 Cosmology assumed by BayesX

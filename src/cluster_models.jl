@@ -1,6 +1,5 @@
 using ArgCheck
 using Unitful, UnitfulAstro, DimensionfulAngles
-using PhysicalConstants.CODATA2018: G
 using Integrals
 
 include("params.jl")
