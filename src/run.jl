@@ -45,7 +45,8 @@ function sample(
     background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
     average_effective_area=250u"cm^2",
     centre_radius=0,
-    mask=nothing
+    mask=nothing,
+    use_stepsampler=false
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -127,19 +128,21 @@ function sample(
         # resume="resume"
     )
 
-    @mpidebug "Creating stepsampler"
-    sampler.stepsampler = stepsampler.SliceSampler(
-        nsteps=1 * length(prior_names),
-        generate_direction=stepsampler.generate_mixture_random_direction,
-        adaptive_nsteps="move-distance",
-        max_nsteps=400,
-        region_filter=true
-    )
+    if use_stepsampler
+        @mpidebug "Creating stepsampler"
+        sampler.stepsampler = stepsampler.SliceSampler(
+            nsteps=2 * length(prior_names),
+            generate_direction=stepsampler.generate_mixture_random_direction,
+            adaptive_nsteps="move-distance",
+            max_nsteps=400,
+            region_filter=true
+        )
+    end
 
     # run Ultranest
     @mpiinfo "Launching sampler"
     results = sampler.run(
-        region_class=ultranest.mlfriends.RobustEllipsoidRegion
+    # region_class=ultranest.mlfriends.RobustEllipsoidRegion
     )
 
     # output data
@@ -172,7 +175,8 @@ function sample(
     bin_size::Real=10,
     use_interpolation::Bool=true,
     centre_radius=0,
-    mask=nothing
+    mask=nothing,
+    use_stepsampler=false
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
 
@@ -216,7 +220,8 @@ function sample(
         param_wrapper=param_wrapper,
         pixel_edge_angle=pixel_edge_angle,
         centre_radius=centre_radius,
-        mask=mask
+        mask=mask,
+        use_stepsampler=use_stepsampler
     )
 end
 
