@@ -103,6 +103,7 @@ end
 function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float64}}
     @mpidebug "Loading response matrices"
 
+    # Open RMF file
     f_rmf = FITS(data.rmf)
     rmf_hdus::Vector{TableHDU} = [
         h for h in f_rmf if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"
@@ -113,16 +114,25 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     r = rmf_hdus[1]
     @mpidebug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
 
+    # Get channel ranges for each bin
     first_channel = [i[1] for i in read(r, "F_CHAN")]
     last_channel = first_channel .+ [i[1] for i in read(r, "N_CHAN")] .- 1
     channels_for_bin = read(r, "MATRIX")
 
+    # TODO: Set energy bin step based on RMF
+    # Resolve issues where length(energy_range) == length(energy bins from rmf)
+    # LHS should be one less because it is edges
+    # May be because energy range is terminating prematurely? e.g. 1:0.336:4 has last value at 3.688
+
+    # Preallocate output matrix
     rmf = zeros(Float64, (maximum(last_channel), read_key(r, "NAXIS2")[1]))
 
+    # Load values into matrix
     for i in axes(rmf, 2)
         rmf[first_channel[i][1]:last_channel[i][1], i] .= channels_for_bin[i]
     end
 
+    # Open ARF file
     f_arf = FITS(data.arf)
     arf_hdus::Vector{TableHDU} = [
         h for h in f_arf if safe_read_key(h, "extname", "Exception when looking for specrsp HDU. Probably a HDU without extname.")[1] == "SPECRESP"
@@ -142,15 +152,23 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
 
     # Get first bin where maximum energy >= min of range
     # ∴ Subsequent bins must have minimum energy > min of range
-    min_bin = searchsortedfirst(read(r, "ENERG_HI") * 1u"keV", minimum(energy_range))
-    # min_channel = searchsortedfirst(read(f_rmf[3], "E_MAX") * 1u"keV", minimum(energy_range))
+    energy_high = read(r, "ENERG_HI") * 1u"keV"
+    min_bin = searchsortedfirst(energy_high, minimum(energy_range))
+
+    # energy_min = read(f_rmf[3], "E_MAX") * 1u"keV"
+    # min_channel = searchsortedfirst(energy_max, minimum(energy_range))
     min_channel = 1 # we don't trim events channels based on minimum (yet)
+
     # Get last bin where minimum energy >= max of range
     # ∴ This and subsequent bins must have minimum energy > max of range
-    max_bin = searchsortedfirst(read(r, "ENERG_LO") * 1u"keV", maximum(energy_range)) - 1
-    max_channel = searchsortedfirst(read(f_rmf[3], "E_MIN") * 1u"keV", maximum(energy_range)) - 1
+    energy_low = read(r, "ENERG_LO") * 1u"keV"
+    max_bin = searchsortedfirst(energy_low, maximum(energy_range)) - 1
+
+    energy_min = read(f_rmf[3], "E_MIN") * 1u"keV"
+    max_channel = searchsortedfirst(energy_min, maximum(energy_range)) - 1
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
+    @mpidebug "Response matrix bins range over" energy_low[min_bin] energy_high[max_bin]
 
     return rmf[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # Hack to add arf units
 end

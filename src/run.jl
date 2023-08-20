@@ -157,13 +157,14 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range::AbstractRange{Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift)
+    sample(data::Dataset, energy_range::AbstractRange{Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift, x, y)
 
 Run Bayesian inference on a given set of `data` considering only the selected
 energy range.
 
 * An gas emission model `(density, temperature) → emissivity` can be provided.
 * The first two priors should always be `x0` and `y0`, giving cluster centre position.
+* `x` and `y` are tuples of `(min, max)`.
 """
 function sample(
     data::Dataset,
@@ -171,7 +172,9 @@ function sample(
     cluster_model::Function,
     priors::AbstractVector{<:Prior},
     nHcol::SurfaceDensity,
-    redshift::Real;
+    redshift::Real,
+    x::NTuple{2,<:Real},
+    y::NTuple{2,<:Real};
     bin_size::Real=10,
     use_interpolation::Bool=true,
     centre_radius=0,
@@ -182,8 +185,12 @@ function sample(
 
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
-    x_edges = 3700:bin_size:4200
-    y_edges = 4100:bin_size:4550
+
+    x_edges = x[1]:bin_size:x[2]
+    y_edges = y[1]:bin_size:y[2]
+
+    @mpidebug "Spatial bounds" x_edges y_edges
+
     obs = bin_events(data, observation.first, energy_range, x_edges, y_edges)
     bg = bin_events(data, observed_background.first, energy_range, x_edges, y_edges)
     pixel_edge_angle = bin_size * data.pixel_edge_angle
@@ -195,6 +202,7 @@ function sample(
 
     @mpidebug "Calling load_response"
     response_function = load_response(data, energy_range)
+    @mpidebug "Response function loaded. Size[2] should be one less than energy range" size(response_function) length(energy_range)
     @assert size(response_function, 2) == (length(energy_range) - 1)
 
     @mpiinfo "Generating emissions model"

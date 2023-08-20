@@ -8,10 +8,10 @@ DotEnv.config()
 # ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
-    "$(ENV["DEBUG_DATA_PATH"])/acisf04361_repro_evt2.fits",
-    "$(ENV["DEBUG_DATA_PATH"])/4361_blanksky.fits",
-    "$(ENV["DEBUG_DATA_PATH"])/specx/specx.arf",
-    "$(ENV["DEBUG_DATA_PATH"])/specx/specx.rmf",
+    "data/tng/tng_s67_h11_obs_evt.fits",
+    "data/tng/tng_s67_h11_bg.fits",
+    "data/tng/acisi_aimpt_cy0.arf",
+    "data/tng/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
 )
 
@@ -64,11 +64,13 @@ priors_nfw = [
 
 sample(
     data,
-    (0.7:0.01:7.0)u"keV",
+    range(0.2u"keV", 4.0u"keV", length=329),
     Model_NFW,
     priors_nfw,
-    3.89e20u"cm^-2",
-    0.160;
+    0.022e22u"cm^-2",
+    0.160,
+    (1400, 3300),
+    (1400, 3300);
     bin_size=10,
     centre_radius=0,
     use_interpolation=false
