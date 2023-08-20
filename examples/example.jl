@@ -68,7 +68,7 @@ sample(
     Model_NFW,
     priors_nfw,
     0.022e22u"cm^-2",
-    0.160,
+    0.5,
     (1400, 3300),
     (1400, 3300);
     bin_size=10,
