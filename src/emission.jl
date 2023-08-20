@@ -47,7 +47,7 @@ function surface_brightness(
             T = uconvert(u"keV", temp(r))
             ρ = uconvert(u"g/cm^3", density(r))
             nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-            @mpirankederror "Non finite values in f" r T ρ nH f
+            @mpirankederror "Non finite values in integrand f" r T ρ nH f
             # error("Non finite values in f")
 
             f = replace!(
@@ -65,8 +65,19 @@ function surface_brightness(
         # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
         problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
         sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
-        @assert all(isfinite, sol.u)
-        return 2 * sol.u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+        # @assert all(isfinite, sol.u)
+        u = sol.u
+        if all(isfinite, sol.u) == false
+            @mpirankederror "Non finite value in integral" u
+
+            u = replace!(
+                u,
+                Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
+                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s",
+                Quantity(-Inf, u"m^-3/s") => 0.0u"m^-3/s"
+            )
+        end
+        return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
     catch e
         if isa(e, DomainError)
             @mpirankedwarn "Domain error in integral"
