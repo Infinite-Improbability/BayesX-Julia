@@ -127,9 +127,9 @@ struct NormalPrior{S<:AbstractString,T<:Number} <: Prior
     name::S
     mean::T
     σ::T
-    dist::Normal
-    NormalPrior(name::S, mean::T, σ::T) where {S<:AbstractString,T<:Number} = new{S,T}(NormalPrior(name, mean, σ, Normal(mean, σ)))
+    dist::Normal{T}
 end
+NormalPrior(name::S, mean::T, σ::T) where {S<:AbstractString,T<:Number} = NormalPrior(name, mean, σ, Normal(mean, σ))
 function transform(prior::NormalPrior, x::Real)
     return quantile(prior.dist, x)
 end
