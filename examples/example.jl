@@ -65,8 +65,8 @@ priors_nfw = [
 sample(
     data,
     range(0.2u"keV", 4.0u"keV", length=329),
-    Model_NFW,
-    priors_nfw,
+    Model_Free,
+    [DeltaPrior("x0", 0), DeltaPrior("y0", 0), UniformPrior("R200", 1, 1000), UniformPrior("P200", 1, 1000)],
     0.022e22u"cm^-2",
     0.5,
     (1900, 2800),

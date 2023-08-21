@@ -1,15 +1,18 @@
-using Interpolations
+export Model_Free
 
 function Model_Free(params...; z)
     @argcheck length(params) % 2 == 0
 
     overdensities = [200, 500, 2500, 1000, 100]
-    @argcheck length(parmas) <= length(overdensities)
+    @argcheck length(params) <= length(overdensities)
 
-    radii = params[1:2:end]
-    pressures = params[2:2:end]
+    radii = [r * 1u"kpc" for r in params[1:2:end]]
+    pressures = [p * 1u"Pa" for p in params[2:2:end]]
 
-    pressure = cubic_spline_interpolation(radii, pressures, extrapolation_bc=Line())
+    display(radii)
+    display(pressures)
+
+    pressure = extrapolate(Interpolations.scale(interpolate(pressures, BSpline(Quadratic(Reflect(OnCell())))), radii), Line())
 
     ρ_crit_z = ρ_crit(z)
     mass(overdensity, r) = mass = 4π / 3 * overdensity * ρ_crit_z * r^3
@@ -21,7 +24,7 @@ function Model_Free(params...; z)
     end
 
     densities = [density_at_overdensity(o, r) for (o, r) in zip(overdensities, radii)]
-    density = cubic_spline_interpolation(radii, densities, extrapolation_bc=Line())
+    density = extrapolate(Interpolations.scale(interpolate(densities, BSpline(Quadratic(Reflect(OnCell())))), radii), Line())
 
     temperature(r) = μ * pressure(r) / k_B / density(r) # ideal gas
 

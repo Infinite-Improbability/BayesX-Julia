@@ -16,3 +16,4 @@ Calculate the critical density at some redshift `z`.
 include("cluster_models/model_nfw.jl")
 include("cluster_models/model_einasto.jl")
 include("cluster_models/model_vikhlinin2006.jl")
+include("cluster_models/model_free.jl")
