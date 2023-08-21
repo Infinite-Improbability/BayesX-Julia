@@ -55,7 +55,7 @@ priors_nfw = [
     DeltaPrior("x0", 0),
     DeltaPrior("y0", 0),
     UniformPrior("MT_200", 1.0e14, 1.0e15),
-    UniformPrior("fg_200", 0.08, 0.2),
+    NormalPrior("fg_200", 0.13, 0.01),
     DeltaPrior("a", 1.0510),
     DeltaPrior("b", 5.4905),
     DeltaPrior("c", 0.3081),
@@ -69,8 +69,8 @@ sample(
     priors_nfw,
     0.022e22u"cm^-2",
     0.5,
-    (1400, 3300),
-    (1400, 3300);
+    (1900, 2800),
+    (1900, 2800);
     bin_size=10,
     centre_radius=0,
     use_interpolation=false
