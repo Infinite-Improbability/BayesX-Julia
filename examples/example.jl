@@ -8,10 +8,10 @@ DotEnv.config()
 # ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
-    "data/tng/tng_s67_h11_obs_evt.fits",
-    "data/tng/tng_s67_h11_bg.fits",
-    "data/tng/acisi_aimpt_cy0.arf",
-    "data/tng/acisi_aimpt_cy0.rmf",
+    "data/2203/reproj_deflared_filt_evt.fits",
+    "data/2203/2203_blanksky_deflared_filt_evt.fits",
+    "data/2203/2203_specx.arf",
+    "data/2203/2203_specx.rmf",
     0.492u"arcsecondᵃ"
 )
 
@@ -50,10 +50,10 @@ priors_eiansto = [
     DeltaPrior("c_500_GNFW", 1.177)
 ]
 priors_nfw = [
-    # UniformPrior("x0", -10.0, 10.0),
-    # UniformPrior("y0", -10.0, 10.0),
-    DeltaPrior("x0", 0),
-    DeltaPrior("y0", 0),
+    UniformPrior("x0", -150.0, 150.0),
+    UniformPrior("y0", -10.0, 10.0),
+    # DeltaPrior("x0", 0),
+    # DeltaPrior("y0", 0),
     UniformPrior("MT_200", 1.0e14, 1.0e15),
     NormalPrior("fg_200", 0.13, 0.01),
     DeltaPrior("a", 1.0510),
@@ -64,13 +64,13 @@ priors_nfw = [
 
 sample(
     data,
-    range(0.2u"keV", 4.0u"keV", length=329),
+    (0.5:0.01:4.0)u"keV",
     Model_NFW,
     priors_nfw,
     0.022e22u"cm^-2",
-    0.5,
-    (1900, 2800),
-    (1900, 2800);
+    0.0569,
+    (3100, 4850),
+    (3685, 4505);
     bin_size=10,
     centre_radius=0,
     use_interpolation=false
