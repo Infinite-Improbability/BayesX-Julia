@@ -210,7 +210,7 @@ function sample(
 
     if mask isa AbstractString
         @mpidebug "Loading mask"
-        mask = load_mask(path, x_edges, y_edges)
+        mask = load_mask(mask, x_edges, y_edges)
         @mpiinfo "Mask size is $(size(mask))"
     end
 
