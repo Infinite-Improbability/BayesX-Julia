@@ -1,9 +1,6 @@
 include("../src/BayesJ.jl")
 using .BayesJ
 using Unitful, DimensionfulAngles
-using DotEnv
-
-DotEnv.config()
 
 # ENV["JULIA_DEBUG"] = "BayesJ"
 

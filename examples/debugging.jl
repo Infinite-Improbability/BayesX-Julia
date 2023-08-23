@@ -1,7 +1,6 @@
 using Plots
 using Profile
 using BenchmarkTools
-using DotEnv
 using Unitful, DimensionfulAngles, UnitfulAstro
 using PoissonRandom
 
@@ -10,8 +9,6 @@ include("../src/BayesJ.jl")
 using .BayesJ
 
 ENV["JULIA_DEBUG"] = "BayesJ"
-
-DotEnv.config()
 
 data = PlaintextData(
     "data/simtestdata/data64by64by32.txt",
