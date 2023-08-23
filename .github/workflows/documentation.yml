@@ -17,9 +17,7 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.9'
-      # - uses: julia-actions/cache@v1
-      #   with:
-      #     cache-registries: "true"
+      - run: cd docs
       - name: Add registry
         run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
       - name: Install dependencies
@@ -29,4 +27,4 @@ jobs:
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: julia --project=@. docs/make.jl
+        run: julia --project=@. make.jl
