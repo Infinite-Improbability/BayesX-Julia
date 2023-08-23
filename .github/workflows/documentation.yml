@@ -17,14 +17,16 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1.9'
-      - run: cd docs
       - name: Add registry
         run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
+        working-directory: ./docs
       - name: Install dependencies
         run: julia --project=@. -e 'using Pkg; Pkg.instantiate()'
+        working-directory: ./docs
         env:
           PYTHON: ""
       - name: Build and deploy
+        run: julia --project=@. make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: julia --project=@. make.jl
+        working-directory: ./docs
