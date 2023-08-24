@@ -8,16 +8,14 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: ['1.9.2']
-        julia-arch: [x64]
-        os: [ubuntu-latest]
+        julia-version: ['^1.9.2', '1.7.3', '~1.8', '~1.6', 'nightly']
+        os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
-          arch: ${{ matrix.julia-arch }}
       - name: Add registry
         run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
       - uses: julia-actions/julia-buildpkg@v1
