@@ -1,5 +1,5 @@
-include("../src/BayesJ.jl")
-using .BayesJ
+# include("../src/BayesJ.jl")
+using BayesJ
 using Unitful, DimensionfulAngles
 
 # ENV["JULIA_DEBUG"] = "BayesJ"

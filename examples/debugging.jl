@@ -4,9 +4,9 @@ using BenchmarkTools
 using Unitful, DimensionfulAngles, UnitfulAstro
 using PoissonRandom
 
-include("../src/BayesJ.jl")
+# include("../src/BayesJ.jl")
 
-using .BayesJ
+using BayesJ
 
 ENV["JULIA_DEBUG"] = "BayesJ"
 
