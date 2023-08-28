@@ -2,6 +2,7 @@
 BayesJ = "35f7d120-1210-4aa9-b260-6d18979f7586"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DimensionfulAngles = "2d4b8d7a-02d9-40f9-9abe-9c695b77de0d"
+MPIPreferences = "3da0fdf6-3ccc-4f1b-acd9-58baa6c99267"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PoissonRandom = "e409e4f3-bfea-5376-8464-e040bb5c01ab"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
