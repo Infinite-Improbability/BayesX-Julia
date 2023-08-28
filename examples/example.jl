@@ -1,4 +1,3 @@
-# include("../src/BayesJ.jl")
 using BayesJ
 using Unitful, DimensionfulAngles
 
@@ -69,6 +68,6 @@ sample(
     (1900, 2800),
     (1900, 2800);
     bin_size=10,
-    centre_radius=10,
+    centre_radius=15,
     use_interpolation=false
 )
