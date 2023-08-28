@@ -28,7 +28,7 @@ function log_likelihood(
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
 
-    @assert all(i -> i > 0, predicted)
+    @assert all(i -> (i > 0) || !isfinite(i), predicted)
 
     t1 = @. observed * log(predicted) - predicted
     t2 = @. observed_background * log(predicted_background) - predicted_background

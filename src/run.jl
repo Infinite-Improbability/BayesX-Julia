@@ -56,6 +56,7 @@ function sample(
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
+    @assert predicted_obs_bg > 0
     @assert all(isfinite, observed)
     @assert all(isfinite, observed_background)
     @assert all(isfinite, log_obs_factorial)
