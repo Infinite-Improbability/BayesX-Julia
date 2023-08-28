@@ -26,7 +26,8 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Add registry
-        run: julia --project=@. -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
+        run: julia --project=@. setup_registry.jl
+        working-directory: ./test
       - uses: julia-actions/julia-buildpkg@v1
         env:
           PYTHON: ""
