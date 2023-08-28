@@ -24,7 +24,7 @@ docs/site/
 # Manifest.toml
 
 # Custom
-logs/*
+**/logs/*
 LocalPreferences.toml
 *.heapsnapshot
 *.log
