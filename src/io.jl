@@ -1,9 +1,6 @@
 using Unitful, DimensionfulAngles
 using ProgressMeter
 
-include("io/fits.jl")
-include("io/plaintext.jl")
-
 """
 Abstract type to wrap various specific formats for source data. By doing so we can make use of
     multiple dispatch to automatically select the appropriate loading functions for data.
@@ -11,6 +8,9 @@ Abstract type to wrap various specific formats for source data. By doing so we c
 abstract type Dataset end
 # Include exposure times in dataset
 # And NHcol, bg count rate?
+
+include("io/fits.jl")
+include("io/plaintext.jl")
 
 """
     load_data(data)
