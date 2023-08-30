@@ -17,7 +17,7 @@ This project includes some dependencies not on the main Julia registry. If packa
 Alternatively you can locate the specific packages on GitHub and install them using the repository URLs.
 
 After installation the sample analysis can be launched with
-```sh
+```shell
 julia --project=@. examples/example.jl
 ```
 
