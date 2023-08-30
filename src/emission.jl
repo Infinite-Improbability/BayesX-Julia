@@ -134,14 +134,7 @@ This function takes the combined RMF and ARF as the response function. This is t
 Some people format the RMF as RMF(E, PI), others as RMF(PI, E). This latter convention is used by CIAO and by us.
 """
 function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T}, exposure_time::T)::Vector{T} where {T<:AbstractFloat}
-    # Argcheck would really be better here but we want it to skip it in high performance situations
-    # display(counts_per_bin)
-    # display(response)
     @assert length(counts_per_bin) == size(response)[2] "There are $(length(counts_per_bin)) energy bins but the response matrix has $(size(response, 2)) columns"
-
-    # display(response)
-    # display(counts_per_bin)
-    # display(exposure_time)
 
 
     time_scaled_counts = counts_per_bin * exposure_time
