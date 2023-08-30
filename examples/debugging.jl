@@ -80,7 +80,7 @@ obs = BayesJ.make_observation(
     0
 )
 
-replace!(obs, NaN => 0.0)
+replace!(obs, NaN => 0.0)  # does this need handling for missing?
 @assert all(isfinite, obs)
 @info "Observation generated"
 ENV["JULIA_DEBUG"] = ""

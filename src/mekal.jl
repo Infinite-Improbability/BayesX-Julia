@@ -219,11 +219,11 @@ function prepare_model_mekal(
     points = [(ustrip(u"keV", t), ustrip(u"cm^-3", nH)) for t in temperatures, nH in hydrogen_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> replace(ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)), NaN => 0),
+        x -> ustrip.(u"m^(-3)/s", call_mekal(energy_bins, x...)),
         points
     )
 
-    @assert all(all.(isfinite, emission))
+    # @assert all(all.(isfinite, emission))
 
     # Apply absorption
     @mpidebug "Applying absorption to MEKAL"

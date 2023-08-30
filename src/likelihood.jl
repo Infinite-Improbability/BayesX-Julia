@@ -28,24 +28,17 @@ function log_likelihood(
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
 
-    @assert all(i -> (i > 0) || !isfinite(i), predicted)
+    @assert all(i -> (i > 0) || !isfinite(i), skipmissing(predicted))
 
     t1 = @. observed * log(predicted) - predicted
     t2 = @. observed_background * log(predicted_background) - predicted_background
 
-    # replace!(t2, NaN => 0) # for some reason log(0) sometimes produces NaN not -Inf
-
     t = t1 + t2 - observed_log_factorial
-
-    # If we have zero counts we can't take the log so
-    # we'll just skip over it.
-    replace!(t, -Inf => 0, NaN => 0)
 
     @assert all(isfinite, t)
 
-    @mpirankeddebug "likelihood is" sum(t)
-
-    return sum(t)
+    @mpirankeddebug "likelihood is" sum(skipmissing(t))
+    return sum(skipmissing(t))
 end
 
 """

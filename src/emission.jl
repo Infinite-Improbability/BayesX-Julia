@@ -230,9 +230,9 @@ function make_observation(
         for i in 1:shape[1]
             radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
             if radius < min_radius
-                counts[:, i, j] .= NaN
+                counts[:, i, j] .= missing
             elseif mask[i, j]
-                counts[:, i, j] .= NaN
+                counts[:, i, j] .= missing
             else
                 brightness = brightness_interpolation(radius)
                 counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
