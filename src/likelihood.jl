@@ -35,7 +35,7 @@ function log_likelihood(
 
     t = t1 + t2 - observed_log_factorial
 
-    @assert all(isfinite, t)
+    @assert all(isfinite, skipmissing(t))
 
     @mpirankeddebug "likelihood is" sum(skipmissing(t))
     return sum(skipmissing(t))

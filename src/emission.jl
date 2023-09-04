@@ -174,7 +174,7 @@ function make_observation(
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
     mask::Union{Matrix{Bool},Nothing}=nothing
-)::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
+)::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
     radii_x, radii_y = shape ./ 2
@@ -212,7 +212,7 @@ function make_observation(
     @mpirankeddebug "Calculating counts"
     resp = ustrip.(u"cm^2", response_function)
     exp_time = ustrip(u"s", exposure_time)
-    counts = Array{Float64}(undef, size(response_function, 1), shape...)
+    counts = Array{Union{Float64,Missing}}(undef, size(response_function, 1), shape...)
 
     if isnothing(mask)
         mask = zeros(Bool, shape...)
@@ -249,7 +249,7 @@ function make_observation(
     centre::NTuple{2,Real},
     centre_radius;
     mask::Union{Matrix{Bool},Nothing}=nothing
-)::Array{Float64,3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
+)::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(
         temperature,
