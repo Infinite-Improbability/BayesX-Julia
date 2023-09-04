@@ -46,10 +46,10 @@ priors_eiansto = [
     DeltaPrior("c_500_GNFW", 1.177)
 ]
 priors_nfw = [
-    # UniformPrior("x0", -10.0, 10.0),
-    # UniformPrior("y0", -10.0, 10.0),
-    DeltaPrior("x0", 0),
-    DeltaPrior("y0", 0),
+    # UniformPrior("x0", -100.0, 100.0),
+    # UniformPrior("y0", -100.0, 100.0),
+    DeltaPrior("x0", 56.7),
+    DeltaPrior("y0", 49.0),
     UniformPrior("MT_200", 1.0e14, 1.0e15),
     NormalPrior("fg_200", 0.13, 0.01),
     DeltaPrior("a", 1.0510),
@@ -69,5 +69,6 @@ sample(
     (1900, 2800);
     bin_size=10,
     centre_radius=10,
-    use_interpolation=false
+    use_interpolation=false,
+    use_stepsampler=false
 )
