@@ -29,48 +29,68 @@ DEALINGS IN THE SOFTWARE.
 # Since we have FITS files that do contain them, from Chandra, and we don't care about those columns
 # we override the method to bypass this problem. It is a hack, but it works.
 
-@eval FITSIO begin
-    ## Arrr me hearties, we're doing some type piracy
-    function fits_get_col_info(f::FITSIO.FITSFile, colnum::Integer)
-        eqtypecode, repeat, width = FITSIO.fits_get_eqcoltype(f, colnum)
-        isvariable = eqtypecode < 0
-        eqtypecode = abs(eqtypecode)
+using FITSIO
+import FITSIO.fits_get_col_info
 
-        (eqtypecode == 1) && @warn ("BitArray ('X') columns not yet supported. Column $colnum will not be readable.")
+const CFITSIO_COLTYPE_var = Dict{Int,DataType}()
+for (T, tform, code) in ((Nothing, 'X', 1),
+    (UInt8, 'B', 11),
+    (Int8, 'S', 12),
+    (Bool, 'L', 14),
+    (String, 'A', 16),
+    (UInt16, 'U', 20),
+    (Int16, 'I', 21),
+    (UInt32, 'V', 40),
+    (Int32, 'J', 41),
+    (Int64, 'K', 81),
+    (Float32, 'E', 42),
+    (Float64, 'D', 82),
+    (ComplexF32, 'C', 83),
+    (ComplexF64, 'M', 163))
+    @eval fits_tform_char(::Type{$T}) = $tform
+    CFITSIO_COLTYPE_var[code] = T
+end
 
-        T = CFITSIO_COLTYPE_var[eqtypecode]
+## Arrr me hearties, we're doing some type piracy
+function fits_get_col_info(f::FITSIO.FITSFile, colnum::Integer)
+    eqtypecode, repeat, width = FITSIO.fits_get_eqcoltype(f, colnum)
+    isvariable = eqtypecode < 0
+    eqtypecode = abs(eqtypecode)
 
-        if isvariable
-            if T !== String
-                T = Vector{T}
-            end
-            rowsize = Int[]
-        else
-            if T === String
-                # for strings, cfitsio only considers it to be a vector column if
-                # width != repeat, even if tdim is multi-valued.
-                if repeat == width
-                    rowsize = Int[]
-                else
-                    tdim = FITSIO.fits_read_tdim(f, colnum)
-                    # if tdim isn't multi-valued, ignore it (we know it *is* a
-                    # vector column). If it is multi-valued, prefer it to repeat
-                    # width.
-                    if length(tdim) == 1
-                        rowsize = [div(repeat, width)]
-                    else
-                        rowsize = tdim[2:end]
-                    end
-                end
+    (eqtypecode == 1) && @warn ("BitArray ('X') columns not yet supported. Column $colnum will not be readable.")
+
+    T = CFITSIO_COLTYPE_var[eqtypecode]
+
+    if isvariable
+        if T !== String
+            T = Vector{T}
+        end
+        rowsize = Int[]
+    else
+        if T === String
+            # for strings, cfitsio only considers it to be a vector column if
+            # width != repeat, even if tdim is multi-valued.
+            if repeat == width
+                rowsize = Int[]
             else
-                if repeat == 1
-                    rowsize = Int[]
+                tdim = FITSIO.fits_read_tdim(f, colnum)
+                # if tdim isn't multi-valued, ignore it (we know it *is* a
+                # vector column). If it is multi-valued, prefer it to repeat
+                # width.
+                if length(tdim) == 1
+                    rowsize = [div(repeat, width)]
                 else
-                    rowsize = FITSIO.fits_read_tdim(f, colnum)
+                    rowsize = tdim[2:end]
                 end
+            end
+        else
+            if repeat == 1
+                rowsize = Int[]
+            else
+                rowsize = FITSIO.fits_read_tdim(f, colnum)
             end
         end
-
-        return T, rowsize, isvariable
     end
+
+    return T, rowsize, isvariable
 end
