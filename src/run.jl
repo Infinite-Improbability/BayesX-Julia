@@ -77,45 +77,45 @@ function sample(
         full_params = param_wrapper(params)
         @mpirankeddebug "Full parameters are" full_params
 
-        # try
-        gas_temperature, gas_density = cluster_model(
-            full_params[3:end]...;
-            z=redshift
-        )
+        try
+            gas_temperature, gas_density = cluster_model(
+                full_params[3:end]...;
+                z=redshift
+            )
 
-        predicted = make_observation(
-            gas_temperature,
-            gas_density,
-            redshift,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            obs_exposure_time,
-            response_function,
-            (full_params[1], full_params[2]),
-            centre_radius,
-            mask=mask
-        )
+            predicted = make_observation(
+                gas_temperature,
+                gas_density,
+                redshift,
+                shape,
+                pixel_edge_angle,
+                emission_model,
+                obs_exposure_time,
+                response_function,
+                (full_params[1], full_params[2]),
+                centre_radius,
+                mask=mask
+            )
 
-        predicted .= predicted .+ predicted_obs_bg
+            predicted .= predicted .+ predicted_obs_bg
 
-        @mpirankeddebug "Predicted results generated"
+            @mpirankeddebug "Predicted results generated"
 
-        return log_likelihood(
-            observed,
-            observed_background,
-            predicted,
-            predicted_bg_bg,
-            log_obs_factorial
-        )
-        # catch e
-        # if isa(e, ArgumentError)
-        #     return -1e300 * abs(params[8] - params[6])
-        # else
-        #     throw(e)
-        # end
-        # throw(e)
-        # end
+            return log_likelihood(
+                observed,
+                observed_background,
+                predicted,
+                predicted_bg_bg,
+                log_obs_factorial
+            )
+        catch e
+            if isa(e, ArgumentError)
+                return -1e300 * abs(full_params[8] - full_params[6])
+            else
+                throw(e)
+            end
+            throw(e)
+        end
     end
 
     # ultranest setup
