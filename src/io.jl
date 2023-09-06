@@ -70,6 +70,8 @@ function test_point(e::Ellipse, x, y, atol=0)::Bool
     t1 = (cos(e.θ) * (x - e.x) + sin(e.θ) * (y - e.y))^2
     t2 = (sin(e.θ) * (x - e.x) - cos(e.θ) * (y - e.y))^2
 
+    res = (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
+
     return (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
 end
 
@@ -83,28 +85,42 @@ function load_mask(path::AbstractString, x_edges, y_edges)::Matrix{Bool}
     ellipses = Set{Ellipse}()
     # Convert lines of ellipse definitions in input file to a list of Ellipse objects.
     open(path) do f
-        for line in readline(f)
-            if "ellipse" ∉ line
+        for line in readlines(f)
+            if !occursin("ellipse", line)
+                @mpidebug "Skipping mask line" line
                 continue
             end
+            @mpidebug "Processing mask line" line
             # Currently assuming pixel coordinates. In theory this isn't guaranteed.
             # format is ellipse(x, y, r1, 2, angle)
             # first strip ellipse( to get x, y, r1, 2, angle)
-            line = split(line, "(")[end]
+            line = split(line, '(')[end]
             # then strip ) to get x, y, r1, 2, angle
-            line = rstrip(line, ")")
+            line = rstrip(line, ')')
             # then split on commas and cast to floats
-            push!(ellipses, Ellipse(parse(Float64, el) for el in split(line, ",")))
+            args = Tuple(parse(Float64, el) for el in split(line, ","))
+            push!(ellipses, Ellipse(args...))
         end
     end
 
-    mask = zeros(Bool, length(x_edges), length(y_edges))
+    @mpidebug "Loaded mask ellipses" length(ellipses)
 
-    for j in eachindex(y_edges)
-        for i in eachindex(x_edges)
+    centres_x = (x_edges[1:end-1] + x_edges[2:end]) / 2
+    centres_y = (y_edges[1:end-1] + y_edges[2:end]) / 2
+
+    mask = zeros(Bool, length(centres_x), length(centres_y))
+    pixels_masked = 0
+
+    for j in eachindex(centres_x)
+        for i in eachindex(centres_y)
             mask[i, j] = any(test_point.(ellipses, x_edges[i], y_edges[j]))
+            if mask[i, j]
+                pixels_masked += 1
+            end
         end
     end
+
+    @mpiinfo "Mask loaded" pixels_masked
 
     return mask
 end
