@@ -35,8 +35,10 @@ end
 
 """
     load_mask(data)
+
+The matrix is true for masked pixels.
 """
-function load_mask(data::Dataset)::Matrix{Int64}
+function load_mask(data::Dataset)::Matrix{Bool}
     error("load_data is not implemented for these arguments", data)
 end
 
