@@ -111,10 +111,8 @@ function sample(
         catch e
             if isa(e, ArgumentError)
                 return -1e300 * abs(full_params[8] - full_params[6])
-            else
-                throw(e)
             end
-            throw(e)
+            rethrow(e)
         end
     end
 
