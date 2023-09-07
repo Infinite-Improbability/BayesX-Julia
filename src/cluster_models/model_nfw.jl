@@ -24,8 +24,7 @@ function Model_NFW(
 
     # Note the +1 in many likelihoods
     # This is so that something like fg_200=0 doesn't return a likelihood of zero
-    # MT_200 is negative so we subtract it
-    priorcheck(MT_200 > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_200)))
+    priorcheck(MT_200 > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_200))) # MT_200 is negative so we subtract it
     priorcheck(1 > fg_200 > 0, -1e100(1 + abs(fg_200)))
     priorcheck(a > 0, -1e100(1 - a))
     priorcheck(c_500_GNFW > 0, -1e100(1 - c_500_GNFW))
