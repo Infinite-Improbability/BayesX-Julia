@@ -22,11 +22,14 @@ function Model_NFW(
 
     @mpirankeddebug "NFW" MT_200 fg_200 a b c c_500_GNFW z
 
-    @argcheck MT_200 > 0u"Msun"
-    @argcheck 1 > fg_200 > 0
-    @argcheck a > 0
-    @argcheck c_500_GNFW > 0
-    @argcheck (b - c_500_GNFW) > 0
+    # Note the +1 in many likelihoods
+    # This is so that something like fg_200=0 doesn't return a likelihood of zero
+    # MT_200 is negative so we subtract it
+    priorcheck(MT_200 > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_200)))
+    priorcheck(1 > fg_200 > 0, -1e100(1 + abs(fg_200)))
+    priorcheck(a > 0, -1e100(1 - a))
+    priorcheck(c_500_GNFW > 0, -1e100(1 - c_500_GNFW))
+    priorcheck(b > c_500_GNFW, -1e100(1 + (c_500_GNFW - b)))
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.

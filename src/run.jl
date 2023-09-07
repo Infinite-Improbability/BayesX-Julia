@@ -109,8 +109,8 @@ function sample(
                 log_obs_factorial
             )
         catch e
-            if isa(e, ArgumentError)
-                return -1e300 * abs(full_params[8] - full_params[6])
+            if e isa PriorError
+                return e.likelihood
             end
             rethrow(e)
         end
