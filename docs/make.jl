@@ -5,6 +5,7 @@ makedocs(
     sitename="BayesJ",
     pages=[
         "Home" => "index.md",
+        "Cluster Models" => "models.md",
         "Reference" => [
             "Public" => "public.md",
             "Internals" => "private.md"
