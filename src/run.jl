@@ -133,7 +133,7 @@ function sample(
             nsteps=2 * length(prior_names),
             generate_direction=stepsampler.generate_mixture_random_direction,
             adaptive_nsteps="move-distance",
-            max_nsteps=400,
+            max_nsteps=24,
             region_filter=true
         )
     end
