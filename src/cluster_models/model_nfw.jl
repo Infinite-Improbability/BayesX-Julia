@@ -1,7 +1,7 @@
 export Model_NFW
 
 """
-    Model_NFW(MT_200::Unitful.Mass, fg_200, a, b, c, c_500_GNFW, z)
+    Model_NFW(MT_200::Unitful.Mass, fg_200, α, β, γ, c_500_GNFW; z)
 
 Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
 
@@ -12,23 +12,23 @@ Returns functions for gas temperature and gas mass density as a function of radi
 function Model_NFW(
     MT_200::Unitful.Mass,
     fg_200,
-    a,
-    b,
-    c,
+    α,
+    β,
+    γ,
     c_500_GNFW;
     z
 )::NTuple{2,Function}
     # Move some parameters into a struct?
 
-    @mpirankeddebug "NFW" MT_200 fg_200 a b c c_500_GNFW z
+    @mpirankeddebug "NFW" MT_200 fg_200 α β γ c_500_GNFW z
 
     # Note the +1 in many likelihoods
     # This is so that something like fg_200=0 doesn't return a likelihood of zero
     priorcheck(MT_200 > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_200))) # MT_200 is negative so we subtract it
     priorcheck(1 > fg_200 > 0, -1e100(1 + abs(fg_200)))
-    priorcheck(a > 0, -1e100(1 - a))
+    priorcheck(α > 0, -1e100(1 - α))
     priorcheck(c_500_GNFW > 0, -1e100(1 - c_500_GNFW))
-    priorcheck(b > c_500_GNFW, -1e100(1 + (c_500_GNFW - b)))
+    priorcheck(β > c_500_GNFW, -1e100(1 + (c_500_GNFW - β)))
 
     # Calculate NFW concentration parameter
     # This is equation 4 from Neto et al. 2007.
@@ -72,14 +72,14 @@ function Model_NFW(
         r::Unitful.Length{<:Real},
         r_s::Unitful.Length{<:Real}, # NFW
         r_p::Unitful.Length{<:Real}, # GNFW
-        a,
-        b,
-        c
+        α,
+        β,
+        γ
     )::Unitful.Length{Float64}
         r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
-        (r / r_p)^(-c) *
-        (1 + (r / r_p)^a)^(-(a + b - c) / a) *
-        (b * (r / r_p)^a + c)
+        (r / r_p)^(-γ) *
+        (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
+        (β * (r / r_p)^α + γ)
     end
 
     """An integral over radius that is equal to the gas
@@ -88,13 +88,13 @@ function Model_NFW(
         r::Unitful.Length{<:Real},
         r_s::Unitful.Length{<:Real}, # NFW
         r_p::Unitful.Length{<:Real}, # GNFW
-        a,
-        b,
-        c
+        α,
+        β,
+        γ
     )::Unitful.Volume{Float64}
-        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
 
-        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $a, $b, $c"
+        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $α, $β, $γ"
 
         return s
     end
@@ -111,7 +111,7 @@ function Model_NFW(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
         r_200,
-        (r_s, r_p, a, b, c)
+        (r_s, r_p, α, β, γ)
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
@@ -125,12 +125,12 @@ function Model_NFW(
             ρ_s = ρ_s
             r_s = r_s
             r_p = r_p
-            a = a
-            b = b
-            c = c
+            α = α
+            β = β
+            γ = γ
             (μ_e / μ) * (1 / (4π * G)) *
             (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-            gnfw_gas_radial_term(r, r_s, r_p, a, b, c)
+            gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
         end
     end
 
@@ -141,19 +141,19 @@ function Model_NFW(
             ρ_s = ρ_s
             r_s = r_s
             r_p = r_p
-            a = a
-            b = b
-            c = c
+            α = α
+            β = β
+            γ = γ
             4π * μ * G * ρ_s * (r_s^3) *
             ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
-            (1 + (r / r_p)^a) * (b * (r / r_p)^a + c)^(-1)
+            (1 + (r / r_p)^α) * (β * (r / r_p)^α + γ)^(-1)
         end
     end
 
     return gas_temperature, gas_density
 end
 """
-    Model_NFW(MT_200::Real, fg_200, a, b, c, c_500_GNFW, z)
+    Model_NFW(MT_200::Real, fg_200, α, β, γ, c_500_GNFW; z)
 
 Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
 
@@ -162,18 +162,18 @@ Mass is in solar masses.
 function Model_NFW(
     MT_200::Real,
     fg_200,
-    a,
-    b,
-    c,
+    α,
+    β,
+    γ,
     c_500_GNFW;
     z
 )::NTuple{2,Function}
     Model_NFW(
         MT_200 * 1u"Msun",
         fg_200,
-        a,
-        b,
-        c,
+        α,
+        β,
+        γ,
         c_500_GNFW;
         z=z
     )
