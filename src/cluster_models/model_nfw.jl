@@ -5,9 +5,13 @@ export Model_NFW
 
 Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
 
-Uses the model from Olamaie 2012 (doi:10.1111/j.1365-2966.2012.20980.x),
+Uses the model from [olamaieSimpleParametricModel2012](@cite),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
+
 Returns functions for gas temperature and gas mass density as a function of radius.
+
+The NFW concentration parameter is estimated from mass and redshift using the 
+relationship in [netoStatisticsLambdaCDM2007](@cite).
 """
 function Model_NFW(
     MT_200::Unitful.Mass,
@@ -35,8 +39,6 @@ function Model_NFW(
     # It assumes a relaxed halo and has different values in their full sample
     # Kinda sketch, I rather fit r200 or c200 as a prior
     c_200 = 5.26 * (MT_200 * cosmo.h / (10^14)u"Msun")^(-0.1) / (1 + z)
-    # c_200_DM = 5.26 * (((MT_200 * cosmo.h) / 1e14)^(-0.1)) * (1 / (1 + z(k)))
-    # Why does it have the redshift dependence?
 
     # Calculate gas mass
     Mg_200_DM = MT_200 * fg_200
@@ -155,9 +157,7 @@ end
 """
     Model_NFW(MT_200::Real, fg_200, α, β, γ, c_500_GNFW; z)
 
-Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
-
-Mass is in solar masses.
+Unitless wrapper for [`Model_NFW`](@ref). Mass is in solar masses.
 """
 function Model_NFW(
     MT_200::Real,

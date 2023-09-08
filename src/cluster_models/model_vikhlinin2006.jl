@@ -1,5 +1,12 @@
 export Model_Vikhlinin2006
 
+"""
+    Model_Vikhlinin2006(n0::NumberDensity, n02::NumberDensity, rc::Unitful.Length, rc2::Unitful.Length, α, β, β2, ϵ, rs::Unitful.Length, T0::Unitful.Energy, TminT0, rcool::Unitful.Length, acool, rt::Unitful.Length, a, b, c; γ=3, kwargs...)
+
+Generate a cluster profile using the highly free models from [vikhlininChandraSampleNearby2006](@cite).
+
+
+"""
 function Model_Vikhlinin2006(
     n0::NumberDensity,
     n02::NumberDensity,
@@ -21,6 +28,8 @@ function Model_Vikhlinin2006(
     γ=3,
     kwargs...
 )::NTuple{2,Function}
+
+    priorcheck(ϵ < 5, -1e100(1 + ϵ))
 
     # Performance of exponents sucks if we don't strip units
     n0 = ustrip(u"cm^-3", n0)
@@ -152,7 +161,9 @@ function Model_Vikhlinin2006(
 
 end
 """
-Densities are in cm^-3 and radii are in kpc. Temperature in keV.
+    Model_Vikhlinin2006(n0::Real, n02::Real, rc::Real, rc2::Real, α, β, β2, ϵ, rs::Real, T0::Real, TminT0, rcool::Real, acool, rt::Real, a, b, c; γ=3, kwargs...)
+
+Unitless wrapper for [`Model_Vikhlinin2006`](@ref). Densities are in cm^-3 and radii are in kpc. Temperature is in keV.
 """
 function Model_Vikhlinin2006(
     n0::Real,

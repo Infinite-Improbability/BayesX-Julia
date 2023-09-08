@@ -6,7 +6,7 @@
         {
             "label": "Build Documentation",
             "type": "shell",
-            "command": "julia --project=@. docs/make.jl",
+            "command": "julia --project=docs/Project.toml docs/make.jl",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

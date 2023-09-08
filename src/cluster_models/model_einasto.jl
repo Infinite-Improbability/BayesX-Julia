@@ -17,12 +17,17 @@ function safe_lower_gamma(s, x)
 end
 
 """
-    Model_Einasto(MT_200, fg_200, n, α, β, γ, c_500_GNFW, z)
+    Model_Einasto(MT_200::Unitful.Mass, fg_200, n, α, β, γ, c_500_GNFW; z)
 
 Generate a cluster profile based on the Einasto mass density profile and the GNFW gas pressure profile.
 
+See Appendix A of [olamaieBAYESXBayesianInference2015](@cite) for a derivation
+of the model based on these profiles.
+
 Returns functions for gas temperature and gas mass density as a function of radius.
-See Appendix A, Olamaie et al. 2015 (doi:10.1093/mnras/stu2146)
+
+The NFW concentration parameter is estimated from mass and redshift using the 
+relationship in [netoStatisticsLambdaCDM2007](@cite).
 
 If `n>2` then the gas temperature starts increasing to physically improbable
 levels (orders exceeding 10¹¹ keV). We thus constrain the value to below that. 
@@ -146,7 +151,9 @@ function Model_Einasto(
     return gas_temperature, gas_density
 end
 """
-Mass is in solar masses.
+    Model_Einasto(MT_200::Real, fg_200, n, α, β, γ, c_500_GNFW; z)
+
+Unitless wrapper for [`Model_Einasto`](@ref). Mass is in solar masses.
 """
 function Model_Einasto(
     MT_200::Real,

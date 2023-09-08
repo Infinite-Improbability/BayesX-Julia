@@ -1,10 +1,5 @@
 # Internals
 
-## Contents
-
-```@contents
-Pages = ["private.md"]
-Depth = 3
 ```
 ## Index
 

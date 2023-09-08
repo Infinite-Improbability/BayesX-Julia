@@ -1,9 +1,3 @@
 # BayesJ.jl Documentation
 
-```@contents
-```
-
-## Index
-
-```@index
-```
+Bayesian inference on galaxy clusters in X-ray.

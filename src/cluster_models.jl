@@ -2,6 +2,8 @@ using ArgCheck
 using Unitful, UnitfulAstro, DimensionfulAngles
 using Integrals
 
+export priorcheck, PriorError
+
 include("params.jl")
 include("emission.jl")
 
@@ -28,7 +30,7 @@ end
 Check that a condition holds and fallback to the given
 likelihood if not.
 
-The likelihood is encapsulated in a [PriorError](@ref) so a try-catch
+The likelihood is encapsulated in a [`PriorError`](@ref) so a try-catch
 block in the function calling the model can extract it and
 return it as the likelihood without going throw observation generation
 and likelihood calculation.

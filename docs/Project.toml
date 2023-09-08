@@ -1,3 +1,4 @@
 [deps]
 BayesJ = "35f7d120-1210-4aa9-b260-6d18979f7586"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
