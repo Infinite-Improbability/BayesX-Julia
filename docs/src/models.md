@@ -1,8 +1,6 @@
 # Cluster Models
 
-When setting up sampling the user must supply a cluster model function to the [`sample`](@ref) function.
-This model takes a set of parameters and returns two functions for the gas temperature and gas mass density as a function of
-radius.
+When setting up sampling the user must supply a cluster model function to the [`sample`](@ref) function. This model takes a set of parameters (typically drawn from the priors) and returns two functions for the gas temperature and gas mass density as a function of radius.
 
 ## Included Models
 
@@ -16,7 +14,20 @@ This model is derived in [olamaieSimpleParametricModel2012](@cite). In additiona
 - The cluster is spherical
 - The ICM is in hydrostatic equilbrium
 - The ICM is an ideal gas
-- The local gas fraction is much less than unity at all radii.
+- The local gas fraction (gas mass / total mass) is much less than unity at all radii.
+
+#### Parameters
+The following parameters can be investigated with priors.
+
+| Parameter  | Definition                                           |
+|------------|------------------------------------------------------|
+| MT_200     | Total mass within the overdensity radius ``R_{200}`` |
+| fg_200     | Gas fraction at ``R_{200}``                          |
+| α          | GNFW parameter                                       |
+| β          | GNFW parameter                                       |
+| γ          | GNFW parameter                                       |
+| γ          | GNFW parameter                                       |
+| c_500_GNFW | GNFW gas concentration parameter                     |
 
 ### Einasto
 
@@ -26,12 +37,56 @@ This model makes the same assumptions as the [NFW](@ref) model but subsitutes th
 
 This model is derived in [olamaieBAYESXBayesianInference2015](@cite).
 
+#### Parameters
+The following parameters can be investigated with priors.
+
+| Parameter  | Definition                                           |
+|------------|------------------------------------------------------|
+| MT_200     | Total mass within the overdensity radius ``R_{200}`` |
+| fg_200     | Gas fraction at ``R_{200}``                          |
+| n          | Einasto index                                        |
+| α          | GNFW parameter                                       |
+| β          | GNFW parameter                                       |
+| γ          | GNFW parameter                                       |
+| c_500_GNFW | GNFW gas concentration parameter                     |
+
 ### Vikhlinin 2006
 
 The [`Model_Vikhlinin2006`](@ref) is the model used by Vikhlinin et al. in an analysis of Chandra observations [vikhlininChandraSampleNearby2006](@cite).
 
-This model is highly free, featuring independent equations for gas
-density profile and gas temperature profile.
+This model is highly flexible, featuring independent equations for gas
+number density profile and gas temperature profile.
+
+#### Parameters
+The following parameters can be investigated with priors.
+
+| Parameter | Equation     | Definition                                |
+|-----------|--------------|-------------------------------------------|
+| n0        | Density      | Number density normalisation              |
+| n02       | Density      | Number density normalisation of core term |
+| α         | Density      | Dimensionless parameter                   |
+| β         | Density      | Dimensionless parameter                   |
+| β2        | Density      | Dimensionless parameter                   |
+| ϵ         | Density      | Dimensionless parameter                   |
+| rc        | Density      | Scale radius                              |
+| rc2       | Density      | Scale radius of core term                 |
+| rs        | Density      | Scale radius                              |
+| T0        | Temperature  | Temperature normalisation                 |
+| TminT0    | Temperature  | Ratio of Tmin to T0                       |
+| rcool     | Temperature  | Scale radius                              |
+| acool     | Temperature  | Dimensionless parameter                   |
+| rt        | Temperature  | Scale radius                              |
+| a         | Temperature  | Dimensionless parameter                   |
+| b         | Temperature  | Dimensionless parameter                   |
+| c         | Temperature  | Dimensionless parameter                   |
+
+
+
+
+
+
+
+
 
 ## Custom Models
 
