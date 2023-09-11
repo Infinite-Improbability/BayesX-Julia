@@ -46,7 +46,9 @@ function sample(
     average_effective_area=250u"cm^2",
     centre_radius=0,
     mask=nothing,
-    use_stepsampler=false
+    use_stepsampler=false,
+    log_dir="logs",
+    resume="subfolder"
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
@@ -123,8 +125,8 @@ function sample(
         likelihood_wrapper,
         transform=transform,
         vectorized=false,
-        log_dir="logs",
-        # resume="resume"
+        log_dir=log_dir,
+        resume=resume
     )
 
     if use_stepsampler
@@ -178,7 +180,7 @@ function sample(
     use_interpolation::Bool=true,
     centre_radius=0,
     mask=nothing,
-    use_stepsampler=false
+    kwargs...
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
 
@@ -228,6 +230,6 @@ function sample(
         pixel_edge_angle=pixel_edge_angle,
         centre_radius=centre_radius,
         mask=mask,
-        use_stepsampler=use_stepsampler
+        kwargs...
     )
 end

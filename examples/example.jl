@@ -68,7 +68,7 @@ sample(
     (1900, 2800),
     (1900, 2800);
     bin_size=10,
-    centre_radius=8,
+    centre_radius=9,
     use_interpolation=false,
     use_stepsampler=false
     # mask="data/tng/wavedetect.reg"
