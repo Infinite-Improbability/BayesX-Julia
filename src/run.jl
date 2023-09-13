@@ -1,4 +1,5 @@
 using Unitful, DimensionfulAngles
+using ArgCheck
 
 using PyCall
 ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
@@ -12,11 +13,11 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle, background_rate, average_effective_area)
+    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle, average_effective_area)
 
 Configure some necessary variables and launch ultranest.
 
-* The observed array includes the background.
+* The observed array includes the background. The first dimension is energy, the other two are spatial.
 * The response function includes both the RMF and ARF, as described in `apply_response_function`.
 * The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
 * The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
@@ -42,8 +43,6 @@ function sample(
     emission_model,
     param_wrapper::Function,
     pixel_edge_angle=0.492u"arcsecondᵃ",
-    background_rate=8.4e-6u"cm^-2/arcminuteᵃ^2/s",
-    average_effective_area=250u"cm^2",
     centre_radius=0,
     mask=nothing,
     use_stepsampler=false,
@@ -52,20 +51,26 @@ function sample(
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
-    predicted_bg_rate = background_rate / size(observed)[1] * average_effective_area * pixel_edge_angle^2
-    predicted_obs_bg = predicted_bg_rate * obs_exposure_time # Used for adding background to observations
-    predicted_bg_bg = predicted_bg_rate * bg_exposure_time # Used for log likelihood
+    @argcheck all(isfinite, observed)
+    @argcheck all(isfinite, observed_background)
+    @argcheck all(isfinite, log_obs_factorial)
+    @argcheck size(observed) == size(observed_background)
+
+    # implicitly includes average effective area and pixel edge angle
+    bg_count_rate = [mean(@view observed_background[i, :, :]) for i in axes(observed_background, 1)] ./ bg_exposure_time
+    @mpidebug "Background rate estimated" bg_count_rate
+
+    # vector of background as a function of energy
+    predicted_obs_bg = bg_count_rate * obs_exposure_time # Used for adding background to observations
+    predicted_bg_bg = bg_count_rate * bg_exposure_time # Used for log likelihood
+
+    @assert all(i -> i > 0, predicted_obs_bg)
+    @assert all(i -> i > 0, predicted_bg_bg)
+    @assert length(predicted_bg_bg) == size(observed, 1)
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
 
-    @assert predicted_obs_bg > 0
-    @assert all(isfinite, observed)
-    @assert all(isfinite, observed_background)
-    @assert all(isfinite, log_obs_factorial)
-
-    @assert size(observed) == size(observed_background)
-
-    shape = [i for i in size(observed)][2:3]
+    shape = [size(observed, 2), size(observed, 3)]
 
     @mpiinfo "Observation has shape $(size(observed))"
     @mpiinfo "Background has shape $(size(observed_background))"
@@ -99,10 +104,12 @@ function sample(
                 mask=mask
             )
 
+            # this intrinsically broadcasts along the energy axis
             predicted .= predicted .+ predicted_obs_bg
 
             @mpirankeddebug "Predicted results generated"
 
+            # TODO: verify this vector form is fine and I don't need to repeat() it into a full array.
             return log_likelihood(
                 observed,
                 observed_background,
