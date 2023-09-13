@@ -53,16 +53,24 @@ function sample(
 
     @argcheck all(isfinite, observed)
     @argcheck all(isfinite, observed_background)
+    @argcheck all(i -> i >= 0, observed)
+    @argcheck all(i -> i >= 0, observed_background)
     @argcheck size(observed) == size(observed_background)
 
     # implicitly includes average effective area and pixel edge angle
     bg_count_rate = [mean(@view observed_background[i, :, :]) for i in axes(observed_background, 1)] ./ bg_exposure_time
+    @mpidebug "Background count rate generated" count(i -> i == 0u"s^-1", bg_count_rate)
+    replace!(bg_count_rate, 0u"s^-1" => 0.1 / bg_exposure_time)
+
+    @assert all(i -> i > 0u"s^-1", bg_count_rate)
     @mpidebug "Background rate estimated" bg_count_rate
 
     # vector of background as a function of energy
     predicted_obs_bg = bg_count_rate * obs_exposure_time # Used for adding background to observations
     predicted_bg_bg = bg_count_rate * bg_exposure_time # Used for log likelihood
 
+    @assert all(isfinite, predicted_obs_bg)
+    @assert all(isfinite, predicted_bg_bg)
     @assert all(i -> i > 0, predicted_obs_bg)
     @assert all(i -> i > 0, predicted_bg_bg)
     @assert length(predicted_bg_bg) == size(observed, 1)

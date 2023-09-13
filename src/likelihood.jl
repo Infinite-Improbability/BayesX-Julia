@@ -26,7 +26,7 @@ function log_likelihood(
 
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
-    @assert size(predicted) == size(predicted_background) || size(predicted_background) == ()
+    @assert size(predicted) == size(predicted_background) || Tuple(size(predicted, 1)) == size(predicted_background) || size(predicted_background) == ()
 
     @assert all(i -> (i > 0) || !isfinite(i), skipmissing(predicted))
 
