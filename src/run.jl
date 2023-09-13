@@ -53,7 +53,6 @@ function sample(
 
     @argcheck all(isfinite, observed)
     @argcheck all(isfinite, observed_background)
-    @argcheck all(isfinite, log_obs_factorial)
     @argcheck size(observed) == size(observed_background)
 
     # implicitly includes average effective area and pixel edge angle
@@ -69,6 +68,7 @@ function sample(
     @assert length(predicted_bg_bg) == size(observed, 1)
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
+    @assert all(isfinite, log_obs_factorial)
 
     shape = [size(observed, 2), size(observed, 3)]
 
