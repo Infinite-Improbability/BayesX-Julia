@@ -15,10 +15,11 @@ Defaults to:
 * w0=-1,
 * wa=0
 """
-const cosmo = cosmology(h=0.69,
-    Neff=3.04,
+const cosmo = cosmology(
+    h=0.6774,
+    Neff=3.046,
     OmegaK=0,
-    OmegaM=0.29,
+    OmegaM=0.3089,
     OmegaR=nothing,
     Tcmb=2.7255,
     w0=-1,

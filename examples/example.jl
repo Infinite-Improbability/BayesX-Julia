@@ -70,6 +70,6 @@ sample(
     bin_size=10,
     centre_radius=10,
     use_interpolation=false,
-    use_stepsampler=false
-    # mask="data/tng/wavedetect.reg"
+    use_stepsampler=false,
+    mask="data/tng/wavedetect.reg"
 )
