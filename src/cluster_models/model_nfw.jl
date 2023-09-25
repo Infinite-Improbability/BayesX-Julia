@@ -78,6 +78,9 @@ function Model_NFW(
         β,
         γ
     )::Unitful.Length{Float64}
+        r = uconvert(u"Mpc", r)
+        r_s = uconvert(u"Mpc", r_s)
+        r_p = uconvert(u"Mpc", r_p)
         r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
         (r / r_p)^(-γ) *
         (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
@@ -130,9 +133,15 @@ function Model_NFW(
             α = α
             β = β
             γ = γ
-            (μ_e / μ) * (1 / (4π * G)) *
-            (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-            gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+            try
+                return (μ_e / μ) * (1 / (4π * G)) *
+                       (Pei_GNFW / ρ_s) * (1 / r_s^3) *
+                       gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+            catch e
+                @mpirankederror "Hmph" Pei_GNFW ρ_s r_s
+                @mpirankederror "Integral" gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+                rethrow(e)
+            end
         end
     end
 
