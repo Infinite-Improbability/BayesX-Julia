@@ -26,7 +26,6 @@ The following parameters can be investigated with priors.
 | α          | GNFW parameter                                       |
 | β          | GNFW parameter                                       |
 | γ          | GNFW parameter                                       |
-| γ          | GNFW parameter                                       |
 | c_500_GNFW | GNFW gas concentration parameter                     |
 
 ### Einasto
@@ -48,7 +47,7 @@ The following parameters can be investigated with priors.
 | α          | GNFW parameter                                       |
 | β          | GNFW parameter                                       |
 | γ          | GNFW parameter                                       |
-| c_500_GNFW | GNFW gas concentration parameter                     |
+| c\_500\_GNFW | GNFW gas concentration parameter                     |
 
 ### Vikhlinin 2006
 
