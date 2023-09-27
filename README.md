@@ -24,7 +24,7 @@ julia --project=@. examples/example.jl
 ## MPI Support
 Ultranest supports MPI. To use launch your Julia scripts using `mpiexec` or equivalent.
 
-While the Python dependencies will install automatically if not found, this can be cause segfaults as MPI.jl is trying to use one MPI library and mpi4py another. I suggest manually installing `ultranest` and `mpi4py` in a conda environment. This allows you to use [force Conda to use an external MPI library](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries).
+While the Python dependencies will install automatically if not found, this can be cause segfaults as MPI.jl is trying to use one MPI library and mpi4py another. I suggest manually installing `ultranest` and `mpi4py` in a conda environment. This allows you to use [force Conda to use an external MPI library](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries). `x.y` should be replaced with the approriate version number, probably `4.1`.
 ```shell
 conda install ultranest mpi4py openmpi=x.y.*=external_*
 ```
