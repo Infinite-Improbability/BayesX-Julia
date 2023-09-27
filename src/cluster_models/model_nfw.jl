@@ -133,15 +133,9 @@ function Model_NFW(
             α = α
             β = β
             γ = γ
-            try
-                return (μ_e / μ) * (1 / (4π * G)) *
-                       (Pei_GNFW / ρ_s) * (1 / r_s^3) *
-                       gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
-            catch e
-                @mpirankederror "Hmph" Pei_GNFW ρ_s r_s
-                @mpirankederror "Integral" gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
-                rethrow(e)
-            end
+            (μ_e / μ) * (1 / (4π * G)) *
+            (Pei_GNFW / ρ_s) * (1 / r_s^3) *
+            gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
         end
     end
 
