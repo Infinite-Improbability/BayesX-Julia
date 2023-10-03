@@ -55,6 +55,8 @@ function Model_Einasto(
     priorcheck(β > c_Δ_GNFW, -1e100(1 + (c_Δ_GNFW - β)))
     priorcheck(n < 2, -1e100n) # n > 2 leads to temperature going up past some r
     priorcheck(n >= 0.06, -1e100(1 - n)) # if 3/n > 51 then lower_gamma(3/n, x) throws an error
+    priorcheck(c_Δ_dm > 0, -1e100(1 - c_Δ_dm))
+
 
     # Calculate gas mass
     Mg_Δ = MT_Δ * fg_Δ
