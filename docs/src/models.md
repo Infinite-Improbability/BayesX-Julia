@@ -23,6 +23,7 @@ The following parameters can be investigated with priors.
 |------------|------------------------------------------------------|
 | MT_200     | Total mass within the overdensity radius ``R_{200}`` |
 | fg_200     | Gas fraction at ``R_{200}``                          |
+| c_200_dm   | NFW concentration parameter                          |
 | α          | GNFW parameter                                       |
 | β          | GNFW parameter                                       |
 | γ          | GNFW parameter                                       |
@@ -39,14 +40,15 @@ This model is derived in [olamaieBAYESXBayesianInference2015](@cite).
 #### Parameters
 The following parameters can be investigated with priors.
 
-| Parameter  | Definition                                           |
-|------------|------------------------------------------------------|
-| MT_200     | Total mass within the overdensity radius ``R_{200}`` |
-| fg_200     | Gas fraction at ``R_{200}``                          |
-| n          | Einasto index                                        |
-| α          | GNFW parameter                                       |
-| β          | GNFW parameter                                       |
-| γ          | GNFW parameter                                       |
+| Parameter    | Definition                                           |
+|--------------|------------------------------------------------------|
+| MT_200       | Total mass within the overdensity radius ``R_{200}`` |
+| fg_200       | Gas fraction at ``R_{200}``                          |
+| c_200_dm     | NFW concentration parameter                          |
+| n            | Einasto index                                        |
+| α            | GNFW parameter                                       |
+| β            | GNFW parameter                                       |
+| γ            | GNFW parameter                                       |
 | c\_500\_GNFW | GNFW gas concentration parameter                     |
 
 ### Vikhlinin 2006
