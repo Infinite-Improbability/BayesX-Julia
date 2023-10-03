@@ -17,7 +17,7 @@ function safe_lower_gamma(s, x)
 end
 
 """
-    Model_Einasto(MT_200::Unitful.Mass, fg_200, n, α, β, γ, c_500_GNFW; z)
+    Model_Einasto(MT_200::Unitful.Mass, fg_200, c_200_dm, n, α, β, γ, c_500_GNFW; z)
 
 Generate a cluster profile based on the Einasto mass density profile and the GNFW gas pressure profile.
 
@@ -26,15 +26,13 @@ of the model based on these profiles.
 
 Returns functions for gas temperature and gas mass density as a function of radius.
 
-The NFW concentration parameter is estimated from mass and redshift using the 
-relationship in [netoStatisticsLambdaCDM2007](@cite).
-
 If `n>2` then the gas temperature starts increasing to physically improbable
 levels (orders exceeding 10¹¹ keV). We thus constrain the value to below that. 
 """
 function Model_Einasto(
     MT_200::Unitful.Mass,
     fg_200,
+    c_200_dm,
     n,
     α,
     β,
@@ -57,14 +55,6 @@ function Model_Einasto(
     priorcheck(n < 2, -1e100n) # n > 2 leads to temperature going up past some r
     priorcheck(n >= 0.06, -1e100(1 - n)) # if 3/n > 51 then lower_gamma(3/n, x) throws an error
 
-    # Calculate NFW concentration parameter
-    # This is equation 4 from Neto et al. 2007.
-    # It assumes a relaxed halo and has different values in their full sample
-    # Kinda sketch, I rather fit r200 or c200 as a prior
-    c_200 = 5.26 * (MT_200 * cosmo.h / (10^14)u"Msun")^(-0.1) / (1 + z)
-    # c_200_DM = 5.26 * (((MT_200 * cosmo.h) / 1e14)^(-0.1)) * (1 / (1 + z(k)))
-    # Why does it have the redshift dependence?
-
     # Calculate gas mass
     Mg_200 = MT_200 * fg_200
 
@@ -73,13 +63,13 @@ function Model_Einasto(
 
     # And get R200 and NFW scale radius
     r_200 = uconvert(u"Mpc", cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z)))
-    rs = uconvert(u"Mpc", r_200 / c_200)
+    rs = uconvert(u"Mpc", r_200 / c_200_dm)
 
     # Calculate radius where mean density enclosed is@argcheck limit >
     # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (200 / 3) * c_200^3 / (log(1 + c_200) - c_200 / (1 + c_200))
+    ρ_s = ρ_crit_z * (200 / 3) * c_200_dm^3 / (log(1 + c_200_dm) - c_200_dm / (1 + c_200_dm))
 
     r_500 = r_200 / 1.5
 
@@ -158,6 +148,7 @@ Unitless wrapper for [`Model_Einasto`](@ref). Mass is in solar masses.
 function Model_Einasto(
     MT_200::Real,
     fg_200,
+    c_200_dm,
     n,
     α,
     β,
@@ -168,6 +159,7 @@ function Model_Einasto(
     Model_Einasto(
         MT_200 * 1u"Msun",
         fg_200,
+        c_200_dm,
         n,
         α,
         β,

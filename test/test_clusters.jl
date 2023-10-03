@@ -80,15 +80,16 @@ function test_nfw()
     @testset "NFW" begin
         mass = 5e14u"Msun"
         fg = 0.13
+        c_dm = 3.0
         gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Universal values from Arnaud 2010
         z = 0.5
 
-        t, d = Model_NFW(mass, fg, gnfw..., z=z)
+        t, d = Model_NFW(mass, fg, c_dm, gnfw..., z=z)
 
         test_model(t, d)
 
         @testset "Unitless model call matches unitful call" begin
-            tunitless, dunitless = Model_NFW(ustrip(u"Msun", mass), fg, gnfw..., z=z)
+            tunitless, dunitless = Model_NFW(ustrip(u"Msun", mass), fg, c_dm, gnfw..., z=z)
             for r in logrange(1u"pc", 1u"Mpc", 100)
                 @test t(r) == tunitless(r)
                 @test d(r) == dunitless(r)
@@ -101,17 +102,18 @@ function test_einasto()
     @testset "Einasto" begin
         mass = 5e14u"Msun"
         fg = 0.13
+        c_dm = 3.0
         gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Universal values from Arnaud 2010
         z = 0.5
 
         for α in 0.6:0.1:1.9
             @testset "α=$α" begin
-                t, d = Model_Einasto(mass, fg, α, gnfw..., z=z)
+                t, d = Model_Einasto(mass, fg, c_dm, α, gnfw..., z=z)
 
                 test_model(t, d)
 
                 @testset "Unitless model call matches unitful call" begin
-                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, α, gnfw..., z=z)
+                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, c_dm, α, gnfw..., z=z)
                     for r in logrange(1u"pc", 1u"Mpc", 100)
                         @test t(r) == tunitless(r)
                         @test d(r) == dunitless(r)
@@ -120,8 +122,8 @@ function test_einasto()
             end
         end
 
-        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, 2.1, gnfw..., z=z)
-        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, 0.01, gnfw..., z=z)
+        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 2.1, gnfw..., z=z)
+        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 0.01, gnfw..., z=z)
     end
 end
 

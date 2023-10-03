@@ -1,7 +1,7 @@
 export Model_NFW
 
 """
-    Model_NFW(MT_200::Unitful.Mass, fg_200, α, β, γ, c_500_GNFW; z)
+    Model_NFW(MT_200::Unitful.Mass, fg_200, c_200_dm, α, β, γ, c_500_GNFW; z)
 
 Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
 
@@ -9,13 +9,11 @@ Uses the model from [olamaieSimpleParametricModel2012](@cite),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 
 Returns functions for gas temperature and gas mass density as a function of radius.
-
-The NFW concentration parameter is estimated from mass and redshift using the 
-relationship in [netoStatisticsLambdaCDM2007](@cite).
 """
 function Model_NFW(
     MT_200::Unitful.Mass,
     fg_200,
+    c_200_dm,
     α,
     β,
     γ,
@@ -34,12 +32,6 @@ function Model_NFW(
     priorcheck(c_500_GNFW > 0, -1e100(1 - c_500_GNFW))
     priorcheck(β > c_500_GNFW, -1e100(1 + (c_500_GNFW - β)))
 
-    # Calculate NFW concentration parameter
-    # This is equation 4 from Neto et al. 2007.
-    # It assumes a relaxed halo and has different values in their full sample
-    # Kinda sketch, I rather fit r200 or c200 as a prior
-    c_200 = 5.26 * (MT_200 * cosmo.h / (10^14)u"Msun")^(-0.1) / (1 + z)
-
     # Calculate gas mass
     Mg_200_DM = MT_200 * fg_200
 
@@ -48,13 +40,13 @@ function Model_NFW(
 
     # And get R200 and NFW scale radius
     r_200 = uconvert(u"Mpc", cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z)))
-    r_s = uconvert(u"Mpc", r_200 / c_200)
+    r_s = uconvert(u"Mpc", r_200 / c_200_dm)
 
     # Calculate radius where mean density enclosed is@argcheck limit >
     # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (200 / 3) * c_200^3 / (log(1 + c_200) - c_200 / (1 + c_200))
+    ρ_s = ρ_crit_z * (200 / 3) * c_200_dm^3 / (log(1 + c_200_dm) - c_200_dm / (1 + c_200_dm))
 
     # function m(r, p)
     #     x = r[1] * 1u"Mpc"
@@ -165,6 +157,7 @@ Unitless wrapper for [`Model_NFW`](@ref). Mass is in solar masses.
 function Model_NFW(
     MT_200::Real,
     fg_200,
+    c_200_dm,
     α,
     β,
     γ,
@@ -174,6 +167,7 @@ function Model_NFW(
     Model_NFW(
         MT_200 * 1u"Msun",
         fg_200,
+        c_200_dm,
         α,
         β,
         γ,
