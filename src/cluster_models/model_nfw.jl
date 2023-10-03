@@ -11,54 +11,43 @@ which is based on the NFW dark matter density profile and the GNFW gas pressure 
 Returns functions for gas temperature and gas mass density as a function of radius.
 """
 function Model_NFW(
-    MT_200::Unitful.Mass,
-    fg_200,
-    c_200_dm,
+    MT_Δ::Unitful.Mass,
+    fg_Δ,
+    c_Δ_dm,
     α,
     β,
     γ,
-    c_500_GNFW;
-    z
+    c_Δ_GNFW;
+    z,
+    Δ=500
 )::NTuple{2,Function}
     # Move some parameters into a struct?
 
-    @mpirankeddebug "NFW" MT_200 fg_200 α β γ c_500_GNFW z
+    @mpirankeddebug "NFW" MT_Δ fg_Δ α β γ c_Δ_GNFW z
 
     # Note the +1 in many likelihoods
     # This is so that something like fg_200=0 doesn't return a likelihood of zero
-    priorcheck(MT_200 > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_200))) # MT_200 is negative so we subtract it
-    priorcheck(1 > fg_200 > 0, -1e100(1 + abs(fg_200)))
+    priorcheck(MT_Δ > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_Δ))) # MT_200 is negative so we subtract it
+    priorcheck(1 > fg_Δ > 0, -1e100(1 + abs(fg_Δ)))
     priorcheck(α > 0, -1e100(1 - α))
-    priorcheck(c_500_GNFW > 0, -1e100(1 - c_500_GNFW))
-    priorcheck(β > c_500_GNFW, -1e100(1 + (c_500_GNFW - β)))
+    priorcheck(c_Δ_GNFW > 0, -1e100(1 - c_Δ_GNFW))
+    priorcheck(β > c_Δ_GNFW, -1e100(1 + (c_Δ_GNFW - β)))
 
     # Calculate gas mass
-    Mg_200_DM = MT_200 * fg_200
+    Mg_Δ = MT_Δ * fg_Δ
 
     # Calculate critical density at current redshift
     ρ_crit_z = ρ_crit(z)
 
     # And get R200 and NFW scale radius
-    r_200 = uconvert(u"Mpc", cbrt((3 * MT_200) / (4π * 200 * ρ_crit_z)))
-    r_s = uconvert(u"Mpc", r_200 / c_200_dm)
-
-    # Calculate radius where mean density enclosed is@argcheck limit >
-    # radii = LogRange(radius_limits..., radius_steps)
+    r_Δ = uconvert(u"Mpc", cbrt((3 * MT_Δ) / (4π * Δ * ρ_crit_z)))
+    r_s = uconvert(u"Mpc", r_Δ / c_Δ_dm)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (200 / 3) * c_200_dm^3 / (log(1 + c_200_dm) - c_200_dm / (1 + c_200_dm))
-
-    # function m(r, p)
-    #     x = r[1] * 1u"Mpc"
-    #     return abs(ustrip(u"Msun", 4π * ρ_s * r_s^3 * (log(1 + x / r_s) - (1 + r_s / x)^(-1)) - 4π / 3 * x^3 * p[1] * ρ_crit_z))
-    # end
-    # opf = OptimizationFunction(m, AutoForwardDiff())
-    # op = OptimizationProblem(opf, [ustrip(u"Mpc", r_200 / 1.5)], [500], lb=[0], ub=[ustrip(u"Mpc", r_200)])
-    # r_500 = solve(op, GradientDescent()).u[1] * 1u"Mpc"
-    r_500 = r_200 / 1.5
+    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log(1 + c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
 
     # Set GNFW scale radius
-    r_p = uconvert(u"Mpc", r_500 / c_500_GNFW)
+    r_p = uconvert(u"Mpc", r_Δ / c_Δ_GNFW)
 
     # Some helper functions
     """The radius dependent part of the gas density function"""
@@ -107,11 +96,11 @@ function Model_NFW(
     integral = IntegralProblem(
         gnfw_gas_mass_integrand,
         0.0u"Mpc",
-        r_200,
+        r_Δ,
         (r_s, r_p, α, β, γ)
     )
     vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
-    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_200_DM / vol_int_200
+    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_200
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
 
@@ -155,23 +144,23 @@ end
 Unitless wrapper for [`Model_NFW`](@ref). Mass is in solar masses.
 """
 function Model_NFW(
-    MT_200::Real,
-    fg_200,
-    c_200_dm,
+    MT_Δ::Real,
+    fg_Δ,
+    c_Δ_dm,
     α,
     β,
     γ,
-    c_500_GNFW;
+    c_Δ_GNFW;
     z
 )::NTuple{2,Function}
     Model_NFW(
-        MT_200 * 1u"Msun",
-        fg_200,
-        c_200_dm,
+        MT_Δ * 1u"Msun",
+        fg_Δ,
+        c_Δ_dm,
         α,
         β,
         γ,
-        c_500_GNFW;
+        c_Δ_GNFW;
         z=z
     )
 end
