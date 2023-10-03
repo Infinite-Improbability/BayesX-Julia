@@ -1,12 +1,14 @@
 export Model_NFW
 
 """
-    Model_NFW(MT_200::Unitful.Mass, fg_200, c_200_dm, α, β, γ, c_500_GNFW; z)
+    Model_NFW(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500)
 
 Generate a cluster profile based on the NFW mass density and GNFW gas density profiles.
 
 Uses the model from [olamaieSimpleParametricModel2012](@cite),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
+
+Keyword arguments are redshift and overdensity.
 
 Returns functions for gas temperature and gas mass density as a function of radius.
 """
@@ -24,10 +26,11 @@ function Model_NFW(
     # Move some parameters into a struct?
 
     @mpirankeddebug "NFW" MT_Δ fg_Δ α β γ c_Δ_GNFW z
+    @mpirankeddebug "NFW" MT_Δ fg_Δ α β γ c_Δ_GNFW z
 
     # Note the +1 in many likelihoods
-    # This is so that something like fg_200=0 doesn't return a likelihood of zero
-    priorcheck(MT_Δ > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_Δ))) # MT_200 is negative so we subtract it
+    # This is so that something like fg_Δ=0 doesn't return a likelihood of zero
+    priorcheck(MT_Δ > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_Δ))) # MT_Δ is negative so we subtract it
     priorcheck(1 > fg_Δ > 0, -1e100(1 + abs(fg_Δ)))
     priorcheck(α > 0, -1e100(1 - α))
     priorcheck(c_Δ_GNFW > 0, -1e100(1 - c_Δ_GNFW))
@@ -39,7 +42,7 @@ function Model_NFW(
     # Calculate critical density at current redshift
     ρ_crit_z = ρ_crit(z)
 
-    # And get R200 and NFW scale radius
+    # And get RΔ and NFW scale radius
     r_Δ = uconvert(u"Mpc", cbrt((3 * MT_Δ) / (4π * Δ * ρ_crit_z)))
     r_s = uconvert(u"Mpc", r_Δ / c_Δ_dm)
 
@@ -99,8 +102,8 @@ function Model_NFW(
         r_Δ,
         (r_s, r_p, α, β, γ)
     )
-    vol_int_200 = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
-    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_200
+    vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
+    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_Δ
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
 
@@ -139,7 +142,7 @@ function Model_NFW(
     return gas_temperature, gas_density
 end
 """
-    Model_NFW(MT_200::Real, fg_200, α, β, γ, c_500_GNFW; z)
+    Model_NFW(MT_Δ::Real, fg_Δ, α, β, γ, c_Δ_GNFW; z, Δ=500)
 
 Unitless wrapper for [`Model_NFW`](@ref). Mass is in solar masses.
 """
@@ -151,7 +154,8 @@ function Model_NFW(
     β,
     γ,
     c_Δ_GNFW;
-    z
+    z,
+    Δ=500
 )::NTuple{2,Function}
     Model_NFW(
         MT_Δ * 1u"Msun",
@@ -161,6 +165,7 @@ function Model_NFW(
         β,
         γ,
         c_Δ_GNFW;
-        z=z
+        z=z,
+        Δ=Δ
     )
 end

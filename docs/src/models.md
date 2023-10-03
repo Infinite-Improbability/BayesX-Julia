@@ -21,13 +21,13 @@ The following parameters can be investigated with priors.
 
 | Parameter  | Definition                                           |
 |------------|------------------------------------------------------|
-| MT_200     | Total mass within the overdensity radius ``R_{200}`` |
-| fg_200     | Gas fraction at ``R_{200}``                          |
-| c_200_dm   | NFW concentration parameter                          |
+| MT_Δ     | Total mass within the overdensity radius ``R_{Δ}`` |
+| fg_Δ     | Gas fraction at ``R_{Δ}``                          |
+| c_Δ_dm   | NFW concentration parameter                          |
 | α          | GNFW parameter                                       |
 | β          | GNFW parameter                                       |
 | γ          | GNFW parameter                                       |
-| c_500_GNFW | GNFW gas concentration parameter                     |
+| c_Δ_GNFW | GNFW gas concentration parameter                     |
 
 ### Einasto
 
@@ -42,14 +42,14 @@ The following parameters can be investigated with priors.
 
 | Parameter    | Definition                                           |
 |--------------|------------------------------------------------------|
-| MT_200       | Total mass within the overdensity radius ``R_{200}`` |
-| fg_200       | Gas fraction at ``R_{200}``                          |
-| c_200_dm     | NFW concentration parameter                          |
+| MT_Δ       | Total mass within the overdensity radius ``R_{Δ}`` |
+| fg_Δ       | Gas fraction at ``R_{Δ}``                          |
+| c_Δ_dm     | NFW concentration parameter                          |
 | n            | Einasto index                                        |
 | α            | GNFW parameter                                       |
 | β            | GNFW parameter                                       |
 | γ            | GNFW parameter                                       |
-| c\_500\_GNFW | GNFW gas concentration parameter                     |
+| c\_Δ\_GNFW | GNFW gas concentration parameter                     |
 
 ### Vikhlinin 2006
 
