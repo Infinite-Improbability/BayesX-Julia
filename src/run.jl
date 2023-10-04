@@ -126,7 +126,7 @@ function sample(
                 log_obs_factorial
             )
         catch e
-            if e isa PriorError
+            if e isa PriorError || e isa ObservationError
                 return e.likelihood
             end
             rethrow(e)

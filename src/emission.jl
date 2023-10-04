@@ -5,6 +5,16 @@ using DimensionfulAngles
 include("mekal.jl")
 
 """
+    ObservationError(likelihood)
+
+This wraps a fallback likelihood value so it can be passed up the chain on an invalid
+prior combination.
+"""
+struct ObservationError <: Exception
+    likelihood::Float64
+end
+
+"""
     surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_angle)
 
 Calculate the observed surface_brightness at some projected radius on the sky.
@@ -40,53 +50,22 @@ function surface_brightness(
         s, temp, density = params
         r = hypot(s, l) * 1u"Mpc"
 
-        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14% difference to final counts
+        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         f = model(temp(r), hydrogen_number_density(density(r)))
-
-        if all(isfinite, f) == false
-            T = uconvert(u"keV", temp(r))
-            ρ = uconvert(u"g/cm^3", density(r))
-            nH = uconvert(u"cm^-3", hydrogen_number_density(ρ))
-            @mpirankederror "Non finite values in integrand f" r T ρ nH f
-            # error("Non finite values in f")
-
-            f = replace!(
-                f,
-                Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
-                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s",
-                Quantity(-Inf, u"m^-3/s") => 0.0u"m^-3/s"
-            )
-        end
 
         return ustrip.(u"Mpc^-3/s", f)
     end
 
-    try
-        # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-        problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
-        sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
-        # @assert all(isfinite, sol.u)
-        u = sol.u
-        if all(isfinite, sol.u) == false
-            @mpirankederror "Non finite value in integral" u
-
-            u = replace!(
-                u,
-                Quantity(NaN, u"m^-3/s") => 0.0u"m^-3/s",
-                Quantity(Inf, u"m^-3/s") => 0.0u"m^-3/s",
-                Quantity(-Inf, u"m^-3/s") => 0.0u"m^-3/s"
-            )
-        end
-        return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
-    catch e
-        if isa(e, DomainError)
-            @mpirankedwarn "Domain error in integral"
-            return model(temperature(1u"Mpc"), hydrogen_number_density(density(1u"Mpc"))) * 0u"Mpc"
-        else
-            throw(e)
-        end
+    # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
+    problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
+    sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
+    # @assert all(isfinite, sol.u)
+    u = sol.u
+    if all(isfinite, sol.u) == false
+        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood."
+        raise(ObservationError(-1e100 * (length(sol.u) - count(isfinite(sol.u)))))
     end
-
+    return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
 
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
@@ -112,7 +91,6 @@ function surface_brightness(
     # convert from solid angle to area using angular diameter distance
     # u /= (4π * dₐ^2)
     # notice dₐ cancels out
-
 
 end
 
