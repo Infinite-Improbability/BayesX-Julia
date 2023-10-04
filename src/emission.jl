@@ -24,7 +24,8 @@ The temperature and density functions should take the distance from origin (clus
 The model should take these functions as input and return a vector of volume emissivities, where the vector element correspond with
 the energy bins used to generate the mode. It should include the effects of redshift on the bins and time dilation on the count rate.
 
-The limit controls limits on LOS radius during integration. Theoretically it should be ±infinity, but we may approximate it as a finite value.
+The limit controls limits on LOS radius during integration. Testing suggests that Inf (default) is faster than finite values >1.
+However finite values may avoid problems with models that are badly behaved at large radii.
 
 The pixel edge angle is the angular size of a single pixel.
 
@@ -130,15 +131,15 @@ function hydrogen_number_density(gas_density)
 end
 
 """
-    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing)
+    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit)
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
 
-`shape` describes the size of the source number as a number of spatial bins in each dimension.
-The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
-This area is assumed to be square with the edge angle giving the side length.
-The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
-The response function includes both the RMF and ARF, as described in `apply_response_function`.
+- `shape` describes the size of the source number as a number of spatial bins in each dimension.-
+- The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds. This area is assumed to be square with the edge angle giving the side length.
+- The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
+- The response function includes both the RMF and ARF, as described in [`apply_response_function`](@ref).
+- The limit is passed through to [`surface_brightness`](@ref)
 """
 function make_observation(
     temperature::Function,
@@ -216,7 +217,7 @@ end
 """
     make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing)
 
-Unitless wrapper for [make_observation](@ref)
+Unitless wrapper for [`make_observation`](@ref)
 """
 function make_observation(
     temperature::Function,

@@ -13,7 +13,7 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle, average_effective_area)
+    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
 
 Configure some necessary variables and launch ultranest.
 
@@ -22,13 +22,12 @@ Configure some necessary variables and launch ultranest.
 * The emission model should be a function compatible with the requirements of the `surface_brightness` function, which it will be passed to.
 * The pixel edge angle describes the angular size observed by a single pixel in units such as arcseconds.
  This area is assumed to be square with the edge angle giving the side length.
-* The average effective area is the effective area of the telescope averaged across energies,
- used with the total background rate across all channels (counts per unit telescope area per sky angle per second)
- to calculate the background counts per second per channel per pixel.
 * The first two priors should always be "x0" and "y0", giving cluster centre position and the order of prior_names must match the transform.
 * The cluster model should be a function that takes the parameters (and redshift as a kwarg) and returns `(gas_temperature,gas_density)` as functions of
 radius which return their respective quantities with units.
 * `param_wrapper` takes the output of the transform function and adds any additional arguements necessary for the model.
+* `centre_radius`, `mask` and `integration_limit` are passed through to [`make_observation`](@ref)
+ 
 """
 function sample(
     observed::T,
@@ -45,10 +44,10 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     centre_radius=0,
     mask=nothing,
+    integration_limit::Unitful.Length=Quantity(Inf, u"Mpc"),
     use_stepsampler=false,
     log_dir="logs",
-    resume="subfolder"
-) where {T<:AbstractArray}
+    resume="subfolder") where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
     @argcheck all(isfinite, observed)
@@ -109,7 +108,8 @@ function sample(
                 response_function,
                 (full_params[1], full_params[2]),
                 centre_radius,
-                mask=mask
+                mask=mask,
+                limit=integration_limit
             )
 
             # this intrinsically broadcasts along the energy axis
