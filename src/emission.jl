@@ -31,7 +31,7 @@ function surface_brightness(
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
-    lim = ustrip(u"Mpc", limit)
+    lim = ustrip(Float64, u"Mpc", limit)
     pr = ustrip(u"Mpc", projected_radius)
 
     nout = length(model(1.0u"keV", 0.1u"cm^-3"))
@@ -173,7 +173,8 @@ function make_observation(
     response_function,
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
-    mask::Union{Matrix{Bool},Nothing}=nothing
+    mask::Union{Matrix{Bool},Nothing}=nothing,
+    limit::Unitful.Length=Quantity(Inf, u"Mpc")
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
@@ -202,7 +203,7 @@ function make_observation(
         temperature,
         density,
         z,
-        Quantity(Inf, u"Mpc"), # testing found that using 10Mpc as bound did not affect results
+        limit, # testing found that using 10Mpc as bound did not affect results
         Ref(emission_model),
         pixel_edge_angle
     )]
@@ -235,7 +236,9 @@ function make_observation(
     return counts
 end
 """
-Centre position is given in arcseconds.
+    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing)
+
+Unitless wrapper for [make_observation](@ref)
 """
 function make_observation(
     temperature::Function,
@@ -248,7 +251,8 @@ function make_observation(
     response_function,
     centre::NTuple{2,Real},
     centre_radius;
-    mask::Union{Matrix{Bool},Nothing}=nothing
+    mask::Union{Matrix{Bool},Nothing}=nothing,
+    limit::Unitful.Length=Quantity(Inf, u"Mpc")
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(
@@ -262,6 +266,7 @@ function make_observation(
         response_function,
         centre .* 1u"arcsecondᵃ",
         centre_radius;
-        mask=mask
+        mask=mask,
+        limit=limit
     )
 end
