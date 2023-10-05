@@ -64,7 +64,7 @@ function surface_brightness(
     u = sol.u
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood."
-        raise(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
+        throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     end
     return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
 
