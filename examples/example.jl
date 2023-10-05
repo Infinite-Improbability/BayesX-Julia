@@ -12,8 +12,8 @@ data = FITSData(
 )
 
 priors_v2006 = [
-    UniformPrior("x0", -10, 10), # x
-    UniformPrior("y0", -10, 10), # y
+    DeltaPrior("x0", 56.7),
+    DeltaPrior("y0", 49.0),
     UniformPrior("n0", 0.1e-3, 40.0e-3),
     UniformPrior("n02", 0.001e-1, 6.0e-1),
     UniformPrior("rc", 1.0, 600.0),
@@ -53,7 +53,7 @@ priors_nfw = [
     DeltaPrior("y0", 49.0),
     UniformPrior("MT_500", 1.0e14, 1.0e15),
     NormalPrior("fg_500", 0.13, 0.01),
-    UniformPrior("c_500", 0, 10),
+    UniformPrior("c_500", 3.0, 10.0),
     DeltaPrior("a", 1.0510),
     DeltaPrior("b", 5.4905),
     DeltaPrior("c", 0.3081),
@@ -70,7 +70,7 @@ sample(
     (1900, 2800),
     (1900, 2800);
     bin_size=10,
-    centre_radius=10,
+    centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
     mask="data/tng/wavedetect.reg"
