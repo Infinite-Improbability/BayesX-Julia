@@ -1,6 +1,5 @@
 # Internals
 
-```
 ## Index
 
 ```@index
