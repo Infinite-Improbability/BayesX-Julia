@@ -38,6 +38,9 @@ function Model_Vikhlinin2006(
     rc2 = ustrip(u"kpc", rc2)
     rs = ustrip(u"kpc", rs)
 
+    priorcheck(rc2 < rc, -1e100 * (1 + (rc2 - rc)))
+    priorcheck(rc < rs, -1e100 * (1 + (rc - rs)))
+
     @mpidebug "Model Vikhlinin2006 called with" n0 n02 rc rc2 α β β2 ϵ rs T0 TminT0 rcool acool rt a b c γ
 
     """
