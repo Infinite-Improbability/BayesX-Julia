@@ -70,13 +70,6 @@ function Model_Vikhlinin2006(
         gas_density(r, ne_np)
 
     Calculates gas density from the emission measure.
-
-    Vikhlinin et al. 2006 says
-    > For the cosmic plasma with primordial He abundance and
-    > abundances of heavier elements Z = 0.2 Z⊙
-    > ``ρ_g = 1.624 m_p (n_p n_e)^{1/2}``
-    I'm trying 1.14mₚ instead to match our other models
-    and the metallicity assumptions in MEKAL.
     """
     function gas_density(r::Unitful.Length)::Unitful.Density
         r = abs(r)
@@ -91,7 +84,7 @@ function Model_Vikhlinin2006(
             ϵ = ϵ
             rs = rs
             γ = γ
-            μ_e * 1u"cm^-3" * sqrt(
+            μ * 1u"cm^-3" * sqrt(
                 np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
             )
         end
