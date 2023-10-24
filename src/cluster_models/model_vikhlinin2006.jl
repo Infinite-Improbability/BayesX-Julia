@@ -8,15 +8,15 @@ Generate a cluster profile using the highly free models from [vikhlininChandraSa
 
 """
 function Model_Vikhlinin2006(
-    n0::NumberDensity,
-    n02::NumberDensity,
-    rc::Unitful.Length,
-    rc2::Unitful.Length,
+    n0_u::NumberDensity,
+    n02_u::NumberDensity,
+    rc_u::Unitful.Length,
+    rc2_u::Unitful.Length,
     α,
     β,
     β2,
     ϵ,
-    rs::Unitful.Length,
+    rs_u::Unitful.Length,
     T0::Unitful.Energy,
     TminT0,
     rcool::Unitful.Length,
@@ -32,16 +32,16 @@ function Model_Vikhlinin2006(
     priorcheck(ϵ < 5, -1e100(1 + ϵ))
 
     # Performance of exponents sucks if we don't strip units
-    n0 = ustrip(u"cm^-3", n0)
-    n02 = ustrip(u"cm^-3", n02)
-    rc = ustrip(u"kpc", rc)
-    rc2 = ustrip(u"kpc", rc2)
-    rs = ustrip(u"kpc", rs)
+    n0_u::Float64 = ustrip(Float64, u"cm^-3", n0_u)
+    n02_u::Float64 = ustrip(Float64, u"cm^-3", n02_u)
+    rc_u::Float64 = ustrip(Float64, u"kpc", rc_u)
+    rc2_u::Float64 = ustrip(Float64, u"kpc", rc2_u)
+    rs_u::Float64 = ustrip(Float64, u"kpc", rs_u)
 
-    priorcheck(rc2 < rc, -1e100 * (1 + (rc2 - rc)))
-    priorcheck(rc < rs, -1e100 * (1 + (rc - rs)))
+    priorcheck(rc2_u < rc_u, -1e100 * (1 + (rc2_u - rc_u)))
+    priorcheck(rc_u < rs_u, -1e100 * (1 + (rc_u - rs_u)))
 
-    @mpidebug "Model Vikhlinin2006 called with" n0 n02 rc rc2 α β β2 ϵ rs T0 TminT0 rcool acool rt a b c γ
+    @mpidebug "Model Vikhlinin2006 called with" n0_u n02_u rc_u rc2_u α β β2 ϵ rs_u T0 TminT0 rcool acool rt a b c γ
 
     """
         np_ne(r, n0, n02, rc, rc2, α, β, β2, ϵ, rs; γ=3)
@@ -77,15 +77,15 @@ function Model_Vikhlinin2006(
     function gas_density(r::Unitful.Length)::Unitful.Density
         r = abs(r)
         res = let
-            n0 = n0
-            n02 = n02
-            rc = rc
-            rc2 = rc2
+            n0 = n0_u
+            n02 = n02_u
+            rc = rc_u
+            rc2 = rc2_u
             α = α
             β = β
             β2 = β2
             ϵ = ϵ
-            rs = rs
+            rs = rs_u
             γ = γ
             μ * 1u"cm^-3" * sqrt(
                 np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
@@ -150,7 +150,7 @@ function Model_Vikhlinin2006(
         isapprox(res, 0u"keV", atol=1e-30u"keV") ? 0.0u"keV" : res
     end
 
-    @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ])"
+    @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0_u, n02_u, rc_u, rc2_u, α, β, β2, ϵ, rs_u, γ])"
     @assert isfinite(gas_temperature(1u"kpc")) "Gas temperature not finite: $([T0, TminT0, rcool, acool, rt, a, b, c])"
 
     return gas_temperature, gas_density
