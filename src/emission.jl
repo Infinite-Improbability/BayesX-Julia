@@ -190,8 +190,8 @@ function make_observation(
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
     @mpirankeddebug "Calculating counts"
-    resp = ustrip.(u"cm^2", response_function)
-    exp_time = ustrip(u"s", exposure_time)
+    resp::Matrix{Float64} = ustrip.(Float64, u"cm^2", response_function)
+    exp_time::Float64 = ustrip(Float64, u"s", exposure_time)
     counts = Array{Union{Float64,Missing}}(undef, size(response_function, 1), shape...)
 
     if isnothing(mask)
@@ -206,8 +206,8 @@ function make_observation(
             elseif mask[i, j]
                 counts[:, i, j] .= missing
             else
-                brightness = brightness_interpolation(radius)
-                counts[:, i, j] .= apply_response_function(brightness, resp, exp_time)
+                brightness::Vector{Float64} = brightness_interpolation(radius)
+                counts[:, i, j] = apply_response_function(brightness, resp, exp_time)::Vector{Float64}
             end
         end
     end

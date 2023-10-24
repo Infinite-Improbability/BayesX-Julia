@@ -10,6 +10,7 @@ using Interpolations
 using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
+using MemoizedMethods, LRUCache
 
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
@@ -201,7 +202,7 @@ function prepare_model_mekal(
     absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
-        function volume_emissivity_direct(
+        @memoize LRU{__Key__,__Value__}(maxsize=10000) function volume_emissivity_direct(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
