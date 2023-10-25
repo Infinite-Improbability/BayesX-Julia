@@ -84,10 +84,10 @@ version = "1.0.1"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BayesJ]]
-deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "PhysicalConstants", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
+deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
 path = ".."
 uuid = "35f7d120-1210-4aa9-b260-6d18979f7586"
-version = "0.4.0"
+version = "0.7.0"
 
 [[deps.BibInternal]]
 git-tree-sha1 = "3a760b38ba8da19e64d29244f06104823ff26f25"
@@ -510,6 +510,11 @@ git-tree-sha1 = "c35203c1e1002747da220ffc3c0762ce7754b08c"
 uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
 version = "0.0.23+0"
 
+[[deps.LRUCache]]
+git-tree-sha1 = "d36130483e3b6e4cd88d81633b596563264f15db"
+uuid = "8ac3fa9e-de4c-5943-b1dc-09c6b5f20637"
+version = "1.5.0"
+
 [[deps.LatinHypercubeSampling]]
 deps = ["Random", "StableRNGs", "StatsBase", "Test"]
 git-tree-sha1 = "825289d43c753c7f1bf9bed334c253e9913997f8"
@@ -659,6 +664,12 @@ deps = ["Calculus", "LinearAlgebra", "Printf", "RecipesBase", "Requires"]
 git-tree-sha1 = "51d946d38d62709d6a2d37ea9bcc30c80c686801"
 uuid = "eff96d63-e80a-5855-80a2-b1b0885c5ab7"
 version = "2.9.0"
+
+[[deps.MemoizedMethods]]
+deps = ["MacroTools"]
+git-tree-sha1 = "d4483a92e27a3127043406dc202d5ec5317ff84d"
+uuid = "2f808968-54ae-4603-8d72-6e67d20f0a1c"
+version = "0.1.3"
 
 [[deps.MicrosoftMPI_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
