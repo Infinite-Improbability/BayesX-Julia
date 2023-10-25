@@ -76,11 +76,6 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # TODO: Automate units
     @mpidebug "Assuming keV and cm^2 for RMF and ARF units"
 
-    # TODO: Set energy bin step based on RMF
-    # Resolve issues where length(energy_range) == length(energy bins from rmf)
-    # LHS should be one less because it is edges
-    # May be because energy range is terminating prematurely? e.g. 1:0.336:4 has last value at 3.688
-
     #### RMF ####
     # The RMF is stored in the format
     # ENERG_LO ENERG_HI N_GRP F_CHAN N_CHAN MATRIX
@@ -162,7 +157,7 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
 
     # Verify the energy bins match the RMF
-    @assert rmf_energy_bin_minimumenergy_ranges == read(arf, "ENERG_LO") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
+    @assert rmf_energy_bin_minimums == read(arf, "ENERG_LO") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
     @assert rmf_energy_bin_maximums == read(arf, "ENERG_HI") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
 
     # Load effective area per bin
