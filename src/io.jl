@@ -28,7 +28,7 @@ end
 
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """
-function load_response(data::Dataset, energy_range)::Matrix{Unitful.Area{Float64}}
+function load_response(data::Dataset, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Matrix{Unitful.Area{Float64}}
     error("load_response is not implemented for these arguments\n", "data = $data\n", "energy_range = $energy_range")
 end
 

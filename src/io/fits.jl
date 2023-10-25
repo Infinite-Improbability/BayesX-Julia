@@ -70,8 +70,20 @@ function load_data(data::FITSData)::NTuple{2,Pair}
     return (obs, bg)
 end
 
-function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float64}}
+function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy{Float64}}}
     @mpidebug "Loading response matrices"
+
+    # TODO: Automate units
+    @mpidebug "Assuming keV and cm^2 for RMF and ARF units"
+
+    # TODO: Set energy bin step based on RMF
+    # Resolve issues where length(energy_range) == length(energy bins from rmf)
+    # LHS should be one less because it is edges
+    # May be because energy range is terminating prematurely? e.g. 1:0.336:4 has last value at 3.688
+
+    #### RMF ####
+    # The RMF is stored in the format
+    # ENERG_LO ENERG_HI N_GRP F_CHAN N_CHAN MATRIX
 
     # Open RMF file
     f_rmf = FITS(data.rmf)
@@ -81,26 +93,62 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     if length(rmf_hdus) > 1
         @warn "$(length(rmf_hdus)) HDUs with matrix extension found. Using the first."
     end
-    r = rmf_hdus[1]
-    @mpidebug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
+    rmf = rmf_hdus[1]
+    @mpidebug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
 
-    # Get channel ranges for each bin
-    first_channel = [i[1] for i in read(r, "F_CHAN")]
-    last_channel = first_channel .+ [i[1] for i in read(r, "N_CHAN")] .- 1
-    channels_for_bin = read(r, "MATRIX")
+    # ENERG_LO and ENERGY_HI are the bounding energies of the bins.
+    # We verify these bins are continuous and not overlapping.
+    rmf_energy_bin_minimums = read(rmf, "ENERG_LO") * 1u"keV"
+    rmf_energy_bin_maximums = read(rmf, "ENERG_HI") * 1u"keV"
+    @assert all(rmf_energy_bin_minimums[2:end] .== rmf_energy_bin_maximums[1:end-1]) "The energy bins of the RMF are not continuous."
+    for i in axes(rmf_energy_bin_minimums, 1)[1:end-1]
+        @assert rmf_energy_bin_minimums[i+1] > rmf_energy_bin_minimums[i] "The RMF energy bins are not monotonically increaing."
+    end
 
-    # TODO: Set energy bin step based on RMF
-    # Resolve issues where length(energy_range) == length(energy bins from rmf)
-    # LHS should be one less because it is edges
-    # May be because energy range is terminating prematurely? e.g. 1:0.336:4 has last value at 3.688
+    # Get channel ranges for each energy bin
+    # F_CHAN is the first channel for a bin
+    # N_CHAN is the number of channels for a bin
+    # For mysterious reasons both are given as vectors of length one
+    # We'll verify that in case anyone ever passes in a RMF that behaves differently
+    @assert all(length.(read(rmf, "F_CHAN")) .== 1) "Multiple first channel (F_CHAN) values found for single energy bin."
+    @assert all(length.(read(rmf, "N_CHAN")) .== 1) "Multiple number of channels (N_CHAN) values found for single energy bin."
+    # Then we read in the first channel for each energy bin
+    first_channel_of_bin = [i[1] for i in read(rmf, "F_CHAN")]
+    # And the number of channels
+    number_of_channels_in_bin = [i[1] for i in read(rmf, "N_CHAN")]
+    # And calculate the last channel as first_channel + number_of_channels - 1
+    # The -1 accounts for the first channel channel contributing to the total number of channels
+    last_channel_of_bin = first_channel_of_bin .+ number_of_channels_in_bin .- 1
+
+    # Then we load in MATRIX
+    # For each bin this a vector giving the probability of a photon going to each channel
+    # So we want the vector to be the same length as the number of channels in the bin
+    energy_to_channel_mapping = read(rmf, "MATRIX")
+    @assert length.(energy_to_channel_mapping) == number_of_channels_in_bin "Discrepency between stated number of channels in bin (N_CHAN) and length of energy to channel mapping vector (MATRIX)"
 
     # Preallocate output matrix
-    rmf = zeros(Float64, (maximum(last_channel), read_key(r, "NAXIS2")[1]))
+    # Response matrix has shape (PI, E) where PI is channel and E is energy bin
+    # NAXIS gives the number of rows (energy bins) in the table
+    # We'll verify this matches our other data
+    @assert read_key(rmf, "NAXIS2")[1] == length(first_channel_of_bin) "Claimed number of rows in table does not match length of data"
+    response_matrix = zeros(Float64, (maximum(last_channel_of_bin), read_key(rmf, "NAXIS2")[1]))
+
+    # tidy up
+    close(f_rmf)
 
     # Load values into matrix
-    for i in axes(rmf, 2)
-        rmf[first_channel[i][1]:last_channel[i][1], i] .= channels_for_bin[i]
+    # We iterate over energy bins, which are our columns
+    @views for bin in axes(response_matrix, 2)
+        # for each bin `i` we select the appropriate channel range from the matrix with first_channel_of_bin[i]:last_channel_of_bin[i]
+        # and assign the energy mapping to it
+        response_matrix[first_channel_of_bin[bin]:last_channel_of_bin[bin], bin] = energy_to_channel_mapping[bin]
     end
+
+    # Now we have the RMF in matrix form RMF(PI, E)
+
+    #### ARF ####
+    # The ARF is stored in the format
+    # ENERG_LO ENERG_HI SPECRESP
 
     # Open ARF file
     f_arf = FITS(data.arf)
@@ -110,37 +158,55 @@ function load_response(data::FITSData, energy_range)::Matrix{Unitful.Area{Float6
     if length(arf_hdus) > 1
         @warn "$(length(arf_hdus)) HDUs with matrix extension found. Using the first."
     end
-    a = arf_hdus[1]
-    @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(r, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
-    arf = read(a, "SPECRESP") # TODO: Automate unit selection
+    arf = arf_hdus[1]
+    @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
 
-    # turn rmf into response matrix
-    # now our variable name is inaccurate but we don't have to allocate new memory
-    for i in axes(rmf, 1)
-        rmf[i, :] .*= arf
+    # Verify the energy bins match the RMF
+    @assert rmf_energy_bin_minimumenergy_ranges == read(arf, "ENERG_LO") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
+    @assert rmf_energy_bin_maximums == read(arf, "ENERG_HI") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
+
+    # Load effective area per bin
+    effective_area_per_energy_bin = read(arf, "SPECRESP") * 1u"cm^2"
+    @assert length(effective_area_per_energy_bin) == size(response_matrix, 2) "ARF has a different number of energy bins to RMF"
+
+    # tidy up
+    close(f_arf)
+
+    # Turn rmf into response matrix by multiplying with arf
+    # Each bin column is multiplied by the appropriate effective area.
+    for bin in axes(response_matrix, 2)
+        response_matrix[:, bin] .*= effective_area_per_energy_bin[bin]
     end
 
-    # Get first bin where maximum energy >= min of range
-    # ∴ Subsequent bins must have minimum energy > min of range
-    energy_high = read(r, "ENERG_HI") * 1u"keV"
-    min_bin = searchsortedfirst(energy_high, minimum(energy_range))
+    # Get first bin where lower edge >= user specified `min_energy``
+    min_bin = searchsortedfirst(rmf_energy_bin_minimums, min_energy)
+    min_channel = first_channel_of_bin[min_bin]
 
-    # energy_min = read(f_rmf[3], "E_MAX") * 1u"keV"
-    # min_channel = searchsortedfirst(energy_max, minimum(energy_range))
-    min_channel = 1 # we don't trim events channels based on minimum (yet)
-
-    # Get last bin where minimum energy >= max of range
-    # ∴ This and subsequent bins must have minimum energy > max of range
-    energy_low = read(r, "ENERG_LO") * 1u"keV"
-    max_bin = searchsortedfirst(energy_low, maximum(energy_range)) - 1
-
-    energy_min = read(f_rmf[3], "E_MIN") * 1u"keV"
-    max_channel = searchsortedfirst(energy_min, maximum(energy_range)) - 1
+    # Get last bin where upper edge <= user specificed `max_energy``
+    max_bin = searchsortedlast(rmf_energy_bin_maximums, max_energy)
+    max_channel = last_channel_of_bin[max_bin]
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
-    @mpidebug "Response matrix bins range over" energy_low[min_bin] energy_high[max_bin]
+    trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin]
 
-    return rmf[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # Hack to add arf units
+    # Now we want an energy range
+    # Convert bounding bin indices to energy values
+    new_min_energy = rmf_energy_bin_minimums[min_energy]
+    new_max_energy = rmf_energy_bin_maximums[max_energy]
+
+    # Trim bin edges to the selected bin range
+    # This could be merged with the next step but this helps readability
+    bin_mins = rmf_energy_bin_minimums[min_bin:max_bin]
+    bin_maxes = rmf_energy_bin_maximums[min_bin:max_bin]
+
+    # Load in all the bin mins and add the last max to end the upper bin
+    # Now we have a vector of energy bin edges
+    energy_bins = [bin_mins; bin_maxes[end]] # note the semicolon to concatenate
+    n_energy_bins = length(energy_bins)
+
+    @mpiinfo "Energy range adjusted to align with response matrix" new_min_energy new_max_energy n_energy_bins
+
+    return trimmed_response_matrix, energy_bins
 end
 
 """

@@ -184,7 +184,7 @@ energy range.
 """
 function sample(
     data::Dataset,
-    energy_range::AbstractRange{<:Unitful.Energy},
+    energy_limits::NTuple{2,<:Unitful.Energy},
     cluster_model::Function,
     priors::AbstractVector{<:Prior},
     nHcol::SurfaceDensity,
@@ -197,29 +197,32 @@ function sample(
     mask=nothing,
     kwargs...
 )
-    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"]
+    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
+
+    @mpiinfo "Loading response function"
+    response_function = load_response(data, energy_limits...)
+
+    # Check the number of energy bins in the response function matches the number of bins in the energy range
+    @assert size(response_function, 2) == (length(energy_range) - 1) # subtract 1 because the range is bin edges
 
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
 
     x_edges = x[1]:bin_size:x[2]
     y_edges = y[1]:bin_size:y[2]
-
     @mpidebug "Spatial bounds" x_edges y_edges
 
+    @info "Binning observation data"
     obs = bin_events(data, observation.first, energy_range, x_edges, y_edges)
+
+    @info "Binning background data"
     bg = bin_events(data, observed_background.first, energy_range, x_edges, y_edges)
+    
     pixel_edge_angle = bin_size * data.pixel_edge_angle
-    @assert size(obs) == size(bg)
 
     @mpidebug "Making transform"
     prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
     transform, param_wrapper = make_cube_transform(priors...)
-
-    @mpidebug "Calling load_response"
-    response_function = load_response(data, energy_range)
-    @mpidebug "Response function loaded. Size[2] should be one less than energy range" size(response_function) length(energy_range)
-    @assert size(response_function, 2) == (length(energy_range) - 1)
 
     @mpiinfo "Generating emissions model"
     emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
