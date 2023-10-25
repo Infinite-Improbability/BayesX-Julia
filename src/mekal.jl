@@ -172,7 +172,7 @@ correction twice.
 """
 function prepare_model_mekal(
     nHcol::SurfaceDensity,
-    energy_bins::AbstractRange{T},
+    energy_bins::AbstractVector{T},
     z::Real;
     temperatures::AbstractRange{U}=(0:0.05:9.0)u"keV",
     hydrogen_densities::AbstractRange{V}=(0:0.001:1.0)u"cm^-3",
@@ -190,7 +190,7 @@ function prepare_model_mekal(
     # Generate transmission fractions
     @mpidebug "Invoking absorption model"
     absorption_model = PhotoelectricAbsorption(FitParam(ustrip(u"cm^-2", nHcol) / 1e22))
-    absorption = invokemodel(ustrip.(u"keV", collect(energy_bins)), absorption_model)
+    absorption = invokemodel(ustrip.(u"keV", energy_bins), absorption_model)
 
     @assert all(isfinite, absorption)
 

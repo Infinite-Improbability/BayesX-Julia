@@ -70,7 +70,7 @@ function load_data(data::FITSData)::NTuple{2,Pair}
     return (obs, bg)
 end
 
-function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy{Float64}}}
+function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy}}
     @mpidebug "Loading response matrices"
 
     # TODO: Automate units
@@ -157,11 +157,11 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
 
     # Verify the energy bins match the RMF
-    @assert rmf_energy_bin_minimums == read(arf, "ENERG_LO") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
-    @assert rmf_energy_bin_maximums == read(arf, "ENERG_HI") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
+    @assert rmf_energy_bin_minimums == (read(arf, "ENERG_LO") * 1u"keV") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
+    @assert rmf_energy_bin_maximums == (read(arf, "ENERG_HI") * 1u"keV") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
 
     # Load effective area per bin
-    effective_area_per_energy_bin = read(arf, "SPECRESP") * 1u"cm^2"
+    effective_area_per_energy_bin = read(arf, "SPECRESP")
     @assert length(effective_area_per_energy_bin) == size(response_matrix, 2) "ARF has a different number of energy bins to RMF"
 
     # tidy up
@@ -182,12 +182,12 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     max_channel = last_channel_of_bin[max_bin]
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
-    trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin]
+    trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # we only apply units here for type reasons
 
     # Now we want an energy range
     # Convert bounding bin indices to energy values
-    new_min_energy = rmf_energy_bin_minimums[min_energy]
-    new_max_energy = rmf_energy_bin_maximums[max_energy]
+    new_min_energy = rmf_energy_bin_minimums[min_bin]
+    new_max_energy = rmf_energy_bin_maximums[max_bin]
 
     # Trim bin edges to the selected bin range
     # This could be merged with the next step but this helps readability
@@ -218,18 +218,29 @@ function bin_events(_::FITSData, events, energy_range, x_edges, y_edges)::Array{
     events = events[minimum(energy_range).<events[:, 4].<maximum(energy_range), :]
 
     # Maximum doesn't like the Unitful array
-    channels = ustrip.(events[:, 3])
+    channels = trunc.(Int64, ustrip.(events[:, 3]))
+    min_chan, max_chan = extrema(channels)
+    n_channels = max_chan - min_chan + 1 # +1 because last channel is counted
 
-    binned = zeros(Int64, (trunc(Int64, maximum(channels)), length(x_edges) - 1, length(y_edges) - 1))
+    binned = zeros(Int64, n_channels, length(x_edges) - 1, length(y_edges) - 1)
 
-    prog = ProgressUnknown("Events read:")
+    if MPI.Comm_rank(comm) == 0
+        is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
+        prog = ProgressUnknown("Events read:", enabled = !is_logging(stderr), dt=1)
+    end
     for r in eachrow(events)
         i = searchsortedlast(x_edges, r[1])
         j = searchsortedlast(y_edges, r[2])
-        binned[trunc(Int64, r[3]), i, j] += 1
-        ProgressMeter.next!(prog)
+        # shift channel number
+        chan = trunc(Int64, r[3]) - min_chan + 1 # +1 because we want count to start at 1
+        binned[chan, i, j] += 1
+        if MPI.Comm_rank(comm) == 0
+            ProgressMeter.next!(prog)
+        end
     end
-    ProgressMeter.finish!(prog)
+    if MPI.Comm_rank(comm) == 0
+        ProgressMeter.finish!(prog)
+    end
 
     return binned
 end

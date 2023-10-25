@@ -173,7 +173,7 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_range::AbstractRange{Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift, x, y)
+    sample(data::Dataset, energy_limits::NTuple{2, Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift, x, y)
 
 Run Bayesian inference on a given set of `data` considering only the selected
 energy range.
@@ -200,7 +200,7 @@ function sample(
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
 
     @mpiinfo "Loading response function"
-    response_function = load_response(data, energy_limits...)
+    response_function, energy_range = load_response(data, energy_limits...)
 
     # Check the number of energy bins in the response function matches the number of bins in the energy range
     @assert size(response_function, 2) == (length(energy_range) - 1) # subtract 1 because the range is bin edges
