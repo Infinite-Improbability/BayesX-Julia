@@ -130,6 +130,19 @@ function hydrogen_number_density(gas_density)
     return gas_density / (m_p * dot(abundance, nucleon_total))
 end
 
+function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, z, shape::NTuple{2,<:Integer}) where {A<:DimensionfulAngles.Angle}
+    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    x = ustrip.(u"radᵃ", centre_x) .* angular_diameter_dist(cosmo, z)
+    y = ustrip.(u"radᵃ", centre_y) .* angular_diameter_dist(cosmo, z)
+
+    radii_x, radii_y = shape ./ 2
+
+    i = x / pixel_edge_length + radii_x
+    j = y / pixel_edge_length + radii_y
+
+    return (i, j)
+end
+
 """
     make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit)
 
