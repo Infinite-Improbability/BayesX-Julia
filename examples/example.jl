@@ -1,7 +1,7 @@
 using BayesJ
 using Unitful, DimensionfulAngles
 
-# ENV["JULIA_DEBUG"] = "BayesJ"
+ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
     "data/tng/tng_projections/tng_s67_h11_x_obs_evt.fits",
@@ -62,7 +62,7 @@ priors_nfw = [
 
 sample(
     data,
-    (0.2u"keV", 4.0u"keV"),
+    (0.3u"keV", 4.0u"keV"),
     Model_NFW,
     priors_nfw,
     0.022e22u"cm^-2",
