@@ -28,8 +28,8 @@ end
 
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """
-function load_response(data::Dataset, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Matrix{Unitful.Area{Float64}}
-    error("load_response is not implemented for these arguments\n", "data = $data\n", "energy_range = $energy_range")
+function load_response(data::Dataset, min_energy::Unitful.Energy, max_energy::Unitful.Energy)
+    error("load_response is not implemented for these arguments\n", "data = $data\n", "energy_range = $min_energy,$max_energy")
 end
 
 
@@ -40,6 +40,15 @@ The matrix is true for masked pixels.
 """
 function load_mask(data::Dataset)::Matrix{Bool}
     error("load_data is not implemented for these arguments", data)
+end
+
+"""
+    bin_events(::Dataset, events, ...)
+
+Placeholder function, returns events matrix without modification"""
+function bin_events(::Dataset, events, args...)
+    @mpiwarn "bin_events is not implemented for these arguments."
+    return events
 end
 
 """

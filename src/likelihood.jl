@@ -186,13 +186,11 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
     """
     function transform_cube(cube::AbstractVector)
 
-        @mpirankeddebug "Transform started"
+        @mpirankeddebug "Transforming prior hypercube"
 
         for (c, p) in zip(axes(cube, 1), variable_priors)
             cube[c] = transform.(Ref(p), cube[c])
         end
-
-        @mpirankeddebug "Transform done"
 
         return cube
     end

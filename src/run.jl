@@ -55,11 +55,13 @@ function sample(
     @argcheck all(i -> i >= 0, observed)
     @argcheck all(i -> i >= 0, observed_background)
     @argcheck size(observed) == size(observed_background)
+    @argcheck size(observed, 1) == size(response_function, 1)
 
     # implicitly includes average effective area and pixel edge angle
     bg_count_rate = [mean(@view observed_background[i, :, :]) for i in axes(observed_background, 1)] ./ bg_exposure_time
-    @mpidebug "Background count rate generated" count(i -> i == 0u"s^-1", bg_count_rate)
-    replace!(bg_count_rate, 0u"s^-1" => 0.1 / bg_exposure_time)
+    n_zeros_in_bg = count(i -> i == 0u"s^-1", bg_count_rate)
+    @mpidebug "Background count rate generated" n_zeros_in_bg
+    replace!(bg_count_rate, 0u"s^-1" => 0.1e-6 / bg_exposure_time)
 
     @assert all(i -> i > 0u"s^-1", bg_count_rate)
     @mpidebug "Background rate estimated" bg_count_rate
@@ -200,7 +202,7 @@ function sample(
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
 
     @mpiinfo "Loading response function"
-    response_function, energy_range = load_response(data, energy_limits...)
+    response_function, energy_range, channel_range = load_response(data, energy_limits...)
 
     # Check the number of energy bins in the response function matches the number of bins in the energy range
     @assert size(response_function, 2) == (length(energy_range) - 1) # subtract 1 because the range is bin edges
@@ -213,11 +215,11 @@ function sample(
     @mpidebug "Spatial bounds" x_edges y_edges
 
     @info "Binning observation data"
-    obs = bin_events(data, observation.first, energy_range, x_edges, y_edges)
+    obs = bin_events(data, observation.first, channel_range, x_edges, y_edges)
 
     @info "Binning background data"
-    bg = bin_events(data, observed_background.first, energy_range, x_edges, y_edges)
-    
+    bg = bin_events(data, observed_background.first, channel_range, x_edges, y_edges)
+
     pixel_edge_angle = bin_size * data.pixel_edge_angle
 
     @mpidebug "Making transform"

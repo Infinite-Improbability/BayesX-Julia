@@ -37,7 +37,7 @@ end
 
 Loads events from a single fits file for further processing.
 """
-function load_events_from_fits(path::AbstractString)::Pair{Matrix,Unitful.Time{Float64}}
+function load_events_from_fits(path::AbstractString)::Pair{<:Matrix,<:Unitful.Time{Float64}}
     f = FITS(path, "r")
     event_hdus::Vector{TableHDU} = [
         h for h in f
@@ -54,7 +54,7 @@ function load_events_from_fits(path::AbstractString)::Pair{Matrix,Unitful.Time{F
         live_time = read_key(h, "EXPOSURE")[1] # We don't want safe_read_key because we want an exception if this fails.
     end
 
-    return [read(h, "x") read(h, "y") read(h, "pi") read(h, "energy") * 1u"eV"] => live_time * 1u"s" # TODO: manual units bad
+    return [read(h, "x") read(h, "y") read(h, "pi")] => live_time * 1u"s" # TODO: manual units bad
 end
 
 """
@@ -70,7 +70,7 @@ function load_data(data::FITSData)::NTuple{2,Pair}
     return (obs, bg)
 end
 
-function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy}}
+function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy},NTuple{2,Int64}}
     @mpidebug "Loading response matrices"
 
     # TODO: Automate units
@@ -201,32 +201,34 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
 
     @mpiinfo "Energy range adjusted to align with response matrix" new_min_energy new_max_energy n_energy_bins
 
-    return trimmed_response_matrix, energy_bins
+    return trimmed_response_matrix, energy_bins, (min_channel, max_channel)
 end
 
 """
     bin_events(::FITSData, events, energy_range, x_edges, y_edges)
 
-Take a table of events in the format (x y channel energy), trim it by energy and bin it spatially.
+Take a table of events in the format (x y channel), trim it by energy and bin it spatially.
 Returns an array of counts per bin with dimensions (channel, x, y).
 """
-function bin_events(_::FITSData, events, energy_range, x_edges, y_edges)::Array{Int64}
-    @mpidebug "Binning events"
+function bin_events(::FITSData, events, channel_range::NTuple{2,<:Integer}, x_edges, y_edges)::Array{Int64}
+    min_chan, max_chan = extrema(channel_range)
+    @mpidebug "Binning events" extrema(channel_range) extrema(x_edges) extrema(y_edges)
 
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]
-    events = events[minimum(energy_range).<events[:, 4].<maximum(energy_range), :]
+    events = events[min_chan.<events[:, 3].<max_chan, :]
 
     # Maximum doesn't like the Unitful array
     channels = trunc.(Int64, ustrip.(events[:, 3]))
-    min_chan, max_chan = extrema(channels)
+
     n_channels = max_chan - min_chan + 1 # +1 because last channel is counted
+    @mpidebug "Channel data" extrema(channels)
 
     binned = zeros(Int64, n_channels, length(x_edges) - 1, length(y_edges) - 1)
 
     if MPI.Comm_rank(comm) == 0
         is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
-        prog = ProgressUnknown("Events read:", enabled = !is_logging(stderr), dt=1)
+        prog = ProgressUnknown("Events read:", enabled=!is_logging(stderr), dt=1)
     end
     for r in eachrow(events)
         i = searchsortedlast(x_edges, r[1])
