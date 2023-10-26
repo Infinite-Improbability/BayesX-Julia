@@ -214,10 +214,10 @@ function sample(
     y_edges = y[1]:bin_size:y[2]
     @mpidebug "Spatial bounds" x_edges y_edges
 
-    @info "Binning observation data"
+    @mpiinfo "Binning observation data"
     obs = bin_events(data, observation.first, channel_range, x_edges, y_edges)
 
-    @info "Binning background data"
+    @mpiinfo "Binning background data"
     bg = bin_events(data, observed_background.first, channel_range, x_edges, y_edges)
 
     pixel_edge_angle = bin_size * data.pixel_edge_angle
