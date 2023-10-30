@@ -24,7 +24,7 @@ function load_data(data::Dataset)::NTuple{2,Pair}
 end
 
 """
-    load_response(data, energy_range)
+    load_response(data, min_energy, max_energy)
 
 Load the RMF and ARF for an observation, trimmed for the desired energy range
 """

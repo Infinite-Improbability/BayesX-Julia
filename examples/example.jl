@@ -1,7 +1,7 @@
 using BayesJ
 using Unitful, DimensionfulAngles
 
-ENV["JULIA_DEBUG"] = "BayesJ"
+# ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
     "data/tng/tng_projections/tng_s67_h11_x_obs_evt.fits",

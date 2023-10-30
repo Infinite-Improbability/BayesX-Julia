@@ -70,6 +70,13 @@ function load_data(data::FITSData)::NTuple{2,Pair}
     return (obs, bg)
 end
 
+"""
+    load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)
+
+Load response function for specified energy range, adjusting it to align with channel edges.
+
+Returns response matrix, energy bins and included channels.
+"""
 function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy},NTuple{2,Int64}}
     @mpidebug "Loading response matrices"
 
