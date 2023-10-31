@@ -44,25 +44,17 @@ function test_model(temperature, density)
                 use_interpolation=false
             )
 
-            try
-                s_distant = BayesJ.surface_brightness(
-                    100u"Mpc",
-                    temperature,
-                    density,
-                    z,
-                    Quantity(Inf, u"Mpc"),
-                    emission_model,
-                    0.492u"arcsecondᵃ"
-                )
+            s_distant = BayesJ.surface_brightness(
+                100u"Mpc",
+                temperature,
+                density,
+                z,
+                Quantity(Inf, u"Mpc"),
+                emission_model,
+                0.492u"arcsecondᵃ"
+            )
 
-                @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
-            catch e
-                if e isa BayesJ.ObservationError
-                    @warn "Non-finite value in surface brightness integral at large radii"
-                else
-                    rethrow()
-                end
-            end
+            @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
 
             s_zero = BayesJ.surface_brightness(
                 0u"Mpc",
