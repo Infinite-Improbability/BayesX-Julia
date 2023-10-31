@@ -12,6 +12,7 @@ makedocs(
     pages=[
         "Home" => "index.md",
         "Setup" => "setup.md",
+        "Usage" => "usage.md",
         "Cluster Models" => "models.md",
         "API" => [
             "Public" => "public.md",

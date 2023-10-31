@@ -181,7 +181,20 @@ function sample(
 end
 
 """
-    sample(data::Dataset, energy_limits::NTuple{2, Unitful.Energy}, cluster_model::Function, priors::AbstractVector{Prior}, nhCol::SurfaceDensity, redshift, x, y)
+    sample(
+        data::Dataset,
+        energy_limits::NTuple{2, Unitful.Energy},
+        cluster_model::Function,
+        priors::AbstractVector{Prior},
+        nhCol::SurfaceDensity,
+        redshift::Real,
+        x::NTuple{2,<:Real},
+        y::NTuple{2,<:Real};
+        bin_size::Real=10,
+        use_interpolation::Bool=false,
+        centre_radius=0,
+        mask=nothing,
+        )
 
 Run Bayesian inference on a given set of `data` considering only the selected
 energy range.
@@ -189,7 +202,9 @@ energy range.
 * The cluster model can be any function that takes a set of parameters matching the priors and a `z` keyword argument, 
 and returns two functions for the gas temperature and gas mass density as a function of radius.
 * The first two priors should always be `x0` and `y0`, giving cluster centre position.
-* `x` and `y` are tuples of `(min, max)` in pixels.
+* `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
+* `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
+* `centre_radius` excludes some radius, in pixels, around the centre from analysis
 * Additional kwargs will be passed through to the next `sample` function.
 """
 function sample(
