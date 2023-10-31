@@ -137,7 +137,7 @@ function sample(
             if e isa PriorError || e isa ObservationError
                 return e.likelihood
             end
-            rethrow(e)
+            rethrow()
         end
     end
 

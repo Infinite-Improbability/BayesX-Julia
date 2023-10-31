@@ -7,7 +7,7 @@ function lower_gamma(s, x)
         return gamma(s) - gamma(s, x)
     catch e
         @error("Gamma error, s cannot be over 51", s, x)
-        throw(e)
+        rethrow()
     end
 end
 
