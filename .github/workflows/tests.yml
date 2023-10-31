@@ -2,6 +2,11 @@ name: Unit Tests
 
 on: 
   push:
+    paths:
+      - 'src/**.jl'
+      - 'test/**.jl'
+      - 'Manifest.toml'
+      - 'Project.toml'
 
 jobs:
   test:
