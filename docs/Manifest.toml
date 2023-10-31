@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.2"
+julia_version = "1.9.3"
 manifest_format = "2.0"
 project_hash = "d11b614ca55ecd9e670031396659d8fb06db3b91"
 
@@ -87,7 +87,7 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
 path = ".."
 uuid = "35f7d120-1210-4aa9-b260-6d18979f7586"
-version = "0.7.0"
+version = "0.7.3"
 
 [[deps.BibInternal]]
 git-tree-sha1 = "3a760b38ba8da19e64d29244f06104823ff26f25"
