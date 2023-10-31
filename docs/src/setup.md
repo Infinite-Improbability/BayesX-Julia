@@ -39,7 +39,9 @@ Ultranest supports MPI for parallelisation. To use launch your Julia scripts usi
 
 While the Python dependencies will install automatically if not found, this can be cause segfaults as MPI.jl is trying to use one MPI library and mpi4py another. I suggest manually installing `ultranest` and `mpi4py` in a conda environment. This allows you to use [force Conda to use an external MPI library](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries).
 
-1. Find the Conda environment used by BayesJ with `conda env list`. This works even if Julia is using an internal Miniconda installation - look for environments with a `.julia` path and no name. In the example below it is the third environment.
+### MPI Setup
+
+Find the Conda environment used by BayesJ with `conda env list`. This works even if Julia is using an internal Miniconda installation - look for environments with a `.julia` path and no name. In the example below it is the third environment.
 ```shell
 shell> conda env list
 # conda environments:
@@ -48,12 +50,15 @@ base                     /trimmed/for/length
 ciao                     /nfs/home/coxry/.conda/envs/ciao
                          ~/.julia/conda/3/x86_64
 ```
-2. Activate the environment with `conda activate name/or/path`
-3. Install Ultranest, mpi4py and an appropriate external MPI package, as explained in the [Conda documentation](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries). I use OpenMPI. `x.y` should be replaced with the approriate version number, probably `4.1` for OpenMPI.
+Activate the environment with
+```shell
+shell> conda activate name/or/path
+```
+Install Ultranest, mpi4py and an appropriate external MPI package, as explained in the [Conda documentation](https://conda-forge.org/docs/user/tipsandtricks.html#using-external-message-passing-interface-mpi-libraries). I use OpenMPI. `x.y` should be replaced with the approriate version number, probably `4.1` for OpenMPI.
 ```shell
 shell> conda install ultranest mpi4py openmpi=x.y.*=external_*
 ```
-4. Then [set the MPI library used by Julia](https://juliaparallel.org/MPI.jl/stable/configuration/). Run this in your shell
+Then [set the MPI library used by Julia](https://juliaparallel.org/MPI.jl/stable/configuration/). Run this in your shell
 ```shell
 shell> julia --project -e 'using MPIPreferences; MPIPreferences.use_system_binary()'
 ```
@@ -62,7 +67,6 @@ or this in the REPL
 julia> using MPIPreferences
 julia> MPIPreferences.use_system_binary()
 ```
-
 ## Installation for Development
 If you want to edit the source then you'll want to install it a bit differently.
 
