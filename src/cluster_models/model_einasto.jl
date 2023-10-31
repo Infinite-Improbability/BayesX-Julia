@@ -45,7 +45,6 @@ function Model_Einasto(
 
     @mpirankeddebug "Einasto" MT_Δ fg_Δ n α β γ c_Δ_GNFW z
 
-
     # Note the +1 in many likelihoods
     # This is so that something like fg_Δ=0 doesn't return a likelihood of zero
     priorcheck(MT_Δ > 0u"Msun", -1e100(1 - ustrip(u"Msun", MT_Δ))) # MT_Δ is negative so we subtract it

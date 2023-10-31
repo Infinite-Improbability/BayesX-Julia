@@ -53,7 +53,9 @@ function sample(
     integration_limit::Unitful.Length=Quantity(Inf, u"Mpc"),
     use_stepsampler=false,
     log_dir="logs",
-    resume="subfolder") where {T<:AbstractArray}
+    resume="subfolder",
+    ultranest_run_args=NamedTuple()
+) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
 
     @argcheck all(isfinite, observed)
@@ -158,15 +160,21 @@ function sample(
             nsteps=2 * length(prior_names),
             generate_direction=stepsampler.generate_mixture_random_direction,
             adaptive_nsteps="move-distance",
-            max_nsteps=24,
-            region_filter=true
+            max_nsteps=4 * length(prior_names),
+            region_filter=true,
         )
     end
 
     # run Ultranest
     @mpiinfo "Launching sampler"
+    ultranest_default_run_args = (
+        max_num_improvement_loops=10,
+    )
+    @mpidebug "Ultranest arguments" ultranest_default_run_args ultranest_run_args
+    merged = merge(ultranest_default_run_args, ultranest_run_args)
+    display(merged)
     results = sampler.run(
-    # region_class=ultranest.mlfriends.RobustEllipsoidRegion
+        merged...
     )
 
     # output data

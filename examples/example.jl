@@ -74,5 +74,5 @@ sample(
     use_interpolation=false,
     use_stepsampler=false,
     # mask="data/tng/wavedetect.reg",
-    ultranest_run_args=(max_num_improvement_loops = 3)
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400)
 )

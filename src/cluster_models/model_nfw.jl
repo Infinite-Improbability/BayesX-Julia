@@ -26,7 +26,6 @@ function Model_NFW(
     # Move some parameters into a struct?
 
     @mpirankeddebug "NFW" MT_Δ fg_Δ α β γ c_Δ_GNFW z
-    @mpirankeddebug "NFW" MT_Δ fg_Δ α β γ c_Δ_GNFW z
 
     # Note the +1 in many likelihoods
     # This is so that something like fg_Δ=0 doesn't return a likelihood of zero despite failing the fg_Δ>0 constraint
