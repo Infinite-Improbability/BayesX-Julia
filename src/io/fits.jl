@@ -21,6 +21,10 @@ struct FITSData{S<:AbstractString,T<:DimensionfulAngles.Angle} <: Dataset
     rmf::S
     pixel_edge_angle::T
 end
+function FITSData(obs::S, bg::S, arf::S, rmf::S, pea::Unitful.DimensionlessQuantity) where {S<:AbstractString}
+    @warn "You should use dimensionful angles"
+    FITSData(obs, bg, arf, rmf, ustrip(u"rad", pea) * 1u"radᵃ")
+end
 
 function safe_read_key(hdu::HDU, key::String, msg::AbstractString)
     try
