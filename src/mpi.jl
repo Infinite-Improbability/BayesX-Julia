@@ -1,7 +1,7 @@
 using MPI
 MPI.Init()
 
-"""Wrappers around the logging macros to ensure they only run for a single process.."""
+"""Wrappers around the logging macros to ensure they behave well with MPI."""
 
 const comm::MPI.Comm = MPI.COMM_WORLD
 

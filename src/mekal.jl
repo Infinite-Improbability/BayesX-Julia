@@ -202,7 +202,9 @@ function prepare_model_mekal(
     absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
-        @memoize LRU{__Key__,__Value__}(maxsize=1000) function volume_emissivity_direct(
+        cache_size = 1000
+        @mpidebug "Using direct MEKAL calls" cache_size
+        @memoize LRU{__Key__,__Value__}(maxsize=cache_size) function volume_emissivity_direct(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}

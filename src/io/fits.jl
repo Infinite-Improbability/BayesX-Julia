@@ -237,6 +237,7 @@ function bin_events(::FITSData, events, channel_range::NTuple{2,<:Integer}, x_ed
 
     binned = zeros(Int64, n_channels, length(x_edges) - 1, length(y_edges) - 1)
 
+    MPI.Init()
     if MPI.Comm_rank(comm) == 0
         is_logging(io) = isa(io, Base.TTY) == false || (get(ENV, "CI", nothing) == "true")
         prog = ProgressUnknown("Events read:", enabled=!is_logging(stderr), dt=1)
