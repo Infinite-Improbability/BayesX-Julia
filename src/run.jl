@@ -2,8 +2,14 @@ using Unitful, DimensionfulAngles
 using ArgCheck
 
 using PyCall
-ultranest = pyimport_conda("ultranest", "ultranest", "conda-forge")
-stepsampler = pyimport_conda("ultranest.stepsampler", "ultranest")
+
+const ultranest = PyNULL()
+const stepsampler = PyNULL()
+
+function __init__()
+    copy!(ultranest, pyimport_conda("ultranest", "ultranest", "conda-forge"))
+    copy!(stepsampler, pyimport_conda("ultranest.stepsampler", "ultranest"))
+end
 
 export sample
 
