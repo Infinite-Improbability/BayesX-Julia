@@ -60,4 +60,4 @@ sample(
     mask="data/tng/wavedetect.reg" # path to ciao style mask file. Elli
 )
 ```
-The available models are described in [Cluster Models](@ref).
+The available models are described in [Cluster Models](@ref cluster_models_page).

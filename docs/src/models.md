@@ -1,4 +1,4 @@
-# Cluster Models
+# [Cluster Models](@id cluster_models_page)
 
 When setting up sampling the user must supply a cluster model function to the [`sample`](@ref) function. This model takes a set of parameters (typically drawn from the priors) and returns two functions for the gas temperature and gas mass density as a function of radius.
 
