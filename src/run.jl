@@ -186,9 +186,11 @@ end
 Run Bayesian inference on a given set of `data` considering only the selected
 energy range.
 
-* An gas emission model `(density, temperature) → emissivity` can be provided.
+* The cluster model can be any function that takes a set of parameters matching the priors and a `z` keyword argument, 
+and returns two functions for the gas temperature and gas mass density as a function of radius.
 * The first two priors should always be `x0` and `y0`, giving cluster centre position.
-* `x` and `y` are tuples of `(min, max)`.
+* `x` and `y` are tuples of `(min, max)` in pixels.
+* Additional kwargs will be passed through to the next `sample` function.
 """
 function sample(
     data::Dataset,
@@ -200,7 +202,7 @@ function sample(
     x::NTuple{2,<:Real},
     y::NTuple{2,<:Real};
     bin_size::Real=10,
-    use_interpolation::Bool=true,
+    use_interpolation::Bool=false,
     centre_radius=0,
     mask=nothing,
     kwargs...
