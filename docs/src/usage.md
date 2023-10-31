@@ -39,7 +39,7 @@ priors_nfw = [
     DeltaPrior("c_500_GNFW", 1.177)
 ]
 ```
-The first two priors should always be called `x0` and `y0` (or x and y). They denote the cluster centre position. Other priors can be named whatever you like. These should be one prior for every positional argument to the cluster model. Currently supported priors are [`DeltaPrior`](@ref), [`LogUniformPrior`](@ref), [`NormalPrior`](@ref) and [`UniformPrior`](@ref).
+The first two priors should always be called `x0` and `y0` (or x and y). They denote the cluster centre position. Other priors can be named whatever you like. These should be one prior for every positional argument to the cluster model. Currently supported priors are [`DeltaPrior`](@ref), [`LogUniformPrior`](@ref), [`NormalPrior`](@ref),[`UniformPrior`](@ref) and [`GenericPrior`](@ref), which can use arbitary distributions.
 
 Finally we call [`sample`](@ref).
 ```julia

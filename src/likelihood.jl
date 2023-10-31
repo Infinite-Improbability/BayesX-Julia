@@ -138,7 +138,7 @@ struct GenericPrior{S<:AbstractString,D<:UnivariateDistribution} <: Prior
     name::S
     dist::UnivariateDistribution
 end
-function transform(prior::NormalPrior, x::Real)
+function transform(prior::GenericPrior, x::Real)
     return quantile(prior.dist, x)
 end
 
