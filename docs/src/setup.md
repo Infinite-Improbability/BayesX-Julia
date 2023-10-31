@@ -3,26 +3,31 @@
 BayesJ is developed for Julia 1.9, which can be obtained from https://julialang.org/. If you're unfamiliar with Julia's package manager go read its [getting started guide](https://pkgdocs.julialang.org/v1/getting-started/) quickly.
 
 ## Basic Installation
-1. Launch the Julia REPL with `julia`
-2. Det the Python environment used by PyCall.
+Launch the Julia REPL with
+```shell
+shell> julia
+```
+Set the Python environment used by PyCall.
 ```julia
 julia> ENV["PYTHON"]=""
 ```
-2. Press `]` to enter the package manager.
-3. [Optional] Activate an environment in the current folder with 
+Press `]` to enter the package manager.
+
+You can (optionally) activate an environment in the current folder. This helps keep dependencies tidy across projects. 
 ```julia
 pkg> activate .
 ```
-4. Setup the required package registries with
+
+Setup the required package registries with
 ```julia
 pkg> registry add General
 pkg> registry add https://github.com/astro-group-bristol/AstroRegistry
 ```
-5. Install BayesJ and all dependencies* with
+Install BayesJ and all dependencies* with
 ```julia 
 pkg> add https://github.com/Infinite-Improbability/BayesX-Julia
 ```
-6. Done! You can exit the package manager with backspace or Ctrl-C
+ Done! You can exit the package manager with backspace or Ctrl-C
 
 \* If you want MPI support see the details below.
 
@@ -57,3 +62,27 @@ or this in the REPL
 julia> using MPIPreferences
 julia> MPIPreferences.use_system_binary()
 ```
+
+## Installation for Development
+If you want to edit the source then you'll want to install it a bit differently.
+
+First clone the repository. Launch the Julia REPL inside it.
+
+Set the Python executable (as described above)
+```julia
+julia> ENV["PYTHON"]=""
+```
+Switch to pkg mode and activate the BayesJ environment.
+```julia
+pkg> activate .
+```
+Setup the required package registries
+```julia
+pkg> registry add General
+pkg> registry add https://github.com/astro-group-bristol/AstroRegistry
+```
+Finally instantiate the environment to install dependencies.
+```julia
+pkg> instantiate
+```
+If you want MPI support the same instructions apply as before.
