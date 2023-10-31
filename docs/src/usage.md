@@ -57,7 +57,7 @@ sample(
     centre_radius=0, # binned pixel radius around centre that will be excluded
     use_interpolation=false, # use interpolation in MEKAL emission calculations. Memory hungry
     use_stepsampler=false, # use stepsampler to improve efficency
-    mask="data/tng/wavedetect.reg" # path to ciao style mask file. Elli
+    mask="data/tng/wavedetect.reg" # path to ciao style mask file. Ellipses only.
 )
 ```
 The available models are described in [Cluster Models](@ref cluster_models_page).
