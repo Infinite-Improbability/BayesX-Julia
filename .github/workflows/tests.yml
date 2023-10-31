@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        julia-version: ['1.9.2']
+        julia-version: ['1.9.3']
         os: [ubuntu-latest]
         experimental: [false]
         # include:
@@ -28,6 +28,10 @@ jobs:
       - name: Add registry
         run: julia --project=@. setup_registry.jl
         working-directory: ./test
+      - uses: actions/cache@v3
+        with:
+          path: ${{ env.JULIA_DEPOT_PATH }}
+          key: ${{ runner.os }}-${{ matrix.julia-version }}-juliadepot
       - uses: julia-actions/julia-buildpkg@v1
         env:
           PYTHON: ""
