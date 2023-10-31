@@ -11,6 +11,7 @@ makedocs(
     sitename="BayesJ",
     pages=[
         "Home" => "index.md",
+        "Setup" => "setup.md",
         "Cluster Models" => "models.md",
         "API" => [
             "Public" => "public.md",
