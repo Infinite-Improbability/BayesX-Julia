@@ -172,7 +172,6 @@ function sample(
     )
     @mpidebug "Ultranest arguments" ultranest_default_run_args ultranest_run_args
     merged = merge(ultranest_default_run_args, ultranest_run_args)
-    display(merged)
     results = sampler.run(
         merged...
     )
