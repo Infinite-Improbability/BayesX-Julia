@@ -7,7 +7,6 @@ bib = CitationBibliography(
 )
 
 makedocs(
-    bib,
     sitename="BayesJ",
     pages=[
         "Home" => "index.md",
@@ -19,7 +18,8 @@ makedocs(
             "Internals" => "private.md"
         ],
         "References" => "references.md"
-    ]
+    ],
+    plugins=[bib],
 )
 
 deploydocs(
