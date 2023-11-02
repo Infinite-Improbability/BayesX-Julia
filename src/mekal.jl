@@ -176,7 +176,8 @@ function prepare_model_mekal(
     z::Real;
     temperatures::AbstractRange{U}=(0:0.05:9.0)u"keV",
     hydrogen_densities::AbstractRange{V}=(0:0.001:1.0)u"cm^-3",
-    use_interpolation::Bool=true
+    use_interpolation::Bool=true,
+    cache_size::Int64=1000000000 # bytes
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
 
@@ -202,9 +203,8 @@ function prepare_model_mekal(
     absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
-        cache_size = 1000
         @mpidebug "Using direct MEKAL calls" cache_size
-        @memoize LRU{__Key__,__Value__}(maxsize=cache_size) function volume_emissivity_direct(
+        @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=sizeof) function volume_emissivity_direct(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}

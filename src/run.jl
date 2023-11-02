@@ -201,6 +201,7 @@ end
         use_interpolation::Bool=false,
         centre_radius=0,
         mask=nothing,
+        cache_size::Int64=1000000000
         )
 
 Run Bayesian inference on a given set of `data` considering only the selected
@@ -212,6 +213,7 @@ and returns two functions for the gas temperature and gas mass density as a func
 * `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
 * `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
 * `centre_radius` excludes some radius, in pixels, around the centre from analysis
+* `cache_size` controls the MEKAL cache size, in bytes (default is 1GB)
 * Additional kwargs will be passed through to the next `sample` function.
 """
 function sample(
@@ -227,6 +229,7 @@ function sample(
     use_interpolation::Bool=false,
     centre_radius=0,
     mask=nothing,
+    cache_size::Int64=1000000000,
     kwargs...
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
@@ -257,7 +260,7 @@ function sample(
     transform, param_wrapper = make_cube_transform(priors...)
 
     @mpiinfo "Generating emissions model"
-    emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation)
+    emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation, cache_size=cache_size)
 
     if mask isa AbstractString
         @mpidebug "Loading mask"
