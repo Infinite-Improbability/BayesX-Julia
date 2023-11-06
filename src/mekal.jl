@@ -204,7 +204,7 @@ function prepare_model_mekal(
 
     if !use_interpolation
         @mpidebug "Using direct MEKAL calls" cache_size
-        @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=sizeof) function volume_emissivity_direct(
+        @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize) function volume_emissivity_direct(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
@@ -266,4 +266,15 @@ function prepare_model_mekal(
     end
 
     return volume_emissivity
+end
+
+function get_model_cache(f, types)
+    m = which(f, types)
+    types = Tuple{Base.unwrap_unionall(m.sig).parameters[2:end]...}
+    for name in propertynames(f) #if f is a closure, we walk its fields
+        if first(string(name), length(string("##cache", MemoizedMethods.salt))) == string("##cache", MemoizedMethods.salt)
+            cache = getproperty(f, name)
+            return cache[2]
+        end
+    end
 end
