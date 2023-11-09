@@ -93,6 +93,8 @@ function sample(
     @mpiinfo "Background has shape $(size(observed_background))"
     @mpiinfo "Response matrix has shape $(size(response_function))"
 
+    counter = 0
+
     # a wrapper to handle running the gas model and likelihood calculation
     @mpidebug "Generating likelihood wrapper"
     function likelihood_wrapper(params)
@@ -126,6 +128,18 @@ function sample(
             predicted .= predicted .+ predicted_obs_bg
 
             @mpirankeddebug "Predicted results generated"
+
+            # counter += 1
+            # if mod(counter, 50) == 0
+            #     cache = get_model_cache(emission_model)
+            #     free = Int(Sys.free_memory())
+            #     @mpiinfo "Cache size $(Base.summarysize(cache)) bytes" free
+            #     @mpiinfo "Cache details" propertynames(cache) typeof(cache) Base.summarysize(cache.dict) Base.summarysize(cache.keyset) cache.keyset cache.currentsize cache.maxsize cache.by
+            # end
+            # if mod(counter, 100) == 0
+            #     display(methods(emission_model))
+            #     display(propertynames(emission_model))
+            # end
 
             # TODO: verify this vector form is fine and I don't need to repeat() it into a full array.
             return log_likelihood(

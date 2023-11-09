@@ -181,6 +181,8 @@ function prepare_model_mekal(
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
 
+    @mpidebug "Cache size is $cache_size bytes"
+
     if MPI.Comm_rank(comm) == 0
         @mpidebug "Checking for model data"
         SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=false, progress=true)
@@ -204,7 +206,8 @@ function prepare_model_mekal(
 
     if !use_interpolation
         @mpidebug "Using direct MEKAL calls" cache_size
-        @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize) function volume_emissivity_direct(
+        # @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize)
+        function volume_emissivity_direct(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
@@ -268,9 +271,7 @@ function prepare_model_mekal(
     return volume_emissivity
 end
 
-function get_model_cache(f, types)
-    m = which(f, types)
-    types = Tuple{Base.unwrap_unionall(m.sig).parameters[2:end]...}
+function get_model_cache(f)
     for name in propertynames(f) #if f is a closure, we walk its fields
         if first(string(name), length(string("##cache", MemoizedMethods.salt))) == string("##cache", MemoizedMethods.salt)
             cache = getproperty(f, name)
