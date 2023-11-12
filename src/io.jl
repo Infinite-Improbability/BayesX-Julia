@@ -79,8 +79,6 @@ function test_point(e::Ellipse, x, y, atol=0)::Bool
     t1 = (cos(e.θ) * (x - e.x) + sin(e.θ) * (y - e.y))^2
     t2 = (sin(e.θ) * (x - e.x) - cos(e.θ) * (y - e.y))^2
 
-    res = (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
-
     return (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
 end
 
