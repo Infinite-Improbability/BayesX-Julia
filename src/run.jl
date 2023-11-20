@@ -216,7 +216,7 @@ end
         centre_radius=0,
         mask=nothing,
         cache_size::Int64=1000000000
-    )
+        )
 
 Run Bayesian inference on a given set of `data` considering only the selected
 energy range.

@@ -43,26 +43,22 @@ Loads events from a single fits file for further processing.
 """
 function load_events_from_fits(path::AbstractString)::Pair{<:Matrix,<:Unitful.Time{Float64}}
     f = FITS(path, "r")
-    try
-        event_hdus::Vector{TableHDU} = [
-            h for h in f
-            if safe_read_key(h, "extname", "Exception when looking for events HDU. Probably a HDU without extname.")[1] == "EVENTS"
-        ]
-        if length(event_hdus) > 1
-            @warn "$(length(event_hdus)) HDUs with events extension found. Using the first."
-        end
-        h = event_hdus[1]
-        @mpidebug "Selected HDU with EVENTS extension and HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' from $path for events."
-
-        live_time = safe_read_key(h, "LIVETIME", "LIVETIME key absent, trying EXPOSURE")[1]
-        if isnothing(live_time)
-            live_time = read_key(h, "EXPOSURE")[1] # We don't want safe_read_key because we want an exception if this fails.
-        end
-
-        return [read(h, "x") read(h, "y") read(h, "pi")] => live_time * 1u"s" # TODO: manual units bad
-    finally
-        close(f)
+    event_hdus::Vector{TableHDU} = [
+        h for h in f
+        if safe_read_key(h, "extname", "Exception when looking for events HDU. Probably a HDU without extname.")[1] == "EVENTS"
+    ]
+    if length(event_hdus) > 1
+        @warn "$(length(event_hdus)) HDUs with events extension found. Using the first."
     end
+    h = event_hdus[1]
+    @mpidebug "Selected HDU with EVENTS extension and HDUNAME '$(safe_read_key(h, "HDUNAME", "HDU has no name")[1])' from $path for events."
+
+    live_time = safe_read_key(h, "LIVETIME", "LIVETIME key absent, trying EXPOSURE")[1]
+    if isnothing(live_time)
+        live_time = read_key(h, "EXPOSURE")[1] # We don't want safe_read_key because we want an exception if this fails.
+    end
+
+    return [read(h, "x") read(h, "y") read(h, "pi")] => live_time * 1u"s" # TODO: manual units bad
 end
 
 """
@@ -261,18 +257,4 @@ function bin_events(::FITSData, events, channel_range::NTuple{2,<:Integer}, x_ed
     end
 
     return binned
-end
-
-function export (obs::Array, bg::Array, loglikelihood::Array, path::String)
-    if isfile(path)
-        throw(ErrorException("File $path already exists"))
-    end
-    f = FITS(path, 'w')
-    try
-        write(f, obs)
-        write(f, bg)
-        write(f, loglikelihood)
-    finally
-        close(f)
-    end
 end
