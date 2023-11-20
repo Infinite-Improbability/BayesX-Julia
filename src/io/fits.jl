@@ -4,6 +4,7 @@ using FITSIO
 export FITSData
 
 include("fitsio_fix.jl")
+include("../results.jl")
 
 # TODO: Be more specific with types
 
@@ -257,4 +258,39 @@ function bin_events(::FITSData, events, channel_range::NTuple{2,<:Integer}, x_ed
     end
 
     return binned
+end
+
+function export_prior_values(prior::Prior)
+    names = propertynames(prior)
+    return join(["$n=$(getproperty(prior, n))" for n in names], ", ")
+end
+
+function export (results::Results)
+    if isfile(path)
+        throw(ErrorException("File $path already exists"))
+    end
+    f = FITS(path, 'w')
+    try
+        header = Dict(
+            "cluster_model" => String(Symbol(results.cluster_model)),
+            "nHCol" => results.nHcol, #  todo:  record units
+            "redshift" => results.redshift)
+        write(
+            f,
+            Dict(
+                "name" => [p.name for p in priors],
+                "type" => [type(p) for p in priors],
+                "values" => [export_prior_values(p) for p in priors]
+            ),
+            header=header
+        )
+        write(f, results.observation)
+        write(f, results.background)
+        # write(f, results.log_likelihood)
+        if !isnothing(results.mask)
+            write(f, results.mask)
+        end
+    finally
+        close(f)
+    end
 end
