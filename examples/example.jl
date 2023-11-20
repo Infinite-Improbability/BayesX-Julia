@@ -1,11 +1,11 @@
 using BayesJ
 using Unitful, DimensionfulAngles
 
-ENV["JULIA_DEBUG"] = "BayesJ"
+# ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
-    "data/tng/tng_projections/tng_s67_h11_x_obs_evt.fits",
-    "data/tng/tng_projections/tng_s67_h11_x_bg.fits",
+    "data/tng/tng_s91_h57_y_obs_evt.fits",
+    "data/tng/tng_s91_h57_y_bg.fits",
     "data/tng/acisi_aimpt_cy0.arf",
     "data/tng/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
@@ -74,5 +74,5 @@ sample(
     use_interpolation=false,
     use_stepsampler=false,
     # mask="data/tng/wavedetect.reg",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400)
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400),
 )
