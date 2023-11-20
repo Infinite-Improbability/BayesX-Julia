@@ -205,7 +205,7 @@ function prepare_model_mekal(
     absorption ./= (1 + z) # time dilation
 
     if !use_interpolation
-        @mpidebug "Using direct MEKAL calls" cache_size
+        # @mpidebug "Using direct MEKAL calls" cache_size
         # @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize)
         function volume_emissivity_direct(
             t::U,

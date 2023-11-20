@@ -227,7 +227,7 @@ and returns two functions for the gas temperature and gas mass density as a func
 * `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
 * `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
 * `centre_radius` excludes some radius, in pixels, around the centre from analysis
-* `cache_size` controls the MEKAL cache size, in bytes (default is 1GB)
+* `cache_size` controls the MEKAL cache size, in bytes (default is 1GB) [disabled]
 * Additional kwargs will be passed through to the next `sample` function.
 """
 function sample(
