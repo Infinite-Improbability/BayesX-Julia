@@ -62,14 +62,14 @@ priors_nfw = [
 
 sample(
     data,
-    (0.3u"keV", 4.0u"keV"),
+    (1.0u"keV", 3.0u"keV"),
     Model_NFW,
     priors_nfw,
     0.022e22u"cm^-2",
     0.5,
     (1900, 2800),
     (1900, 2800);
-    bin_size=10,
+    bin_size=20,
     centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
