@@ -265,7 +265,7 @@ function export_prior_values(prior::Prior)
     return join(["$n=$(getproperty(prior, n))" for n in names], ", ")
 end
 
-function export (results::Results)
+function export_results(results::Results)
     if isfile(path)
         throw(ErrorException("File $path already exists"))
     end
@@ -278,9 +278,9 @@ function export (results::Results)
         write(
             f,
             Dict(
-                "name" => [p.name for p in priors],
-                "type" => [type(p) for p in priors],
-                "values" => [export_prior_values(p) for p in priors]
+                "name" => [p.name for p in results.priors],
+                "type" => [type(p) for p in results.priors],
+                "values" => [export_prior_values(p) for p in results.priors]
             ),
             header=header
         )
