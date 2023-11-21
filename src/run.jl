@@ -211,7 +211,8 @@ end
         redshift::Real,
         x::NTuple{2,<:Real},
         y::NTuple{2,<:Real};
-        bin_size::Real=10,
+        spatial_bin_size::Real=10,
+        energy_bin_size::Integer=1,
         use_interpolation::Bool=false,
         centre_radius=0,
         mask=nothing,
@@ -225,6 +226,8 @@ energy range.
 and returns two functions for the gas temperature and gas mass density as a function of radius.
 * The first two priors should always be `x0` and `y0`, giving cluster centre position.
 * `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
+* `spatial_bin_size` is in the same units as `x` and `y`
+* `energy_bin_size` is a integer specifying a multiple of RMF energy bins.
 * `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
 * `centre_radius` excludes some radius, in pixels, around the centre from analysis
 * `cache_size` controls the MEKAL cache size, in bytes (default is 1GB) [disabled]
@@ -239,7 +242,8 @@ function sample(
     redshift::Real,
     x::NTuple{2,<:Real},
     y::NTuple{2,<:Real};
-    bin_size::Real=10,
+    spatial_bin_size::Real=10,
+    energy_bin_size::Integer=1,
     use_interpolation::Bool=false,
     centre_radius=0,
     mask=nothing,
@@ -250,6 +254,7 @@ function sample(
 
     @mpiinfo "Loading response function"
     response_function, energy_range, channel_range = load_response(data, energy_limits...)
+    response_function, energy_range = bin_energy(response_function, energy_range, energy_bin_size)
 
     # Check the number of energy bins in the response function matches the number of bins in the energy range
     @assert size(response_function, 2) == (length(energy_range) - 1) # subtract 1 because the range is bin edges
@@ -257,8 +262,8 @@ function sample(
     @mpiinfo "Loading data"
     observation, observed_background = load_data(data)
 
-    x_edges = x[1]:bin_size:x[2]
-    y_edges = y[1]:bin_size:y[2]
+    x_edges = x[1]:spatial_bin_size:x[2]
+    y_edges = y[1]:spatial_bin_size:y[2]
     @mpidebug "Spatial bounds" x_edges y_edges
 
     @mpiinfo "Binning observation data"
@@ -267,7 +272,7 @@ function sample(
     @mpiinfo "Binning background data"
     bg = bin_events(data, observed_background.first, channel_range, x_edges, y_edges)
 
-    pixel_edge_angle = bin_size * data.pixel_edge_angle
+    pixel_edge_angle = spatial_bin_size * data.pixel_edge_angle
 
     @mpidebug "Making transform"
     prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
