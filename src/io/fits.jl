@@ -289,7 +289,7 @@ function bin_energy(response_function::Matrix{T}, energy_bins::Vector{E}, bin_si
         else
             slice = response_function[:, slice_indices[i]:slice_indices[i+1]]
         end
-        new_resp[:, i] .= sum(slice, dims=2)
+        new_resp[:, i] .= sum(slice, dims=2) ./ size(slice, 2)
         new_bins[i] = energy_bins[slice_indices[i]]
     end
 
