@@ -69,7 +69,8 @@ sample(
     0.5,
     (1900, 2800),
     (1900, 2800);
-    bin_size=20,
+    spatial_bin_size=45,
+    energy_bin_size=10,
     centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
