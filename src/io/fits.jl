@@ -150,6 +150,15 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
         response_matrix[first_channel_of_bin[bin]:last_channel_of_bin[bin], bin] = energy_to_channel_mapping[bin]
     end
 
+    # The RMF gives the probability of a photon going into each channel if it falls into a given energy bin
+    # Thus the sum of each bin should be <= 1
+    # We'll assume every photon is assigned to a channel
+    # Then we can assert the sum ≈ 1
+    # In practice it appears the sum can sometimes be slightly above one
+    # I'm attributing this to floating point errors
+    col_sum = sum(response_matrix, dims=1)
+    @assert all(@. isapprox(col_sum, 1.0, rtol=0.001) || col_sum < 1) "Invalid RMF column sum"
+
     # Now we have the RMF in matrix form RMF(PI, E)
 
     #### ARF ####
