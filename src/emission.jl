@@ -107,6 +107,7 @@ C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) ⋅ dE \\\\
 ```
 with `C(PI)` is the observed counts in a detector channel `PI`, `T` is the observation time,
 `ARF(E)` is the effective area of the instrument and `RMF(E, PI)` [we use `RMF(PI, E)`] is the unitless response matrix.
+`S(E)` is the source flux, in [photon count]/[time]/[area]/[energy].
 (Handbook of X-ray Astronomy Chapter 2011, Chapter 5 pg 87, by K. Arnaud, R. Smith and A. Siemiginowska)
 
 This function takes the combined RMF and ARF as the response function. This is to recalculating it on every call.
