@@ -212,7 +212,6 @@ end
         x::NTuple{2,<:Real},
         y::NTuple{2,<:Real};
         spatial_bin_size::Real=10,
-        energy_bin_size::Integer=1,
         use_interpolation::Bool=false,
         centre_radius=0,
         mask=nothing,
@@ -227,7 +226,6 @@ and returns two functions for the gas temperature and gas mass density as a func
 * The first two priors should always be `x0` and `y0`, giving cluster centre position.
 * `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
 * `spatial_bin_size` is in the same units as `x` and `y`
-* `energy_bin_size` is a integer specifying a multiple of RMF energy bins.
 * `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
 * `centre_radius` excludes some radius, in pixels, around the centre from analysis
 * `cache_size` controls the MEKAL cache size, in bytes (default is 1GB) [disabled]
@@ -254,7 +252,6 @@ function sample(
 
     @mpiinfo "Loading response function"
     response_function, energy_range, channel_range = load_response(data, energy_limits...)
-    response_function, energy_range = bin_energy(response_function, energy_range, energy_bin_size)
 
     # Check the number of energy bins in the response function matches the number of bins in the energy range
     @assert size(response_function, 2) == (length(energy_range) - 1) # subtract 1 because the range is bin edges
