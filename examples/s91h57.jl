@@ -9,6 +9,20 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
+priors_nfw = [
+    # UniformPrior("x0", -100.0, 100.0),
+    # UniformPrior("y0", -100.0, 100.0),
+    DeltaPrior("x0", 11.23),
+    DeltaPrior("y0", 19.48),
+    UniformPrior("MT_200", 1.0e14, 3.0e14),
+    NormalPrior("fg_200", 0.108, 0.001),
+    DeltaPrior("c_200", 6.0774),
+    DeltaPrior("a", 1.0510),
+    DeltaPrior("b", 5.4905),
+    DeltaPrior("c", 0.3081),
+    DeltaPrior("c_500_GNFW", 1.177)
+]
+
 priors_v2006 = [
     NormalPrior("x0", 0.0, 20.0),
     NormalPrior("y0", 0.0, 20.0),
@@ -31,17 +45,18 @@ priors_v2006 = [
     LogUniformPrior("c", 0.1, 12.0),
 ]
 
+model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
+
 sample(
     data,
-    (0.3u"keV", 7.0u"keV"),
-    Model_Vikhlinin2006,
-    priors_v2006,
+    (1.0u"keV", 2.0u"keV"),
+    model,
+    priors_nfw,
     0.022e22u"cm^-2",
     0.1,
     (1400, 3500),
     (1400, 3500);
-    spatial_bin_size=10,
-    energy_bin_size=5,
+    spatial_bin_size=70,
     centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
