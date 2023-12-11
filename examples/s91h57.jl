@@ -51,14 +51,14 @@ model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
 
 sample(
     data,
-    (1.0u"keV", 2.0u"keV"),
+    (1.0u"keV", 4.0u"keV"),
     model,
     priors_nfw,
     0.022e22u"cm^-2",
     0.1,
     (1400, 3500),
     (1400, 3500);
-    bin_size=10,
+    bin_size=50,
     centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
