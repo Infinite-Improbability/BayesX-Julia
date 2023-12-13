@@ -51,8 +51,14 @@ function surface_brightness(
         s, temp, density = params
         r = hypot(s, l) * 1u"Mpc"
 
+        t = temp(r)
+        p = density(r)
+        if t < 0u"keV" || density(r) < 0u"g/cm^3"
+            throw(ObservationError(-1e100))
+        end
+
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
-        f = model(temp(r), hydrogen_number_density(density(r)))
+        f = model(t, hydrogen_number_density(p))
 
         return ustrip.(u"Mpc^-3/s", f)
     end

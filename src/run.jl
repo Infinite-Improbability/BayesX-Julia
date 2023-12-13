@@ -5,13 +5,15 @@ using PyCall
 
 const ultranest = PyNULL()
 const stepsampler = PyNULL()
+const mlfriends = PyNULL()
 
 function __init__()
     copy!(ultranest, pyimport_conda("ultranest", "ultranest", "conda-forge"))
     copy!(stepsampler, pyimport_conda("ultranest.stepsampler", "ultranest"))
+    copy!(mlfriends, pyimport_conda("ultranest.mlfriends", "ultranest"))
 end
 
-export sample
+export sample, mlfriends
 
 include("mpi.jl")
 include("cluster_models.jl")
@@ -19,7 +21,7 @@ include("io.jl")
 include("likelihood.jl")
 
 """
-    sample(observed, observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
+    sample(observed,observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
 
 Configure some necessary variables and launch ultranest.
 
@@ -171,10 +173,10 @@ function sample(
     if use_stepsampler
         @mpidebug "Creating stepsampler"
         sampler.stepsampler = stepsampler.SliceSampler(
-            nsteps=2 * length(prior_names),
+            nsteps=length(prior_names),
             generate_direction=stepsampler.generate_mixture_random_direction,
             adaptive_nsteps="move-distance",
-            max_nsteps=4 * length(prior_names),
+            max_nsteps=3 * length(prior_names),
             region_filter=true,
         )
     end
@@ -183,6 +185,7 @@ function sample(
     @mpiinfo "Launching sampler"
     ultranest_default_run_args = (
         max_num_improvement_loops=10,
+        region_class=mlfriends.MLFriends,
     )
     @mpidebug "Ultranest arguments" ultranest_default_run_args ultranest_run_args
     merged = merge(ultranest_default_run_args, ultranest_run_args)

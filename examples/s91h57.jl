@@ -25,8 +25,8 @@ priors_nfw = [
 ]
 
 priors_v2006 = [
-    NormalPrior("x0", 0.0, 20.0),
-    NormalPrior("y0", 0.0, 20.0),
+    DeltaPrior("x0", 11.23),
+    DeltaPrior("y0", 19.48),
     LogUniformPrior("n0", 0.1e-3, 40.0e-3),
     LogUniformPrior("n02", 0.001e-2, 6.0e-1),
     LogUniformPrior("rc", 1.0, 600.0),
@@ -47,13 +47,13 @@ priors_v2006 = [
 ]
 
 # setting overdensity to 200 instead of default 500
-model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
+# model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
 
 sample(
     data,
     (1.0u"keV", 4.0u"keV"),
-    model,
-    priors_nfw,
+    Model_Vikhlinin2006,
+    priors_v2006,
     0.022e22u"cm^-2",
     0.1,
     (1400, 3500),
@@ -61,6 +61,7 @@ sample(
     bin_size=50,
     centre_radius=0,
     use_interpolation=false,
-    use_stepsampler=false,
+    use_stepsampler=true,
+    ultranest_run_args=(region_class=mlfriends.SimpleRegion,)
 )
 
