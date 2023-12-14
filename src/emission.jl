@@ -53,21 +53,20 @@ function surface_brightness(
 
         t = temp(r)
         p = density(r)
-        if t < 0u"keV" || density(r) < 0u"g/cm^3"
-            @mpirankedwarn "Negative temperature or density at" r t p
-            throw(ObservationError(-1e100))
-        end
+        # if t < 0u"keV" || density(r) < 0u"g/cm^3"
+        #     @mpirankedwarn "Negative temperature or density at" r t p
+        #     throw(ObservationError(-1e100))
+        # end
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         f = model(t, hydrogen_number_density(p))
+        return ustrip.(u"Mpc^-3/s", f)
 
-        fu = ustrip.(u"Mpc^-3/s", f)
-
-        if !all(isfinite, fu)
-            @mpirankedwarn "Infinity in integral with" r t p hydrogen_number_density(p)
-        end
-
-        return fu
+        # fu = ustrip.(u"Mpc^-3/s", f)
+        # if !all(isfinite, fu)
+        #     @mpirankedwarn "Infinity in integral with" r t p hydrogen_number_density(p)
+        # end
+        # return fu
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
