@@ -54,13 +54,20 @@ function surface_brightness(
         t = temp(r)
         p = density(r)
         if t < 0u"keV" || density(r) < 0u"g/cm^3"
+            @mpirankedwarn "Negative temperature or density at" r t p
             throw(ObservationError(-1e100))
         end
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         f = model(t, hydrogen_number_density(p))
 
-        return ustrip.(u"Mpc^-3/s", f)
+        fu = ustrip.(u"Mpc^-3/s", f)
+
+        if !all(isfinite, fu)
+            @mpirankedwarn "Infinity in integral with" r t p hydrogen_number_density(p)
+        end
+
+        return fu
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
@@ -69,7 +76,7 @@ function surface_brightness(
     # @assert all(isfinite, sol.u)
     u = sol.u
     if all(isfinite, sol.u) == false
-        @mpirankeddebug "Integration returned non-finite values. Returning fallback likelihood." # too much output with it on
+        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." # too much output with it on
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     end
     return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
@@ -173,7 +180,7 @@ function make_observation(
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
     mask::Union{Matrix{Bool},Nothing}=nothing,
-    limit::Unitful.Length=Quantity(Inf, u"Mpc")
+    limit::Unitful.Length=Quantity(10, u"Mpc")
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)

@@ -31,7 +31,7 @@ priors_v2006 = [
     LogUniformPrior("n02", 0.001e-2, 6.0e-1),
     DependentLogUniformPrior("rc", "rc2", 600.0),
     LogUniformPrior("rc2", 1.0, 100.0),
-    LogUniformPrior("α", 0.01, 3.0),
+    DeltaPrior("α", 0.0),
     LogUniformPrior("β", 0.1, 2.0),
     LogUniformPrior("β2", 0.1, 5.0),
     LogUniformPrior("ϵ", 0.1, 5.0), # constrain ϵ<5
@@ -44,6 +44,7 @@ priors_v2006 = [
     UniformPrior("a", -1.0, 1.0),
     LogUniformPrior("b", 0.1, 6.0),
     LogUniformPrior("c", 0.1, 12.0),
+    LogUniformPrior("d", 1.e-12, 1.0),
 ]
 
 # setting overdensity to 200 instead of default 500
@@ -61,6 +62,9 @@ sample(
     bin_size=50,
     centre_radius=0,
     use_interpolation=false,
+    # log_dir=nothing,
+    # log_dir="logs/run15",
+    # resume="resume",
     # use_stepsampler=true,
     # ultranest_run_args=(region_class=mlfriends.SimpleRegion,)
 )

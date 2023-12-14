@@ -158,7 +158,8 @@ function test_vikhlinin2006()
             1.42u"Mpc",
             0.12,
             5.00,
-            10.0
+            10.0,
+            1.e-9,
         ) # Universal values from Arnaud 2010
         unitless_params = Tuple(strip_units(i) for i in params)
         z = 0.5

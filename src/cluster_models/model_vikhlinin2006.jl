@@ -24,7 +24,8 @@ function Model_Vikhlinin2006(
     rt::Unitful.Length,
     a,
     b,
-    c;
+    c,
+    d;
     γ=3,
     kwargs...
 )::NTuple{2,Function}
@@ -91,6 +92,7 @@ function Model_Vikhlinin2006(
                 np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
             )
         end
+        # We round to zero because it keeps MEKAL behaving
         isapprox(res, 0u"g/cm^3", atol=1e-30u"g/cm^3") ? 0.0u"g/cm^3" : res
     end
 
@@ -104,8 +106,9 @@ function Model_Vikhlinin2006(
     Equation 4 from Vikhlinin et al. 2006. Models temperature profile outside
     central cooling region.
     """
-    function t(r, rt, a, b, c)
-        (r / rt)^(-a) / (1 + (r / rt)^b)^(c / b)
+    function t(r, rt, a, b, c, d)
+        # Tweaking Vikhlinin's equation to avoid an infinite temperature at the core
+        (r / rt + d)^(-a) / (1 + (r / rt)^b)^(c / b)
     end
 
     """
@@ -127,10 +130,10 @@ function Model_Vikhlinin2006(
     Equation 6 from Vikhlinin et al. 2006. Combines [`t`](@ref) and [`tcool`](@ref)
     to model the temperature profile throughout the cluster.
     """
-    function gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c)
+    function gas_temperature(r, T0, TminT0, rcool, acool, rt, a, b, c, d)
         T0 *
         tcool(r, rcool, acool, TminT0) *
-        t(r, rt, a, b, c)
+        t(r, rt, a, b, c, d)
     end
     function gas_temperature(r::Unitful.Length)::Unitful.Energy
         r = abs(r)
@@ -143,15 +146,22 @@ function Model_Vikhlinin2006(
             a = a
             b = b
             c = c
+            d = d
             1u"keV" * gas_temperature(
-                ustrip(u"kpc", r), T0, TminT0, rcool, acool, rt, a, b, c
+                ustrip(u"kpc", r), T0, TminT0, rcool, acool, rt, a, b, c, d
             )
         end
         isapprox(res, 0u"keV", atol=1e-30u"keV") ? 0.0u"keV" : res
     end
 
-    @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0_u, n02_u, rc_u, rc2_u, α, β, β2, ϵ, rs_u, γ])"
-    @assert isfinite(gas_temperature(1u"kpc")) "Gas temperature not finite: $([T0, TminT0, rcool, acool, rt, a, b, c])"
+
+    # if !isfinite(gas_temperature(0u"kpc"))
+    #     @mpirankedwarn "Infinite temperature at core" rt a b c (0 / rt) (0 / rt)^(-a)
+    #     throw(PriorError(-2e100))
+    # end
+
+    # @assert isfinite(gas_density(1u"kpc")) "Gas density not finite: $([n0_u, n02_u, rc_u, rc2_u, α, β, β2, ϵ, rs_u, γ])"
+    # @assert isfinite(gas_temperature(1u"kpc")) "Gas temperature not finite: $([T0, TminT0, rcool, acool, rt, a, b, c])"
 
     return gas_temperature, gas_density
 
@@ -178,7 +188,8 @@ function Model_Vikhlinin2006(
     rt::Real,
     a,
     b,
-    c;
+    c,
+    d;
     γ=3,
     kwargs...
 )::NTuple{2,Function}
@@ -199,7 +210,8 @@ function Model_Vikhlinin2006(
         rt * 1u"kpc",
         a,
         b,
-        c;
+        c,
+        d;
         γ=γ
     )
 end

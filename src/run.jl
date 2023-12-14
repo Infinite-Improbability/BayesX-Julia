@@ -52,7 +52,7 @@ function sample(
     pixel_edge_angle=0.492u"arcsecondᵃ",
     centre_radius=0,
     mask=nothing,
-    integration_limit::Unitful.Length=Quantity(Inf, u"Mpc"),
+    integration_limit::Unitful.Length=Quantity(10, u"Mpc"),
     use_stepsampler=false,
     log_dir="logs",
     resume="subfolder",
