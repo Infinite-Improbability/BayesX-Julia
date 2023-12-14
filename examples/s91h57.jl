@@ -62,7 +62,7 @@ sample(
     bin_size=50,
     centre_radius=0,
     use_interpolation=false,
-    # log_dir=nothing,
+    log_dir=nothing,
     # log_dir="logs/run15",
     # resume="resume",
     # use_stepsampler=true,

@@ -1,5 +1,6 @@
 using Unitful, DimensionfulAngles
 using ArgCheck
+using StatsBase
 
 using PyCall
 
@@ -153,11 +154,47 @@ function sample(
             )
         catch e
             if e isa PriorError || e isa ObservationError
+                @mpiwarn "Prior or observation error" e params
                 return e.likelihood
             end
             rethrow()
         end
     end
+
+    @mpiinfo "Testing likelihood calculation"
+    n_tests = 1000
+    test_runs = Matrix{Float64}(undef, length(prior_names) + 1, n_tests)
+    for i in axes(test_runs, 2)
+        params = transform(rand(length(prior_names)))
+        test_runs[:, i] .= [params; likelihood_wrapper(params)]
+    end
+    likelihoods = test_runs[end, :]
+
+    @mpiinfo "Test runs results" n_tests minimum(likelihoods) maximum(likelihoods) mean(likelihoods) median(likelihoods) mode(likelihoods)
+    value = mode(likelihoods)
+    occurrences = count(i -> i == value, likelihoods)
+    if occurrences / n_tests > 0.1
+        @mpiwarn "Likelihood plateau detected" value occurrences
+    else
+        @mpiinfo "Most common likelihood" value occurrences
+    end
+    # plateau_points = test_runs[:, likelihoods.==value]
+    # other_points = test_runs[:, likelihoods.!==value]
+    # @assert size(plateau_points, 2) == occurrences
+    # @assert size(other_points, 2) == n_tests - occurrences
+    # for i in axes(plateau_points, 1)
+    #     if i == axes(plateau_points, 1)[end]
+    #         continue
+    #     end
+    #     @mpiinfo "Plateau parameter" i minimum(plateau_points[i, :]) maximum(plateau_points[i, :]) mean(plateau_points[i, :]) median(plateau_points[i, :]) mode(plateau_points[i, :])
+    #     @mpiinfo "Other parameter" i minimum(other_points[i, :]) maximum(other_points[i, :]) mean(other_points[i, :]) median(other_points[i, :]) mode(other_points[i, :])
+    #     if minimum(plateau_points[i, :]) > maximum(other_points[i, :]) || maximum(plateau_points[i, :]) < minimum(other_points[i, :])
+    #         @mpiwarn "Plateau and other parameter ranges do not overlap" i
+    #     elseif !any(minimum(plateau_points[i, :]) .< other_points[i, :] .< maximum(plateau_points[i, :]))
+    #         @mpiwarn "Plateau and other parameter ranges do not overlap but plateau is embedded in other" i
+    #     end
+    # end
+
 
     # ultranest setup
     @mpidebug "Creating sampler"

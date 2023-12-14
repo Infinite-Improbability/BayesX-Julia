@@ -79,7 +79,7 @@ version = "1.0.1"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BayesJ]]
-deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "InteractiveUtils", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "Profile", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
+deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "StatsBase", "Unitful", "UnitfulAstro"]
 path = ".."
 uuid = "35f7d120-1210-4aa9-b260-6d18979f7586"
 version = "0.7.7"
