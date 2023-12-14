@@ -181,7 +181,11 @@ end
 function transform(prior::DependentLogUniformPrior, x::Real, parent_value::Real)
     lparent = log10(parent_value)
     lrange = log10(prior.range)
-    return 10^(x * lrange + lparent)
+
+    val = 10^(x * lrange + lparent)
+    @mpirankeddebug "Transforming dependent prior" prior.name prior.depends_on x parent_value val
+
+    return val
 end
 
 
@@ -202,7 +206,7 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
     delta_priors = DeltaPrior[]
     variable_priors = Prior[]
     is_delta = Bool[]
-    dependencies = Dict{Int,Int}()
+    dependencies = []
 
     for p in priors
         if isa(p, DeltaPrior)
@@ -221,7 +225,8 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
                 @mpierror "Prior $(p.name) depends on $(p.depends_on) but no such non-delta prior exists"
                 throw(ErrorException("Unable to generate prior transform"))
             end
-            dependencies[i] = depends_on
+            @mpidebug "Prior $(p.name) ($i) depends on $(p.depends_on) ($depends_on)"
+            push!(dependencies, (i, depends_on))
         end
     end
 
