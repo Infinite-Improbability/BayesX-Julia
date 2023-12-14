@@ -8,15 +8,15 @@ Generate a cluster profile using the highly free models from [vikhlininChandraSa
 
 """
 function Model_Vikhlinin2006(
-    n0_u::NumberDensity,
-    n02_u::NumberDensity,
-    rc_u::Unitful.Length,
-    rc2_u::Unitful.Length,
+    n0::NumberDensity,
+    n02::NumberDensity,
+    rc::Unitful.Length,
+    rc2::Unitful.Length,
     α,
     β,
     β2,
     ϵ,
-    rs_u::Unitful.Length,
+    rs::Unitful.Length,
     T0::Unitful.Energy,
     TminT0,
     rcool::Unitful.Length,
@@ -32,11 +32,11 @@ function Model_Vikhlinin2006(
     priorcheck(ϵ < 5, -1e100(1 + ϵ))
 
     # Performance of exponents sucks if we don't strip units
-    n0_u::Float64 = ustrip(Float64, u"cm^-3", n0_u)
-    n02_u::Float64 = ustrip(Float64, u"cm^-3", n02_u)
-    rc_u::Float64 = ustrip(Float64, u"kpc", rc_u)
-    rc2_u::Float64 = ustrip(Float64, u"kpc", rc2_u)
-    rs_u::Float64 = ustrip(Float64, u"kpc", rs_u)
+    n0_u::Float64 = ustrip(Float64, u"cm^-3", n0)
+    n02_u::Float64 = ustrip(Float64, u"cm^-3", n02)
+    rc_u::Float64 = ustrip(Float64, u"kpc", rc)
+    rc2_u::Float64 = ustrip(Float64, u"kpc", rc2)
+    rs_u::Float64 = ustrip(Float64, u"kpc", rs)
 
     priorcheck(rc2_u < rc_u, -1e100 * (1 + (rc2_u - rc_u)))
     priorcheck(rc_u < rs_u, -1e100 * (1 + (rc_u - rs_u)))
