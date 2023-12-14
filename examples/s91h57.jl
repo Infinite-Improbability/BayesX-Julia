@@ -29,13 +29,13 @@ priors_v2006 = [
     DeltaPrior("y0", 19.48),
     LogUniformPrior("n0", 0.1e-3, 40.0e-3),
     LogUniformPrior("n02", 0.001e-2, 6.0e-1),
-    LogUniformPrior("rc", 1.0, 600.0),
+    DependentLogUniformPrior("rc", "rc2", 600.0),
     LogUniformPrior("rc2", 1.0, 100.0),
     LogUniformPrior("α", 0.01, 3.0),
     LogUniformPrior("β", 0.1, 2.0),
     LogUniformPrior("β2", 0.1, 5.0),
     LogUniformPrior("ϵ", 0.1, 5.0), # constrain ϵ<5
-    LogUniformPrior("rs", 100.0, 1400.0),
+    DependentLogUniformPrior("rs", "rc", 1400.0),
     LogUniformPrior("T0", 1.0, 50.0),
     LogUniformPrior("Tmin/T0", 0.01, 2.0),
     LogUniformPrior("rcool", 1.0, 250.0),
@@ -61,7 +61,7 @@ sample(
     bin_size=50,
     centre_radius=0,
     use_interpolation=false,
-    use_stepsampler=true,
-    ultranest_run_args=(region_class=mlfriends.SimpleRegion,)
+    # use_stepsampler=true,
+    # ultranest_run_args=(region_class=mlfriends.SimpleRegion,)
 )
 

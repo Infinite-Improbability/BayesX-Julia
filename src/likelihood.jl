@@ -1,6 +1,6 @@
 using Distributions
 
-export DeltaPrior, LogUniformPrior, UniformPrior, NormalPrior, GenericPrior
+export DeltaPrior, LogUniformPrior, UniformPrior, NormalPrior, GenericPrior, DependentUniformPrior, DependentLogUniformPrior
 
 """
     log_likelihood(observed, observed_background, predicted, predicted_background, observed_log_factorial)
@@ -142,6 +142,49 @@ function transform(prior::GenericPrior, x::Real)
     return quantile(prior.dist, x)
 end
 
+abstract type DependentPrior <: Prior end
+
+function transform(::DependentPrior, x::Real)
+    return x
+end
+
+"""
+    UniformLTPrior(name::AbstractString, depends_on::AbstractString, range::Number)
+
+Generates a dependent uniform prior.
+
+The dependent prior has a minimum value equal to that of the parent prior and a maximum value equal to the parent prior plus the range.
+By specifying a negative range, the dependent prior can be made to have a maximum value less than the parent prior.
+"""
+struct DependentUniformPrior{S<:AbstractString,T<:Number} <: DependentPrior
+    name::S
+    depends_on::S
+    range::T
+end
+function transform(prior::DependentUniformPrior, x::Real, parent_value::Real)
+    return x * prior.range + parent_value
+end
+
+"""
+    DependentLogUniformPrior(name::AbstractString, depends_on::AbstractString, range::Number)
+
+Generates a dependent log uniform prior.
+
+The dependent prior has a minimum value equal to that of the parent prior and a maximum value equal to the parent prior plus the range.
+By specifying a negative range, the dependent prior can be made to have a maximum value less than the parent prior.
+"""
+struct DependentLogUniformPrior{S<:AbstractString,T<:Number} <: DependentPrior
+    name::S
+    depends_on::S
+    range::T
+end
+function transform(prior::DependentLogUniformPrior, x::Real, parent_value::Real)
+    lparent = log10(parent_value)
+    lrange = log10(prior.range)
+    return 10^(x * lrange + lparent)
+end
+
+
 """
     make_cube_transform(priors::Prior...)::NTuple{2, Function}
 
@@ -159,6 +202,7 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
     delta_priors = DeltaPrior[]
     variable_priors = Prior[]
     is_delta = Bool[]
+    dependencies = Dict{Int,Int}()
 
     for p in priors
         if isa(p, DeltaPrior)
@@ -167,6 +211,17 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
         else
             push!(variable_priors, p)
             push!(is_delta, false)
+        end
+    end
+
+    for (i, p) in enumerate(variable_priors)
+        if isa(p, DependentPrior)
+            depends_on = findfirst(x -> x.name == p.depends_on, variable_priors)
+            if isnothing(depends_on)
+                @mpierror "Prior $(p.name) depends on $(p.depends_on) but no such non-delta prior exists"
+                throw(ErrorException("Unable to generate prior transform"))
+            end
+            dependencies[i] = depends_on
         end
     end
 
@@ -193,6 +248,18 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
         end
 
         return cube
+    end
+
+    transform_wrapper = transform_cube
+    if length(dependencies) > 0
+        function transform_dependents(cube::AbstractVector)
+            cube = transform_cube(cube)
+            for (prior, depends_on) in dependencies
+                cube[prior] = transform(variable_priors[prior], cube[prior], cube[depends_on])
+            end
+            return cube
+        end
+        transform_wrapper = transform_dependents
     end
 
     delta_values = [d.value for d in delta_priors]
@@ -229,7 +296,7 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
     # Verify that our reconstructed results match the expected values
     @assert reconstruct_args([transform(p, 0.5) for p in variable_priors]) == Tuple(transform(p, 0.5) for p in priors)
 
-    return transform_cube, reconstruct_args
+    return transform_wrapper, reconstruct_args
 end
 
 
