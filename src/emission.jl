@@ -201,7 +201,7 @@ function make_observation(
     end
 
     @mpirankeddebug "Creating brightness interpolation"
-    brightness_radii = min_radius:pixel_edge_length:(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
+    brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
 
     brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
         brightness_radii,
