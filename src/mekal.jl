@@ -214,7 +214,7 @@ function prepare_model_mekal(
             let
                 energy_bins = energy_bins
                 absorption = absorption
-                return absorption .* call_mekal(energy_bins, ustrip(u"keV", t), ustrip(u"cm^-3", nH))
+                return absorption .* call_mekal(energy_bins, ustrip(Float32, u"keV", t), ustrip(Float32, u"cm^-3", nH))
             end
         end
         return volume_emissivity_direct
