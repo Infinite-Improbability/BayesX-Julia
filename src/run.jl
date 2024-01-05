@@ -178,22 +178,32 @@ function sample(
     else
         @mpiinfo "Most common likelihood" value occurrences
     end
-    # plateau_points = test_runs[:, likelihoods.==value]
-    # other_points = test_runs[:, likelihoods.!==value]
-    # @assert size(plateau_points, 2) == occurrences
-    # @assert size(other_points, 2) == n_tests - occurrences
-    # for i in axes(plateau_points, 1)
-    #     if i == axes(plateau_points, 1)[end]
-    #         continue
-    #     end
-    #     @mpiinfo "Plateau parameter" i minimum(plateau_points[i, :]) maximum(plateau_points[i, :]) mean(plateau_points[i, :]) median(plateau_points[i, :]) mode(plateau_points[i, :])
-    #     @mpiinfo "Other parameter" i minimum(other_points[i, :]) maximum(other_points[i, :]) mean(other_points[i, :]) median(other_points[i, :]) mode(other_points[i, :])
-    #     if minimum(plateau_points[i, :]) > maximum(other_points[i, :]) || maximum(plateau_points[i, :]) < minimum(other_points[i, :])
-    #         @mpiwarn "Plateau and other parameter ranges do not overlap" i
-    #     elseif !any(minimum(plateau_points[i, :]) .< other_points[i, :] .< maximum(plateau_points[i, :]))
-    #         @mpiwarn "Plateau and other parameter ranges do not overlap but plateau is embedded in other" i
-    #     end
-    # end
+    plateau_points = test_runs[:, likelihoods.==value]
+    other_points = test_runs[:, likelihoods.!==value]
+    @assert size(plateau_points, 2) == occurrences
+    @assert size(other_points, 2) == n_tests - occurrences
+    for i in axes(plateau_points, 1)
+        if i == axes(plateau_points, 1)[end]
+            continue
+        end
+        @mpiinfo "Plateau parameter" i minimum(plateau_points[i, :]) maximum(plateau_points[i, :]) mean(plateau_points[i, :]) median(plateau_points[i, :]) mode(plateau_points[i, :])
+        @mpiinfo "Other parameter" i minimum(other_points[i, :]) maximum(other_points[i, :]) mean(other_points[i, :]) median(other_points[i, :]) mode(other_points[i, :])
+        if minimum(plateau_points[i, :]) > maximum(other_points[i, :]) || maximum(plateau_points[i, :]) < minimum(other_points[i, :])
+            @mpiwarn "Plateau and other parameter ranges do not overlap" i
+        elseif !any(minimum(plateau_points[i, :]) .< other_points[i, :] .< maximum(plateau_points[i, :]))
+            @mpiwarn "Plateau and other parameter ranges do not overlap but plateau is embedded in other" i
+        elseif maximum(plateau_points[i, :]) > maximum(other_points[i, :])
+            pct = (maximum(plateau_points[i, :]) - maximum(other_points[i, :])) / maximum(other_points[i, :]) * 100
+            if pct > 5
+                @mpiwarn "Plateau range extends above other range by $pct%."
+            end
+        elseif minimum(plateau_points[i, :]) < minimum(other_points[i, :])
+            pct = (minimum(other_points[i, :]) - minimum(plateau_points[i, :])) / minimum(other_points[i, :]) * 100
+            if pct > 5
+                @mpiwarn "Plateau range extends below other range by $pct%."
+            end
+        end
+    end
 
 
     # ultranest setup

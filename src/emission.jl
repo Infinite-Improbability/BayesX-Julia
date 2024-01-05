@@ -75,10 +75,10 @@ function surface_brightness(
     # @assert all(isfinite, sol.u)
     u = sol.u
     if all(isfinite, sol.u) == false
-        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." # too much output with it on
+        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood."
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
-        @mpirankedwarn "Integration found point without emission" temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc") hydrogen_number_density(density(0u"kpc")) hydrogen_number_density(density(1u"kpc")) hydrogen_number_density(density(10u"kpc")) hydrogen_number_density(density(100u"kpc"))
+        @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc") hydrogen_number_density(density(0u"kpc")) hydrogen_number_density(density(1u"kpc")) hydrogen_number_density(density(10u"kpc")) hydrogen_number_density(density(100u"kpc"))
     end
 
     return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
