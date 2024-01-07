@@ -43,7 +43,7 @@ priors_v2006 = [
     LogUniformPrior("rt", 0.01, 10.0),
     UniformPrior("a", -1.0, 1.0),
     LogUniformPrior("b", 0.1, 6.0),
-    LogUniformPrior("c", 0.1, 12.0),
+    LogUniformPrior("c", 0.1, 4.0),
     LogUniformPrior("d", 1.e-12, 1.0),
 ]
 
