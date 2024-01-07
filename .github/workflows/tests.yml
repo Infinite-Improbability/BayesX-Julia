@@ -16,16 +16,13 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        julia-version: ['1.9.3', '1.10']
+        julia-version: ['1.9']
         os: [ubuntu-latest]
         experimental: [false]
-        # include:
-        #   - julia-version: nightly
-        #     os: ubuntu-latest
-        #     experimental: true
-        #   - julia-version: '1.9.2'
-        #     os: windows-latest
-        #     experimental: true
+        include:
+          - julia-version: '1.10'
+            os: ubuntu-latest
+            experimental: true
     steps:
       - uses: actions/checkout@v3
       - uses: julia-actions/setup-julia@v1
