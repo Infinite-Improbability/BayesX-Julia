@@ -7,6 +7,7 @@ on:
       - 'test/**.jl'
       - 'Manifest.toml'
       - 'Project.toml'
+      - '.github/tests.yml'
 
 jobs:
   test:

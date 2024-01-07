@@ -8,6 +8,7 @@ on:
     paths:
       - 'src/**.jl'
       - 'docs/**'
+      - '.github/documentation.yml'
 
 jobs:
   build:
