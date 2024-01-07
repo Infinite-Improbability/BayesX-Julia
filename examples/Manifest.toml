@@ -1,6 +1,6 @@
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.3"
+julia_version = "1.9.4"
 manifest_format = "2.0"
 project_hash = "48f81b8a76670ff6c87da357d3b647f37c84f121"
 
@@ -79,7 +79,7 @@ version = "1.0.1"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BayesJ]]
-deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "InteractiveUtils", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "Profile", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
+deps = ["ArgCheck", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LRUCache", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "MemoizedMethods", "PhysicalConstants", "ProgressMeter", "PyCall", "QuadGK", "SpecialFunctions", "SpectralFitting", "Unitful", "UnitfulAstro"]
 path = ".."
 uuid = "35f7d120-1210-4aa9-b260-6d18979f7586"
 version = "0.7.7"
@@ -730,12 +730,12 @@ version = "0.2.0"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
+version = "0.6.4"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.84.0+0"
+version = "8.4.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
@@ -744,7 +744,7 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
+version = "1.11.0+1"
 
 [[deps.LibXSPEC_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Ncurses_jll", "Pkg", "Zlib_jll"]
@@ -1821,7 +1821,7 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.48.0+0"
+version = "1.52.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
