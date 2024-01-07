@@ -153,6 +153,7 @@ function sample(
             )
         catch e
             if e isa PriorError || e isa ObservationError
+                @mpidebug "Prior or observation error" e params
                 return e.likelihood
             end
             rethrow()

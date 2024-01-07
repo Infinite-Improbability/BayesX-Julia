@@ -205,8 +205,36 @@ function make_observation(
     @mpirankeddebug "Creating brightness interpolation"
     brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
 
-    brightness_line = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-        brightness_radii,
+
+    counts = sum(emission_model(temperature(r), hydrogen_number_density(density(r))) for r in brightness_radii)
+    if all(iszero, counts)
+        # @mpiwarn "Preliminary check indicates minimal emission"
+        throw(ObservationError(-1e100))
+    end
+
+    brightness_line = Vector{Vector{Float64}}(undef, length(brightness_radii))
+
+    brightness_line[1] = ustrip.(
+        Float64,
+        u"cm^(-2)/s",
+        surface_brightness(
+            brightness_radii[1],
+            temperature,
+            density,
+            z,
+            limit,
+            emission_model,
+            pixel_edge_angle
+        )
+    )
+
+    if all(iszero, brightness_line[1])
+        # @mpiwarn "Inner emission is empty"
+        throw(ObservationError(-1e100))
+    end
+
+    brightness_line[2:end] = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
+        brightness_radii[2:end],
         temperature,
         density,
         z,
@@ -215,9 +243,10 @@ function make_observation(
         pixel_edge_angle
     )]
 
-    if all(iszero, brightness_line)
-        throw(ObservationError(-1e100))
-    end
+    # if all(iszero, brightness_line)
+    #     @mpierror "This shouldn't happen"
+    #     throw(ObservationError(-1e100))
+    # end
 
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
