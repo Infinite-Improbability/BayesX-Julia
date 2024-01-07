@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        julia-version: ['1.9.3']
+        julia-version: ['1.9.3', '1.10']
         os: [ubuntu-latest]
         experimental: [false]
         # include:
