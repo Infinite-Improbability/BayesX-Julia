@@ -154,7 +154,7 @@ function sample(
             )
         catch e
             if e isa PriorError || e isa ObservationError
-                @mpiwarn "Prior or observation error" e params
+                @mpidebug "Prior or observation error" e params
                 return e.likelihood
             end
             rethrow()
@@ -164,7 +164,8 @@ function sample(
     @mpiinfo "Testing likelihood calculation"
     n_tests = 1000
     test_runs = Matrix{Float64}(undef, length(prior_names) + 1, n_tests)
-    for i in axes(test_runs, 2)
+
+    @showprogress for i in axes(test_runs, 2)
         params = transform(rand(length(prior_names)))
         test_runs[:, i] .= [params; likelihood_wrapper(params)]
     end
@@ -204,6 +205,8 @@ function sample(
             end
         end
     end
+
+    # exit()
 
 
     # ultranest setup
