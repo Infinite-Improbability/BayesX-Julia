@@ -4,8 +4,8 @@ using Unitful, DimensionfulAngles
 # ENV["JULIA_DEBUG"] = "BayesJ"
 
 data = FITSData(
-    "data/tng/tng_s91_h57_y_obs_evt.fits",
-    "data/tng/tng_s91_h57_y_bg.fits",
+    "data/tng/tng_projections/tng_s67_h11_x_obs_evt.fits",
+    "data/tng/tng_projections/tng_s67_h11_x_bg.fits",
     "data/tng/acisi_aimpt_cy0.arf",
     "data/tng/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
@@ -30,7 +30,8 @@ priors_v2006 = [
     UniformPrior("rt", 0.01, 5.0),
     UniformPrior("a", -1.0, 1.0),
     UniformPrior("b", 0.1, 6.0),
-    UniformPrior("c", 0.1, 12.0),
+    LogUniformPrior("c", 0.1, 4.0),
+    LogUniformPrior("d", 1.e-12, 1.0),
 ]
 priors_eiansto = [
     # UniformPrior("x0", -10.0, 10.0),
@@ -74,5 +75,5 @@ sample(
     use_interpolation=false,
     use_stepsampler=false,
     # mask="data/tng/wavedetect.reg",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400),
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=200),
 )
