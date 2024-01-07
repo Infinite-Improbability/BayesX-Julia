@@ -203,7 +203,7 @@ function make_observation(
     end
 
     @mpirankeddebug "Creating brightness interpolation"
-    brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 1, radii_y + 1)*pixel_edge_length+hypot(centre_length...))
+    brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
 
 
     counts = sum(emission_model(temperature(r), hydrogen_number_density(density(r))) for r in brightness_radii)
