@@ -77,17 +77,7 @@ function Model_Vikhlinin2006(
     """
     function gas_density(r::Unitful.Length)::Unitful.Density
         r = abs(r)
-        res = let
-            n0 = n0_u
-            n02 = n02_u
-            rc = rc_u
-            rc2 = rc2_u
-            α = α
-            β = β
-            β2 = β2
-            ϵ = ϵ
-            rs = rs_u
-            γ = γ
+        res = let n0 = n0_u, n02 = n02_u, rc = rc_u, rc2 = rc2_u, α = α, β = β, β2 = β2, ϵ = ϵ, rs = rs_u, γ = γ
             μ * 1u"cm^-3" * sqrt(
                 np_ne(ustrip(u"kpc", r), n0, n02, rc, rc2, α, β, β2, ϵ, rs, γ=γ)
             )
@@ -137,16 +127,7 @@ function Model_Vikhlinin2006(
     end
     function gas_temperature(r::Unitful.Length)::Unitful.Energy
         r = abs(r)
-        res = let
-            T0 = T0
-            TminT0 = TminT0
-            rcool = rcool
-            acool = acool
-            rt = rt
-            a = a
-            b = b
-            c = c
-            d = d
+        res = let T0 = T0, TminT0 = TminT0, rcool = rcool, acool = acool, rt = rt, a = a, b = b, c = c, d = d
             1u"keV" * gas_temperature(
                 ustrip(u"kpc", r), T0, TminT0, rcool, acool, rt, a, b, c, d
             )

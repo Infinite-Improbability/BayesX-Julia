@@ -211,9 +211,7 @@ function prepare_model_mekal(
             t::U,
             nH::N
         ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
-            let
-                energy_bins = energy_bins
-                absorption = absorption
+            let energy_bins = energy_bins, absorption = absorption
                 return absorption .* call_mekal(energy_bins, ustrip(Float32, u"keV", t), ustrip(Float32, u"cm^-3", nH))
             end
         end
@@ -249,10 +247,7 @@ function prepare_model_mekal(
         t::U,
         nH::N
     ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
-        let
-            interpol = interpol
-            energy_bins = energy_bins
-            absorption = absorption
+        let interpol = interpol, energy_bins = energy_bins, absorption = absorption
             try
                 return interpol(t, nH) * 1u"m^(-3)/s"
             catch e

@@ -103,14 +103,7 @@ function Model_Einasto(
         # presumably occurs elsewhere
         # this is a problem
         r = abs(r)
-        res = let
-            ρ_s = ρ_s
-            rs = r_s
-            rp = r_p
-            n = n
-            α = α
-            β = β
-            γ = γ
+        res = let ρ_s = ρ_s, rs = r_s, rp = r_p, n = n, α = α, β = β, γ = γ
             (μ_e / μ) * (1 / (4π * G)) * (Pei_GNFW / ρ_s) / rs^3 *
             n / (n / 2)^(3 / n) / exp(2 / n) *
             r / safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) *
@@ -122,14 +115,7 @@ function Model_Einasto(
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length{T})::Unitful.Energy{T} where {T<:AbstractFloat}
         r = abs(r)
-        res = let
-            ρ_s = ρ_s
-            rs = r_s
-            rp = r_p
-            n = n
-            α = α
-            β = β
-            γ = γ
+        res = let ρ_s = ρ_s, rs = r_s, rp = r_p, n = n, α = α, β = β, γ = γ
             4π * μ * G * ρ_s * (rs^3) *
             (n / 2)^(3 / n) * exp(2 / n) / n *
             safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) / r *

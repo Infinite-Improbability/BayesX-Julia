@@ -278,12 +278,10 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
     This is required because Ultranest does not handle delta priors well.
     """
     function reconstruct_args(unfixed::AbstractVector)
-        let
-            dv = delta_values
-            id = is_delta
+        let dv = delta_values, id = is_delta
 
-            dv_i = 0
-            un_i = 0
+            dv_i = 0 # delta prior index
+            un_i = 0 # unfixed prior index
 
             Tuple(
                 i ? begin # if delta insert next value from delta values

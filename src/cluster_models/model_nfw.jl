@@ -110,13 +110,7 @@ function Model_NFW(
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{<:Real})::Unitful.Density{Float64}
         r = abs(r)
-        let
-            ρ_s = ρ_s
-            r_s = r_s
-            r_p = r_p
-            α = α
-            β = β
-            γ = γ
+        let ρ_s = ρ_s, r_s = r_s, r_p = r_p, α = α, β = β, γ = γ
             (μ_e / μ) * (1 / (4π * G)) *
             (Pei_GNFW / ρ_s) * (1 / r_s^3) *
             gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
@@ -126,13 +120,7 @@ function Model_NFW(
     """Calculate gas temperature at some radius"""
     function gas_temperature(r::Unitful.Length{<:Real})::Unitful.Energy{Float64}
         r = abs(r)
-        let
-            ρ_s = ρ_s
-            r_s = r_s
-            r_p = r_p
-            α = α
-            β = β
-            γ = γ
+        let ρ_s = ρ_s, r_s = r_s, r_p = r_p, α = α, β = β, γ = γ
             4π * μ * G * ρ_s * (r_s^3) *
             ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
             (1 + (r / r_p)^α) * (β * (r / r_p)^α + γ)^(-1)
