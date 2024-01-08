@@ -95,8 +95,6 @@ function sample(
     @mpiinfo "Background has shape $(size(observed_background))"
     @mpiinfo "Response matrix has shape $(size(response_function))"
 
-    counter = 0
-
     # a wrapper to handle running the gas model and likelihood calculation
     @mpidebug "Generating likelihood wrapper"
     function likelihood_wrapper(params)
@@ -130,18 +128,6 @@ function sample(
             predicted .= predicted .+ predicted_obs_bg
 
             @mpirankeddebug "Predicted results generated"
-
-            # counter += 1
-            # if mod(counter, 50) == 0
-            #     cache = get_model_cache(emission_model)
-            #     free = Int(Sys.free_memory())
-            #     @mpiinfo "Cache size $(Base.summarysize(cache)) bytes" free
-            #     @mpiinfo "Cache details" propertynames(cache) typeof(cache) Base.summarysize(cache.dict) Base.summarysize(cache.keyset) cache.keyset cache.currentsize cache.maxsize cache.by
-            # end
-            # if mod(counter, 100) == 0
-            #     display(methods(emission_model))
-            #     display(propertynames(emission_model))
-            # end
 
             # TODO: verify this vector form is fine and I don't need to repeat() it into a full array.
             return log_likelihood(
@@ -201,6 +187,37 @@ function sample(
     sampler.plot_corner()
     sampler.plot_trace()
     sampler.plot_run()
+
+    @mpiinfo "Running blob finder on best fit likelihood"
+    best_fit = results["maximum_likelihood"]["point"]
+    gas_temperature, gas_density = cluster_model(
+        best_fit[3:end]...;
+        z=redshift
+    )
+    p = run_blob_analysis(
+        observed,
+        log_likelihood(
+            observed,
+            observed_background,
+            make_observation(
+                gas_temperature,
+                gas_density,
+                redshift,
+                shape,
+                pixel_edge_angle,
+                emission_model,
+                obs_exposure_time,
+                response_function,
+                (best_fit[1], best_fit[2]),
+                centre_radius,
+                mask=mask,
+                limit=integration_limit
+            ),
+            predicted_bg_bg,
+            log_obs_factorial
+        )
+    )
+    save("$log_dir/filename", p)
 
     return (sampler, results)
 end

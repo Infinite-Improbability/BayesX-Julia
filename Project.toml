@@ -5,6 +5,8 @@ version = "0.7.7"
 
 [deps]
 ArgCheck = "dce04be8-c92d-5529-be00-80e4d2c0e197"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Clustering = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 Cosmology = "76746363-e552-5dba-9a5a-cef6fa9cc5ab"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 DimensionfulAngles = "2d4b8d7a-02d9-40f9-9abe-9c695b77de0d"
