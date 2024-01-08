@@ -48,13 +48,13 @@ priors_eiansto = [
     DeltaPrior("c_500_GNFW", 1.177)
 ]
 priors_nfw = [
-    UniformPrior("x0", -100.0, 100.0),
-    UniformPrior("y0", -100.0, 100.0),
-    # DeltaPrior("x0", 56.7),
-    # DeltaPrior("y0", 49.0),
-    UniformPrior("MT_500", 1.0e14, 1.0e15),
+    # UniformPrior("x0", -100.0, 100.0),
+    # UniformPrior("y0", -100.0, 100.0),
+    DeltaPrior("x0", 47.5),
+    DeltaPrior("y0", 47.5),
+    UniformPrior("MT_500", 1.0e14, 4.0e14),
     NormalPrior("fg_500", 0.13, 0.01),
-    UniformPrior("c_500", 3.0, 10.0),
+    UniformPrior("c_500", 0.0, 3.0),
     DeltaPrior("a", 1.0510),
     DeltaPrior("b", 5.4905),
     DeltaPrior("c", 0.3081),
@@ -63,7 +63,7 @@ priors_nfw = [
 
 sample(
     data,
-    (1.0u"keV", 3.0u"keV"),
+    (0.7u"keV", 7.0u"keV"),
     Model_NFW,
     priors_nfw,
     0.022e22u"cm^-2",
@@ -71,7 +71,7 @@ sample(
     (1900, 2800),
     (1900, 2800);
     bin_size=20,
-    centre_radius=0,
+    centre_radius=1,
     use_interpolation=false,
     use_stepsampler=false,
     # mask="data/tng/wavedetect.reg",
