@@ -68,18 +68,21 @@ struct Ellipse{T<:AbstractFloat}
 end
 
 """
-    test_point(e::Ellipse, x, y, atol=0)
+    test_point(e::Ellipse, x, y; atol=0)
 
 Tests whether a point is within an ellipse with tolerance `atol`.
 
 The equation for an ellipse in Cartesian coordinates is of the form `f(x,y) = 1`. We consider
 any point `(x0, y0)` such that `f(x0, y0) <= 1 + atol` as being within the ellipse.
 """
-function test_point(e::Ellipse, x, y, atol=0)::Bool
+function test_point(e::Ellipse, x, y; atol=0)::Bool
     t1 = (cos(e.θ) * (x - e.x) + sin(e.θ) * (y - e.y))^2
     t2 = (sin(e.θ) * (x - e.x) - cos(e.θ) * (y - e.y))^2
 
     return (t1 / (e.r1^2) + t2 / (e.r2^2)) <= (1 + atol)
+end
+function test_point(e::Ellipse, xy::AbstractVector; atol=0)::Bool
+    return test_point(e, xy...; atol=atol)
 end
 
 """
