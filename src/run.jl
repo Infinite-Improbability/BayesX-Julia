@@ -19,6 +19,7 @@ include("mpi.jl")
 include("cluster_models.jl")
 include("io.jl")
 include("likelihood.jl")
+include("blobs.jl")
 
 """
     sample(observed,observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
@@ -189,14 +190,15 @@ function sample(
     sampler.plot_run()
 
     @mpiinfo "Running blob finder on best fit likelihood"
-    best_fit = results["maximum_likelihood"]["point"]
+    best_fit = param_wrapper(results["maximum_likelihood"]["point"])
+    display(best_fit)
     gas_temperature, gas_density = cluster_model(
         best_fit[3:end]...;
         z=redshift
     )
     p = run_blob_analysis(
         observed,
-        log_likelihood(
+        log_likelihood_array(
             observed,
             observed_background,
             make_observation(
@@ -215,7 +217,14 @@ function sample(
             ),
             predicted_bg_bg,
             log_obs_factorial
-        )
+        ),
+        get_centre_indices(
+            best_fit[1] * 1u"arcsecondᵃ",
+            best_fit[2] * 1u"arcsecondᵃ",
+            pixel_edge_angle,
+            redshift,
+            tuple(shape...)
+        ),
     )
     save("$log_dir/filename", p)
 

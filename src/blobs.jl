@@ -256,18 +256,19 @@ end
 
 
 function run_blob_analysis(
-    observation::Array{Float64},
-    log_likelihood::Array{Float64},
+    observation::Array{<:Integer,3},
+    log_likelihood::Array{<:Union{Missing,<:Real},3},
     ij::NTuple{2,<:Real},
     # r200::Unitful.Length,
     minimum_neighbours=3,
     point_source_threshold=0.5,
 )
+    replace!(log_likelihood, missing => 0)
     ll_2d = abs.(dropdims(sum(log_likelihood, dims=1), dims=1))
     obs_2d = dropdims(sum(observation, dims=1), dims=1)
 
     b = find_blobs_2D(ll_2d, mean(ll_2d), minimum_neighbours, point_source_threshold)
-    # p = plot_blobs(b, ll_mat, obs_2d, ij, r200, 4, :plasma)
-    p = plot_blobs(b, ll_mat, obs_2d, ij, 4, :plasma)
+    # p = plot_blobs(b, ll_2d, obs_2d, ij, r200, 4, :plasma)
+    p = plot_blobs(b, ll_2d, obs_2d, ij, 4, :plasma)
     return p
 end

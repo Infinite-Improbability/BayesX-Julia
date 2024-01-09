@@ -20,10 +20,26 @@ function log_likelihood(
     predicted_background,
     observed_log_factorial
 )
-    @mpirankeddebug "Calculating log likelihood"
+    # @mpirankeddebug "Calculating log likelihood"
 
-    # display(observed)
+    t = log_likelihood_array(
+        observed,
+        observed_background,
+        predicted,
+        predicted_background,
+        observed_log_factorial
+    )
+    # @mpirankeddebug "likelihood is" sum(skipmissing(t))
+    return sum(skipmissing(t))
+end
 
+function log_likelihood_array(
+    observed,
+    observed_background,
+    predicted,
+    predicted_background,
+    observed_log_factorial
+)
     @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
     @assert size(observed) == size(observed_background)
     @assert size(predicted) == size(predicted_background) || Tuple(size(predicted, 1)) == size(predicted_background) || size(predicted_background) == ()
@@ -37,8 +53,7 @@ function log_likelihood(
 
     @assert all(isfinite, skipmissing(t))
 
-    @mpirankeddebug "likelihood is" sum(skipmissing(t))
-    return sum(skipmissing(t))
+    return t
 end
 
 """
