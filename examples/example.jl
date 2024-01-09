@@ -72,11 +72,11 @@ sample(
     0.5,
     (1900, 2800),
     (1900, 2800);
-    bin_size=300,
-    centre_radius=1,
+    bin_size=450,
+    centre_radius=0,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir=nothing,
+    # log_dir=nothing,
     # mask="data/tng/wavedetect.reg",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=200),
 )

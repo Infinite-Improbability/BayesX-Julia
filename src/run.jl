@@ -189,45 +189,48 @@ function sample(
     sampler.plot_trace()
     sampler.plot_run()
 
-    @mpiinfo "Running blob finder on best fit likelihood"
-    best_fit = param_wrapper(results["maximum_likelihood"]["point"])
-    display(best_fit)
-    gas_temperature, gas_density = cluster_model(
-        best_fit[3:end]...;
-        z=redshift
-    )
-    p = run_blob_analysis(
-        observed,
-        log_likelihood_array(
-            observed,
-            observed_background,
-            make_observation(
-                gas_temperature,
-                gas_density,
-                redshift,
-                shape,
-                pixel_edge_angle,
-                emission_model,
-                obs_exposure_time,
-                response_function,
-                (best_fit[1], best_fit[2]),
-                centre_radius,
-                mask=mask,
-                limit=integration_limit
-            ),
-            predicted_bg_bg,
-            log_obs_factorial
-        ),
-        get_centre_indices(
-            best_fit[1] * 1u"arcsecondᵃ",
-            best_fit[2] * 1u"arcsecondᵃ",
-            pixel_edge_angle,
-            redshift,
-            tuple(shape...)
-        ),
-    )
     output_dir = sampler.logs["run_dir"]
-    save("$output_dir/filename.svg", p)
+    if MPI.Comm_rank(comm) == 0 && output_dir isa AbstractString
+        @mpiinfo "Running blob finder on best fit likelihood"
+        best_fit = param_wrapper(results["maximum_likelihood"]["point"])
+        display(best_fit)
+        gas_temperature, gas_density = cluster_model(
+            best_fit[3:end]...;
+            z=redshift
+        )
+        p = run_blob_analysis(
+            observed,
+            log_likelihood_array(
+                observed,
+                observed_background,
+                make_observation(
+                    gas_temperature,
+                    gas_density,
+                    redshift,
+                    shape,
+                    pixel_edge_angle,
+                    emission_model,
+                    obs_exposure_time,
+                    response_function,
+                    (best_fit[1], best_fit[2]),
+                    centre_radius,
+                    mask=mask,
+                    limit=integration_limit
+                ),
+                predicted_bg_bg,
+                log_obs_factorial
+            ),
+            get_centre_indices(
+                best_fit[1] * 1u"arcsecondᵃ",
+                best_fit[2] * 1u"arcsecondᵃ",
+                pixel_edge_angle,
+                redshift,
+                tuple(shape...)
+            ),
+        )
+        save("$output_dir/plots/blobs.svg", p)
+    end
+
 
     return (sampler, results)
 end
