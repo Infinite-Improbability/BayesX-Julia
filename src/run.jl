@@ -21,6 +21,137 @@ include("io.jl")
 include("likelihood.jl")
 include("blobs.jl")
 
+
+function predict_counts_with_params(
+    params::AbstractVector;
+    cluster_model::Function,
+    emission_model::Function,
+    redshift::Real,
+    predicted_bg_over_obs_time::Union{AbstractMatrix,Real},
+    shape::NTuple{2,<:Integer},
+    pixel_edge_angle::DimensionfulAngles.Angle,
+    observation_exposure_time::Unitful.Time,
+    response_function::AbstractMatrix,
+    centre_radius::Integer,
+    mask::Union{Nothing,AbstractMatrix},
+    integration_limit::Unitful.Length
+)
+    full_params = param_wrapper(params)
+    # @mpirankeddebug "Full parameters are" full_params
+
+    centre = full_params[1:2]
+    model_parameters = full_params[3:end]
+
+    gas_temperature, gas_density = cluster_model(
+        model_parameters...;
+        z=redshift
+    )
+
+    predicted = make_observation(
+        gas_temperature,
+        gas_density,
+        redshift,
+        shape,
+        pixel_edge_angle,
+        emission_model,
+        observation_exposure_time,
+        response_function,
+        centre,
+        centre_radius,
+        mask=mask,
+        limit=integration_limit
+    )
+
+    # this intrinsically broadcasts along the energy axis
+    predicted .+ predicted_bg_over_obs_time
+end
+
+function calculate_likelihood_with_params(
+    params::AbstractVector;
+    predict_counts::Function,
+    cluster_model::Function,
+    emission_model::Function,
+    redshift::Real,
+    observed::AbstractMatrix{<:Integer},
+    observed_background::AbstractMatrix{<:Integer},
+    predicted_bg_over_obs_time::Union{AbstractMatrix,<:Real},
+    predicted_bg_over_bg_time::Union{AbstractMatrix,<:Real},
+    shape::NTuple{2,<:Integer},
+    pixel_edge_angle::DimensionfulAngles.Angle,
+    observation_exposure_time::Unitful.Time,
+    response_function::AbstractMatrix,
+    centre_radius::Integer,
+    mask::Union{Nothing,AbstractMatrix},
+    integration_limit::Unitful.Length,
+    log_obs_factorial::AbstractMatrix{<:Real},
+)
+    # @mpirankeddebug "Likelihood wrapper called" params
+
+    try
+        predicted = predict_counts_with_params(
+            params;
+            cluster_model=cluster_model,
+            emission_model=emission_model,
+            redshift=redshift,
+            predicted_bg_over_obs_time=predicted_bg_over_obs_time,
+            shape=shape,
+            pixel_edge_angle=pixel_edge_angle,
+            observation_exposure_time=observation_exposure_time,
+            response_function=response_function,
+            centre_radius=centre_radius,
+            mask=mask,
+            integration_limit=integration_limit
+        )
+
+        # @mpirankeddebug "Predicted results generated"
+
+        # TODO: verify this vector form is fine and I don't need to repeat() it into a full array.
+        return log_likelihood(
+            observed,
+            observed_background,
+            predicted,
+            predicted_bg_over_bg_time,
+            log_obs_factorial
+        )
+    catch e
+        if e isa PriorError || e isa ObservationError
+            @mpidebug "Prior or observation error" e params
+            return e.likelihood
+        end
+        rethrow()
+    end
+end
+
+function prepare_background(
+    observed::AbstractMatrix{<:Integer},
+    observed_background::AbstractMatrix{<:Integer},
+    obs_exposure_time::Unitful.Time,
+    bg_exposure_time::Unitful.Time,
+)::Tuple{AbstractVector,AbstractVector}
+    # implicitly includes average effective area and pixel edge angle
+    bg_count_rate = [mean(@view observed_background[i, :, :]) for i in axes(observed_background, 1)] ./ bg_exposure_time
+    number_of_zeros_in_bg = count(i -> i == 0u"s^-1", bg_count_rate)
+    if number_of_zeros_in_bg > 0
+        @mpiwarn "Background count has areas of zero counts, replacing with fallback value" number_of_zeros_in_bg
+        replace!(bg_count_rate, 0u"s^-1" => 0.1e-6 / bg_exposure_time)
+    end
+
+    @assert all(i -> i > 0u"s^-1", bg_count_rate)
+    @mpidebug "Background rate estimated" bg_count_rate
+
+    # vector of background as a function of energy
+    predicted_obs_bg = bg_count_rate * obs_exposure_time # Used for adding background to observations
+    predicted_bg_bg = bg_count_rate * bg_exposure_time # Used for log likelihood
+
+    @assert all(isfinite, predicted_obs_bg)
+    @assert all(isfinite, predicted_bg_bg)
+    @assert all(i -> i > 0, predicted_obs_bg)
+    @assert all(i -> i > 0, predicted_bg_bg)
+    @assert length(predicted_bg_bg) == size(observed, 1)
+
+    return predicted_obs_bg, predicted_bg_bg
+end
+
 """
     sample(observed,observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
 
@@ -41,17 +172,17 @@ radius which return their respective quantities with units.
 function sample(
     observed::T,
     observed_background::T,
-    response_function::Matrix,
+    response_function::AbstractMatrix,
     transform::Function,
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
     redshift::Real;
-    prior_names::Vector{<:AbstractString},
+    prior_names::AbstractVector{<:AbstractString},
     cluster_model::Function,
     emission_model,
     param_wrapper::Function,
-    pixel_edge_angle=0.492u"arcsecondᵃ",
-    centre_radius=0,
+    pixel_edge_angle::DimensionfulAngles.Angle=0.492u"arcsecondᵃ",
+    centre_radius::Integer=0,
     mask=nothing,
     integration_limit::Unitful.Length=Quantity(10, u"Mpc"),
     use_stepsampler=false,
@@ -68,24 +199,13 @@ function sample(
     @argcheck size(observed) == size(observed_background)
     @argcheck size(observed, 1) == size(response_function, 1)
 
-    # implicitly includes average effective area and pixel edge angle
-    bg_count_rate = [mean(@view observed_background[i, :, :]) for i in axes(observed_background, 1)] ./ bg_exposure_time
-    n_zeros_in_bg = count(i -> i == 0u"s^-1", bg_count_rate)
-    @mpidebug "Background count rate generated" n_zeros_in_bg
-    replace!(bg_count_rate, 0u"s^-1" => 0.1e-6 / bg_exposure_time)
-
-    @assert all(i -> i > 0u"s^-1", bg_count_rate)
-    @mpidebug "Background rate estimated" bg_count_rate
-
-    # vector of background as a function of energy
-    predicted_obs_bg = bg_count_rate * obs_exposure_time # Used for adding background to observations
-    predicted_bg_bg = bg_count_rate * bg_exposure_time # Used for log likelihood
-
-    @assert all(isfinite, predicted_obs_bg)
-    @assert all(isfinite, predicted_bg_bg)
-    @assert all(i -> i > 0, predicted_obs_bg)
-    @assert all(i -> i > 0, predicted_bg_bg)
-    @assert length(predicted_bg_bg) == size(observed, 1)
+    @mpiinfo "Preparing background"
+    predicted_obs_bg, predicted_bg_bg = prepare_background(
+        observed,
+        observed_background,
+        obs_exposure_time,
+        bg_exposure_time
+    )
 
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
     @assert all(isfinite, log_obs_factorial)
@@ -98,54 +218,24 @@ function sample(
 
     # a wrapper to handle running the gas model and likelihood calculation
     @mpidebug "Generating likelihood wrapper"
-    function likelihood_wrapper(params)
-        @mpirankeddebug "Likelihood wrapper called" params
-
-        full_params = param_wrapper(params)
-        @mpirankeddebug "Full parameters are" full_params
-
-        try
-            gas_temperature, gas_density = cluster_model(
-                full_params[3:end]...;
-                z=redshift
-            )
-
-            predicted = make_observation(
-                gas_temperature,
-                gas_density,
-                redshift,
-                shape,
-                pixel_edge_angle,
-                emission_model,
-                obs_exposure_time,
-                response_function,
-                (full_params[1], full_params[2]),
-                centre_radius,
-                mask=mask,
-                limit=integration_limit
-            )
-
-            # this intrinsically broadcasts along the energy axis
-            predicted .= predicted .+ predicted_obs_bg
-
-            @mpirankeddebug "Predicted results generated"
-
-            # TODO: verify this vector form is fine and I don't need to repeat() it into a full array.
-            return log_likelihood(
-                observed,
-                observed_background,
-                predicted,
-                predicted_bg_bg,
-                log_obs_factorial
-            )
-        catch e
-            if e isa PriorError || e isa ObservationError
-                @mpidebug "Prior or observation error" e params
-                return e.likelihood
-            end
-            rethrow()
-        end
-    end
+    likelihood_wrapper(params::AbstractVector{Float64}) = calculate_likelihood_with_params(
+        params;
+        cluster_model=cluster_model,
+        emission_model=emission_model,
+        redshift=redshift,
+        observed=observed,
+        observed_background=observed_background,
+        predicted_bg_over_obs_time=predicted_obs_bg,
+        predicted_bg_over_bg_time=predicted_bg_bg,
+        shape=shape,
+        pixel_edge_angle=pixel_edge_angle,
+        observation_exposure_time=obs_exposure_time,
+        response_function=response_function,
+        centre_radius=centre_radius,
+        mask=mask,
+        integration_limit=integration_limit,
+        log_obs_factorial=log_obs_factorial
+    )
 
     # ultranest setup
     @mpidebug "Creating sampler"
