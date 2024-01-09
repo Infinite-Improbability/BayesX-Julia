@@ -200,10 +200,10 @@ function plot_blobs(
     clustered, ellipses = cluster(data, dbscan_radius)
 
     @info "Generating plots"
-    f = Figure()
+    f = Figure(size=(4000, 1600))
 
     # heatmap of blobs
-    ax1 = Axis(f[1, 1], aspect=1, title="Blob Finder")
+    ax1 = Axis(f[1, 1], aspect=1, width=600, height=600, title="Blob Finder")
     h1 = heatmap!(data, colormap=colormap, colorscale=Makie.pseudolog10)
     scatter!(centre..., marker=:cross, color=:white)
     # poly!(Circle(Point2f(centre...), r200), color=:transparent, strokecolor=:white, strokewidth=1, overdraw=true, transparency=true)
@@ -216,14 +216,14 @@ function plot_blobs(
     end
 
     # original likelihood data
-    ax2 = Axis(f[1, 3], aspect=1, title="Absolute Value of Log-likelihood")
+    ax2 = Axis(f[1, 3], aspect=1, width=600, height=600, title="Absolute Value of Log-likelihood")
     h2 = heatmap!(raw, colormap=colormap, colorscale=Makie.pseudolog10)
     scatter!(centre..., marker=:cross, color=:white)
     # poly!(Circle(Point2f(centre...), r200), color=:transparent, strokecolor=:white, strokewidth=1, overdraw=true, transparency=true)
     Colorbar(f[1, 4], h2)
 
     # original obs
-    ax3 = Axis(f[1, 5], aspect=1, title="Original Observation")
+    ax3 = Axis(f[1, 5], aspect=1, width=600, height=600, title="Original Observation")
     h3 = heatmap!(obs, colormap=colormap, colorscale=Makie.pseudolog10)
     scatter!(centre..., marker=:cross, color=:white)
     # poly!(Circle(Point2f(centre...), r200), color=:transparent, strokecolor=:white, strokewidth=1, overdraw=true, transparency=true)
@@ -236,7 +236,7 @@ function plot_blobs(
 
     # plot clusters in 3d
     if length(clustered) > 0
-        ax4 = Axis3(f[2, 1], title="Clustered ($(trunc(Int64, maximum(clustered[:,3]))) clusters)")
+        ax4 = Axis3(f[2, 1], width=600, height=600, title="Clustered ($(trunc(Int64, maximum(clustered[:,3]))) clusters)")
         scatter!(clustered[:, 1], clustered[:, 2], clustered[:, 3], color=clustered[:, 3])
         for tup in ellipses
             e, i = tup
