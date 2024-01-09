@@ -200,7 +200,7 @@ function plot_blobs(
     clustered, ellipses = cluster(data, dbscan_radius)
 
     @info "Generating plots"
-    f = Figure(size=(4000, 1600))
+    f = Figure(size=(3400, 1600))
 
     # heatmap of blobs
     ax1 = Axis(f[1, 1], aspect=1, width=600, height=600, title="Blob Finder")
