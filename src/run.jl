@@ -193,7 +193,6 @@ function sample(
     if MPI.Comm_rank(comm) == 0 && output_dir isa AbstractString
         @mpiinfo "Running blob finder on best fit likelihood"
         best_fit = param_wrapper(results["maximum_likelihood"]["point"])
-        display(best_fit)
         gas_temperature, gas_density = cluster_model(
             best_fit[3:end]...;
             z=redshift
