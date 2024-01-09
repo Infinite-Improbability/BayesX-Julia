@@ -172,6 +172,10 @@ function cluster(data::Matrix, dbscan_radius::Real=3)
         end
     end
 
+    if size(cluster_input)[2] == 0
+        return [], []
+    end
+
     @info "Clustering points"
     clusters::Clustering.DbscanResult = dbscan(cluster_input, dbscan_radius, min_cluster_size=3, min_neighbors=2)
     cluster_mat = hcat(cluster_input[1, :], cluster_input[2, :], clusters.assignments)
@@ -208,9 +212,7 @@ function plot_blobs(
     # annotate with ellipses around clusters
     for tup in ellipses
         e, _ = tup
-        # e, p = e
         lines!(getellipsepoints(e)..., color=:green)
-        # scatter!(p[:, 1], p[:, 2])
     end
 
     # original likelihood data
@@ -233,14 +235,15 @@ function plot_blobs(
     ylims!(0, size(data, 1) + 1)
 
     # plot clusters in 3d
-    ax4 = Axis3(f[2, 1], title="Clustered ($(trunc(Int64, maximum(clustered[:,3]))) clusters)")
-    scatter!(clustered[:, 1], clustered[:, 2], clustered[:, 3], color=clustered[:, 3])
-    for tup in ellipses
-        e, i = tup
-        # e, _ = e
-        el = getellipsepoints(e)
-        z = repeat([i], size(el[1], 1))
-        lines!(el..., z, color=:orange)
+    if length(clustered) > 0
+        ax4 = Axis3(f[2, 1], title="Clustered ($(trunc(Int64, maximum(clustered[:,3]))) clusters)")
+        scatter!(clustered[:, 1], clustered[:, 2], clustered[:, 3], color=clustered[:, 3])
+        for tup in ellipses
+            e, i = tup
+            el = getellipsepoints(e)
+            z = repeat([i], size(el[1], 1))
+            lines!(el..., z, color=:orange)
+        end
     end
 
     # histogram of data dist.

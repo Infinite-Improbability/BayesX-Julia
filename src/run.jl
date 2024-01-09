@@ -226,7 +226,8 @@ function sample(
             tuple(shape...)
         ),
     )
-    save("$log_dir/filename", p)
+    output_dir = sampler.logs["run_dir"]
+    save("$output_dir/filename.svg", p)
 
     return (sampler, results)
 end
