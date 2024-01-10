@@ -116,7 +116,7 @@ Applies the response function ``RSP(PI, E) = RMF(PI, E) ∘ ARF(E)`` to all ener
 ```math
 \\begin{aligned}
 C(PI) &= T \\int RMF(PI, E) ⋅ ARF(E) ⋅ S(E) ⋅ dE \\\\
-&≈ T \\sum_{j} R_{ij} A{j} S{j}
+&≈ T \\sum_{j} R_{ij} A_{j} S_{j}
 \\end{aligned}
 ```
 with `C(PI)` is the observed counts in a detector channel `PI`, `T` is the observation time,
