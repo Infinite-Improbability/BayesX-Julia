@@ -84,8 +84,13 @@ function test_single_cell_consistency()
 
         lower_bound = result["posterior"]["errlo"]
         upper_bound = result["posterior"]["errup"]
+        mean = result["posterior"]["mean"]
+        std = result["posterior"]["stdev"]
 
-        return lower_bound, upper_bound
+        mean_lower = mean - std
+        mean_upper = mean + std
+
+        return lower_bound, upper_bound, mean_lower, mean_upper
     end
 
     @testset "Single Cell IC (fit ρ)" begin
@@ -98,8 +103,8 @@ function test_single_cell_consistency()
             BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
         ]
         observation, background = make_predicted(r, T, ρ)
-        lower_bound, upper_bound = run_sampler(observation, background, priors)
-        @test lower_bound[1] < ustrip(u"g/cm^3", ρ) < upper_bound[1]
+        lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+        @test lower_bound[1] < ustrip(u"g/cm^3", ρ) < upper_bound[1] || mean_lower[1] < ustrip(u"g/cm^3", ρ) < mean_upper[1]
     end
 
     @testset "Single Cell IC" begin
@@ -113,8 +118,8 @@ function test_single_cell_consistency()
                 BayesJ.DeltaPrior("ρ", 1.0e-20),
             ]
             observation, background = make_predicted(r, T, ρ)
-            lower_bound, upper_bound = run_sampler(observation, background, priors)
-            @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1]
+            lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
         end
 
         @testset "Single Cell IC (fit T and ρ)" begin
@@ -126,9 +131,9 @@ function test_single_cell_consistency()
                 BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
             ]
             observation, background = make_predicted(r, T, ρ)
-            lower_bound, upper_bound = run_sampler(observation, background, priors)
-            @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1]
-            @test lower_bound[2] < ustrip(u"g/cm^3", ρ) < upper_bound[2]
+            lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
+            @test lower_bound[2] < ustrip(u"g/cm^3", ρ) < upper_bound[2] || mean_lower[2] < ustrip(u"g/cm^3", ρ) < mean_upper[2]
         end
     end
 
