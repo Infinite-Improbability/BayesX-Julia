@@ -1,9 +1,14 @@
 using PoissonRandom
+using PyCall
+
+numpy = pyimport("numpy")
 
 # include("../src/BayesJ.jl") # for completion during dev
 
 
 function test_single_cell_consistency()
+    numpy.random.seed(42)
+
     r = 0.5u"kpc"
     T = 0.5u"keV"
     ρ = 1.0e-20u"g/cm^3"
