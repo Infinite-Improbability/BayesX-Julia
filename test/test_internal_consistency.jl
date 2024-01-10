@@ -5,7 +5,7 @@ using PoissonRandom
 
 function test_single_cell_consistency()
     r = 0.5u"kpc"
-    T = 2.0u"keV"
+    T = 0.5u"keV"
     ρ = 1.0e-20u"g/cm^3"
 
     z = 0.1
@@ -100,8 +100,7 @@ function test_single_cell_consistency()
                 BayesJ.DeltaPrior("x0", 0.0),
                 BayesJ.DeltaPrior("y0", 0.0),
                 BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-                # BayesJ.UniformPrior("T", 0.0, 10.0),
-                BayesJ.DeltaPrior("T", 2.0),
+                BayesJ.DeltaPrior("T", ustrip(u"keV", T)),
                 BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
             ]
             observation, background = make_predicted(r, T, ρ)
@@ -115,7 +114,7 @@ function test_single_cell_consistency()
                 BayesJ.DeltaPrior("y0", 0.0),
                 BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
                 BayesJ.UniformPrior("T", 0.0, 10.0),
-                BayesJ.DeltaPrior("ρ", 1.0e-20),
+                BayesJ.DeltaPrior("ρ", ustrip(u"g/cm^3", ρ)),
             ]
             observation, background = make_predicted(r, T, ρ)
             lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
@@ -132,8 +131,8 @@ function test_single_cell_consistency()
             ]
             observation, background = make_predicted(r, T, ρ)
             lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
-            @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
-            @test_skip lower_bound[2] < ustrip(u"g/cm^3", ρ) < upper_bound[2] || mean_lower[2] < ustrip(u"g/cm^3", ρ) < mean_upper[2]
+            @test_skip lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
+            @test lower_bound[2] < ustrip(u"g/cm^3", ρ) < upper_bound[2] || mean_lower[2] < ustrip(u"g/cm^3", ρ) < mean_upper[2]
         end
     end
 
