@@ -159,7 +159,7 @@ function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, z, sh
 end
 
 """
-    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit)
+    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit=10u"Mpc")
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
 
@@ -177,7 +177,7 @@ function make_observation(
     pixel_edge_angle::A,
     emission_model,
     exposure_time::T,
-    response_function,
+    response_function::AbstractArray{<:Unitful.Area,2},
     centre::NTuple{2,<:DimensionfulAngles.Angle},
     centre_radius;
     mask::Union{Matrix{Bool},Nothing}=nothing,
