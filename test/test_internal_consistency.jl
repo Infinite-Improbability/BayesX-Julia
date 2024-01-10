@@ -3,17 +3,19 @@ using PoissonRandom
 # include("../src/BayesJ.jl") # for completion during dev
 
 function test_single_cell_consistency()
+    r = 0.5u"kpc"
     T = 2.0u"keV"
-    ρ = 1.0e-4u"g/cm^3"
+    ρ = 1.0e-12u"g/cm^3"
     z = 0.1
     shape = (1, 1)
-    pixel_edge_angle = 0.492u"arcsecondᵃ"
+    pixel_edge_angle = 0.0492u"arcsecondᵃ"
     energy_bins = range(0.7u"keV", 3.0u"keV", length=100)
-    exposure_time = 3.0e5u"s"
-    response_function = rand(Float64, (10, length(energy_bins))) * 1u"cm^2"
+    exposure_time = 3.0u"s"
+    response_function = rand(Float64, (10, length(energy_bins) - 1)) * 1u"cm^2"
     centre_radius = 0
+    integration_limit = 1.0u"kpc"
 
-    temperature, density = Model_Constant(T, ρ)
+    temperature, density = Model_Constant(r, T, ρ)
     emission_model = BayesJ.prepare_model_mekal(
         2.0e20u"cm^-2",
         energy_bins,
@@ -31,24 +33,28 @@ function test_single_cell_consistency()
         exposure_time,
         response_function,
         (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius
+        centre_radius,
+        limit=integration_limit,
     )
+
+    @assert all(isfinite, predicted_count_rate)
 
     observation = pois_rand.(predicted_count_rate)
     background_rate = rand()
-    background = Matrix{Int64}(undef, size(observation)...)
+    background = Array{Int64}(undef, size(observation)...)
     for i in eachindex(background)
         background[i] = pois_rand(background_rate)
     end
 
     priors = [
         BayesJ.DeltaPrior("x0", 0.0),
-        BayesJ.DeltaPrior("x0", 0.0),
-        BayesJ.UniformPrior(0.0, 10.0),
-        BayesJ.UniformPrior(0.0, 10.0)
+        BayesJ.DeltaPrior("y0", 0.0),
+        BayesJ.UniformPrior("T", 0.0, 10.0),
+        BayesJ.UniformPrior("ρ", 0.0, 10.0)
     ]
     prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
 
+    model_fixed_r(t::Real, p::Real) = Model_Constant(ustrip(u"Mpc", r), t, p)
     sampler, result, best_fit_observation = BayesJ.sample(
         observation + background,
         background,
@@ -58,12 +64,13 @@ function test_single_cell_consistency()
         exposure_time, # TODO: Make different
         z,
         ["T", "ρ"],
-        Model_Constant,
+        model_fixed_r,
         emission_model,
         param_wrapper,
         pixel_edge_angle,
         centre_radius,
         log_dir=nothing,
+        integration_limit=integration_limit,
         ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100)
     )
 
