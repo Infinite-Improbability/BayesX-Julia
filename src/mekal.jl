@@ -176,7 +176,7 @@ function prepare_model_mekal(
     z::Real;
     temperatures::AbstractRange{U}=(0:0.05:9.0)u"keV",
     hydrogen_densities::AbstractRange{V}=(0:0.001:1.0)u"cm^-3",
-    use_interpolation::Bool=true,
+    use_interpolation::Bool=false,
     cache_size::Int64=1000000000 # bytes
 ) where {T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
     @mpidebug "Preparing MEKAL emission model"
