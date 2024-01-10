@@ -237,17 +237,19 @@ function sample(
     sampler.plot_trace()
     sampler.plot_run()
 
+    best_fit = param_wrapper(results["maximum_likelihood"]["point"])
+    best_fit_observation = predict_counts(best_fit)
+
     if MPI.Comm_rank(comm) == 0 && sampler.log == true
         output_dir = sampler.logs["run_dir"]
         if output_dir isa AbstractString
             @mpiinfo "Running blob finder on best fit likelihood"
-            best_fit = param_wrapper(results["maximum_likelihood"]["point"])
             p = run_blob_analysis(
                 observed,
                 log_likelihood_array(
                     observed,
                     observed_background,
-                    predict_counts(params),
+                    best_fit_observation,
                     predicted_bg_bg,
                     log_obs_factorial
                 ),
@@ -263,7 +265,7 @@ function sample(
         end
     end
 
-    return (sampler, results)
+    return (sampler, results, best_fit_observation)
 end
 
 """
