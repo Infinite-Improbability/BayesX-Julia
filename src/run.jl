@@ -67,8 +67,8 @@ function predict_counts_with_params(
 end
 
 function prepare_background(
-    observed::AbstractMatrix{<:Integer},
-    observed_background::AbstractMatrix{<:Integer},
+    observed::AbstractArray{<:Integer,3},
+    observed_background::AbstractArray{<:Integer,3},
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
 )::NTuple{2,Vector{Float64}}
