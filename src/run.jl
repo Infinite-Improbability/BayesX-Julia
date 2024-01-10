@@ -23,22 +23,19 @@ include("blobs.jl")
 
 
 function predict_counts_with_params(
-    params::AbstractVector;
+    full_params::P;
     cluster_model::Function,
     emission_model::Function,
     redshift::Real,
-    predicted_bg_over_obs_time::Union{AbstractMatrix,Real},
+    predicted_bg_over_obs_time::B,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::DimensionfulAngles.Angle,
     observation_exposure_time::Unitful.Time,
     response_function::AbstractMatrix,
     centre_radius::Integer,
-    mask::Union{Nothing,AbstractMatrix},
+    mask::M,
     integration_limit::Unitful.Length
-)::Matrix{Float64}
-    full_params = param_wrapper(params)
-    # @mpirankeddebug "Full parameters are" full_params
-
+)::Array{Union{Float64,Missing},3} where {P<:Union{AbstractVector,Tuple},B<:Union{AbstractArray,Real},M<:Union{Nothing,AbstractMatrix{Bool}}}
     centre = full_params[1:2]
     model_parameters = full_params[3:end]
 
@@ -154,22 +151,22 @@ function sample(
     log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
     @assert all(isfinite, log_obs_factorial)
 
-    shape = [size(observed, 2), size(observed, 3)]
+    shape = (size(observed, 2), size(observed, 3))
 
     @mpiinfo "Observation has shape $(size(observed))"
     @mpiinfo "Background has shape $(size(observed_background))"
     @mpiinfo "Response matrix has shape $(size(response_function))"
 
     # generate count rates matrix for given parameters
-    predict_counts(params::AbstractVector{Float64})::Matrix{Float64} = predict_counts_with_params(
-        params;
+    predict_counts(params::AbstractVector{Float64}) = predict_counts_with_params(
+        param_wrapper(params);
         cluster_model=cluster_model,
         emission_model=emission_model,
         redshift=redshift,
         predicted_bg_over_obs_time=predicted_obs_bg,
         shape=shape,
         pixel_edge_angle=pixel_edge_angle,
-        observation_exposure_time=observation_exposure_time,
+        observation_exposure_time=obs_exposure_time,
         response_function=response_function,
         centre_radius=centre_radius,
         mask=mask,
@@ -183,7 +180,7 @@ function sample(
                 observed,
                 observed_background,
                 predict_counts(params),
-                predicted_bg_over_bg_time,
+                predicted_bg_bg,
                 log_obs_factorial
             )
         catch e
