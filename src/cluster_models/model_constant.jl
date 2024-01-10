@@ -1,16 +1,16 @@
 export Model_Constant
 
 """
-    Model_Constant(T::Unitful.Energy, ρ::Unitful.Density; kwargs...)
+    Model_Constant(radius::Unitful.Length, T::Unitful.Energy, ρ::Unitful.Density; kwargs...)
 
-Constant temperature and density model.
+Constant temperature and density model in sphere of given `radius`.
 
 Intended for testing purposes.
 """
-function Model_Constant(T::Unitful.Energy, ρ::Unitful.Density; kwargs...)
+function Model_Constant(radius::Unitful.Length, T::Unitful.Energy, ρ::Unitful.Density; kwargs...)
 
-    temperature(::Unitful.Length{<:Real}) = T
-    density(::Unitful.Length{<:Real}) = ρ
+    temperature(r::Unitful.Length{<:Real}) = r < radius ? T : 0.0u"keV"
+    density(r::Unitful.Length{<:Real}) = r < radius ? ρ : 0.0u"g/cm^3"
 
     return temperature, density
 end
@@ -20,10 +20,11 @@ end
 
 Unitless wrapper for [`Model_Constant`](@ref)
 
-Temperature is in keV, density is in g/cm^3
+Radius is in Mpc, temperature is in keV, density is in g/cm^3
 """
-function Model_Constant(T::Real, ρ::Real; kwargs...)
+function Model_Constant(radius::Real, T::Real, ρ::Real; kwargs...)
     Model_Constant(
+        radius * 1u"Mpc",
         T * u"keV",
         ρ * u"g/cm^3";
         kwargs...)
