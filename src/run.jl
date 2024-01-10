@@ -158,20 +158,23 @@ function sample(
     @mpiinfo "Response matrix has shape $(size(response_function))"
 
     # generate count rates matrix for given parameters
-    predict_counts(params::AbstractVector{Float64}) = predict_counts_with_params(
-        param_wrapper(params);
-        cluster_model=cluster_model,
-        emission_model=emission_model,
-        redshift=redshift,
-        predicted_bg_over_obs_time=predicted_obs_bg,
-        shape=shape,
-        pixel_edge_angle=pixel_edge_angle,
-        observation_exposure_time=obs_exposure_time,
-        response_function=response_function,
-        centre_radius=centre_radius,
-        mask=mask,
-        integration_limit=integration_limit
-    )
+    function predict_counts(params::AbstractVector{Float64})
+        full_params = param_wrapper(params)
+        predict_counts_with_params(
+            full_params;
+            cluster_model=cluster_model,
+            emission_model=emission_model,
+            redshift=redshift,
+            predicted_bg_over_obs_time=predicted_obs_bg,
+            shape=shape,
+            pixel_edge_angle=pixel_edge_angle,
+            observation_exposure_time=obs_exposure_time,
+            response_function=response_function,
+            centre_radius=centre_radius,
+            mask=mask,
+            integration_limit=integration_limit
+        )
+    end
 
     # a wrapper to handle running the gas model and likelihood calculation
     function likelihood_wrapper(params::AbstractVector{Float64})::Float64
@@ -234,31 +237,38 @@ function sample(
     sampler.plot_trace()
     sampler.plot_run()
 
-    best_fit = param_wrapper(results["maximum_likelihood"]["point"])
+    best_fit = results["maximum_likelihood"]["point"]
     best_fit_observation = predict_counts(best_fit)
 
     if MPI.Comm_rank(comm) == 0 && sampler.log == true
-        output_dir = sampler.logs["run_dir"]
-        if output_dir isa AbstractString
-            @mpiinfo "Running blob finder on best fit likelihood"
-            p = run_blob_analysis(
-                observed,
-                log_likelihood_array(
+        try
+            output_dir = sampler.logs["run_dir"]
+            if output_dir isa AbstractString
+                @mpiinfo "Running blob finder on best fit likelihood"
+                p = run_blob_analysis(
                     observed,
-                    observed_background,
-                    best_fit_observation,
-                    predicted_bg_bg,
-                    log_obs_factorial
-                ),
-                get_centre_indices(
-                    best_fit[1] * 1u"arcsecondᵃ",
-                    best_fit[2] * 1u"arcsecondᵃ",
-                    pixel_edge_angle,
-                    redshift,
-                    tuple(shape...)
-                ),
-            )
-            save("$output_dir/plots/blobs.svg", p)
+                    log_likelihood_array(
+                        observed,
+                        observed_background,
+                        best_fit_observation,
+                        predicted_bg_bg,
+                        log_obs_factorial
+                    ),
+                    get_centre_indices(
+                        best_fit[1] * 1u"arcsecondᵃ",
+                        best_fit[2] * 1u"arcsecondᵃ",
+                        pixel_edge_angle,
+                        redshift,
+                        tuple(shape...)
+                    ),
+                )
+                save("$output_dir/plots/blobs.svg", p)
+            end
+        catch e
+            if !(e isa KeyError)
+                rethrow(e)
+            end
+            @mpidebug "Skipping blob plot because unable to find log information"
         end
     end
 
