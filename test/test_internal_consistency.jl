@@ -12,9 +12,9 @@ function test_single_cell_consistency()
     shape = (1, 1)
 
     pixel_edge_angle = 0.0492u"arcsecondᵃ"
-    energy_bins = range(0.7u"keV", 3.0u"keV", length=100)
+    energy_bins = range(0.7u"keV", 7.0u"keV", length=200)
     exposure_time = 3.0u"s"
-    response_function = rand(Float64, (50, length(energy_bins) - 1)) * 1u"cm^2"
+    response_function = rand(Float64, (100, length(energy_bins) - 1)) * 1u"cm^2"
     centre_radius = 0
     integration_limit = 1.0u"kpc"
 
@@ -93,45 +93,51 @@ function test_single_cell_consistency()
         return lower_bound, upper_bound, mean_lower, mean_upper
     end
 
-    @testset "Single Cell IC (fit ρ)" begin
-        priors = [
-            BayesJ.DeltaPrior("x0", 0.0),
-            BayesJ.DeltaPrior("y0", 0.0),
-            BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-            # BayesJ.UniformPrior("T", 0.0, 10.0),
-            BayesJ.DeltaPrior("T", 2.0),
-            BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
-        ]
-        observation, background = make_predicted(r, T, ρ)
-        lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
-        @test lower_bound[1] < ustrip(u"g/cm^3", ρ) < upper_bound[1] || mean_lower[1] < ustrip(u"g/cm^3", ρ) < mean_upper[1]
-    end
-
     @testset "Single Cell IC" begin
 
+        @testset "Single Cell IC (fit ρ)" begin
+            redirect_stdio(stdout=devnull, stderr=devnull) do
+                priors = [
+                    BayesJ.DeltaPrior("x0", 0.0),
+                    BayesJ.DeltaPrior("y0", 0.0),
+                    BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
+                    # BayesJ.UniformPrior("T", 0.0, 10.0),
+                    BayesJ.DeltaPrior("T", 2.0),
+                    BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
+                ]
+                observation, background = make_predicted(r, T, ρ)
+                lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            end
+            @test lower_bound[1] < ustrip(u"g/cm^3", ρ) < upper_bound[1] || mean_lower[1] < ustrip(u"g/cm^3", ρ) < mean_upper[1]
+        end
+
         @testset "Single Cell IC (fit T)" begin
-            priors = [
-                BayesJ.DeltaPrior("x0", 0.0),
-                BayesJ.DeltaPrior("y0", 0.0),
-                BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-                BayesJ.UniformPrior("T", 0.0, 10.0),
-                BayesJ.DeltaPrior("ρ", 1.0e-20),
-            ]
-            observation, background = make_predicted(r, T, ρ)
-            lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            redirect_stdio(stdout=devnull, stderr=devnull) do
+                priors = [
+                    BayesJ.DeltaPrior("x0", 0.0),
+                    BayesJ.DeltaPrior("y0", 0.0),
+                    BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
+                    BayesJ.UniformPrior("T", 0.0, 10.0),
+                    BayesJ.DeltaPrior("ρ", 1.0e-20),
+                ]
+                observation, background = make_predicted(r, T, ρ)
+                lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            end
             @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
         end
 
         @testset "Single Cell IC (fit T and ρ)" begin
-            priors = [
-                BayesJ.DeltaPrior("x0", 0.0),
-                BayesJ.DeltaPrior("y0", 0.0),
-                BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-                BayesJ.UniformPrior("T", 0.0, 10.0),
-                BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
-            ]
-            observation, background = make_predicted(r, T, ρ)
-            lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            redirect_stdio(stdout=devnull, stderr=devnull) do
+                priors = [
+                    BayesJ.DeltaPrior("x0", 0.0),
+                    BayesJ.DeltaPrior("y0", 0.0),
+                    BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
+                    BayesJ.UniformPrior("T", 0.0, 10.0),
+                    BayesJ.LogUniformPrior("ρ", 1.0e-24, 1.0e-15),
+                ]
+                observation, background = make_predicted(r, T, ρ)
+                lower_bound, upper_bound, mean_lower, mean_upper = run_sampler(observation, background, priors)
+            end
             @test lower_bound[1] < ustrip(u"keV", T) < upper_bound[1] || mean_lower[1] < ustrip(u"keV", T) < mean_upper[1]
             @test lower_bound[2] < ustrip(u"g/cm^3", ρ) < upper_bound[2] || mean_lower[2] < ustrip(u"g/cm^3", ρ) < mean_upper[2]
         end
