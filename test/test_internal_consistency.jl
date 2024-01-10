@@ -62,13 +62,13 @@ function test_single_cell_consistency()
         prior_transform,
         exposure_time,
         exposure_time, # TODO: Make different
-        z,
-        ["T", "ρ"],
-        model_fixed_r,
-        emission_model,
-        param_wrapper,
-        pixel_edge_angle,
-        centre_radius,
+        z;
+        prior_names=["T", "ρ"],
+        cluster_model=model_fixed_r,
+        emission_model=emission_model,
+        param_wrapper=param_wrapper,
+        pixel_edge_angle=pixel_edge_angle,
+        centre_radius=centre_radius,
         log_dir=nothing,
         integration_limit=integration_limit,
         ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100)
