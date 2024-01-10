@@ -1,7 +1,6 @@
 # include("../src/BayesJ.jl")
 # using .BayesJ
 using Unitful, UnitfulAstro, DimensionfulAngles
-using Test
 
 logrange(x1, x2, n) = (10^y for y in range(log10(x1), log10(x2), length=n))
 logrange(x1::Unitful.Length, x2::Unitful.Length, n) = (1u"kpc" * 10^y for y in range(log10(ustrip(u"kpc", x1)), log10(ustrip(u"kpc", x2)), length=n))
