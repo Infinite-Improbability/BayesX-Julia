@@ -123,7 +123,7 @@ function sample(
     redshift::Real;
     prior_names::AbstractVector{<:AbstractString},
     cluster_model::Function,
-    emission_model,
+    emission_model::Function,
     param_wrapper::Function,
     pixel_edge_angle::DimensionfulAngles.Angle=0.492u"arcsecondᵃ",
     centre_radius::Integer=0,
