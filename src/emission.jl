@@ -70,7 +70,8 @@ function surface_brightness(
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
+    ifunc = IntegralFunction(integrand)
+    problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
     sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
     u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
