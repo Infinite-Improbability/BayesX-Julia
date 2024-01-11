@@ -72,40 +72,42 @@ function surface_brightness(
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
     sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
-    # @assert all(isfinite, sol.u)
-    u = sol.u
+    u = sol.u * 1u"Mpc^-2/s"
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood."
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
         @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc") hydrogen_number_density(density(0u"kpc")) hydrogen_number_density(density(1u"kpc")) hydrogen_number_density(density(10u"kpc")) hydrogen_number_density(density(100u"kpc"))
     end
-    return 2 * u * 1u"Mpc^-2/s" / (Quantity(4π, u"srᵃ") * (1 + z)^2) * pixel_edge_angle^2
+    return 2 * u * pixel_edge_angle^2 / Quantity(4π, u"srᵃ") / (1 + z)^2
 
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
     # [photons/s/m^2]
-    # u::Vector{Quantity} = 2 * sol.u
+    # u = (2 * sol.u)
 
     # add in surface area of column end
-    # The true anglular area is (1+z)^2 * observed but using the angular diameter distance should avoid that problem.
+    # the pixel is square with angular size θ = pixel_edge_angle
+    # this converts to the physical length l = dₐ * θ where dₐ is the angular diameter distance
+    # The true area is thus (observed angular area * angular diamemter distance)^2
     # [photons/s]
-    # u *= (dₐ * pixel_edge_angle)^2
+    # u = (2 * sol.u) * (dₐ * θ)²
 
     # time dilation and redshift are already factored into model
     # because redshift needs to be applied directly to the energy bins
     # and time dilation felt more connected to that than the spatial expansion at play here
 
     # get emission per solid angle, assuming uniformly distributed over a sphere
-    # u /= 4π u"sr"
+    # [photons/s/sr]
+    # u = (2 * sol.u) * (dₐ * θ)² / 4π
 
-    # but this is the solid angle at the source
-    # for the observer θ₀ = θₛ / (1 + z)
-    # u /= (1+z)^2
-
-    # convert from solid angle to area using angular diameter distance
-    # u /= (4π * dₐ^2)
-    # notice dₐ cancels out
+    # The radius of the sphere is dₘ which is the transverse comoving distance
+    # dₐ = dₘ / (1+z)
+    # So we can cancel out the dₐ
+    # [photons/s/sr/m^2]
+    # u = (2 * sol.u) * (dₐ * θ)² / 4π / dₘ^2
+    # u = (2 * sol.u) * (dₘ / (1+z) * θ)² / 4π / dₘ^2
+    # u = (2 * sol.u) * θ² / 4π / (1+z)²
 
 end
 
