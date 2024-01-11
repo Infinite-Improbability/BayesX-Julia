@@ -85,7 +85,8 @@ function Model_Einasto(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     @mpirankeddebug "Integrating to find Pei"
-    integral = IntegralProblem(pei_integrand, 0.0u"Mpc", r_Δ, (r_s, n, r_p, α, β, γ))
+    ifunc = IntegralFunction(pei_integrand)
+    integral = IntegralProblem(ifunc, (0.0u"Mpc", r_Δ), (r_s, n, r_p, α, β, γ))
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 / n *
                                           (n / 2)^(3 / n) * exp(2 / n) *

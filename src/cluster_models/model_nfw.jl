@@ -96,10 +96,10 @@ function Model_NFW(
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     @mpirankeddebug "Integrating to find Pei"
+    ifunc = IntegralFunction(gnfw_gas_mass_integrand)
     integral = IntegralProblem(
-        gnfw_gas_mass_integrand,
-        0.0u"Mpc",
-        r_Δ,
+        ifunc,
+        (0.0u"Mpc", r_Δ),
         (r_s, r_p, α, β, γ)
     )
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
