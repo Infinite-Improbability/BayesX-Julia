@@ -219,14 +219,10 @@ function prepare_model_mekal(
     absorption ./= (1 + z) # time dilation
 
     # Convert energy range into format expected by mekal
-    n_energy_bins = length(energy_range) - 1
+    n_energy_bins = length(energy_bins) - 1
     min_energy = ustrip.(Cfloat, u"keV", energy_bins[1:end-1])
     max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
-
-    if (temperature == 0.0) || (nH == 0.0)
-        return zeros(n_energy_bins)
-    end
 
     if !use_interpolation
         # @mpidebug "Using direct MEKAL calls" cache_size
