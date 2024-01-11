@@ -46,7 +46,7 @@ end
 SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
 
 
-const mekal_factor = 1u"m^(-3)/s" * flux * 3.03103e-9 / 2.53325e-3
+const mekal_factor = flux * 3.03103e-9 / 2.53325e-3
 
 """
     call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, temperature, nH)
@@ -54,8 +54,10 @@ const mekal_factor = 1u"m^(-3)/s" * flux * 3.03103e-9 / 2.53325e-3
 Given a unitful range of energy and unitless temperature (keV) and hydrogen density in the source (cm^-3)
 calls MEKAL to calculate the volume emissivity of the source in the source frame.
 
+Result is in photons/m^3/s/bin.
+
 Due to performance concerns I recommend calling `prepare_model_mekal` instead to generate an interpolation over
-the model. The interpolation also implicitly includes absorption, which this function does not.
+the model. The functions returned by that wrapper also implicitly include absorption, which this function does not.
 
 ## Implementation Details
 
@@ -97,7 +99,7 @@ function call_mekal(
     bin_sizes::V,
     temperature::Cfloat, # keV
     nH::Cfloat, # cm^-3
-) where {V<:AbstractVector{Cfloat}}
+)::Vector{Float64} where {V<:AbstractVector{Cfloat}}
 
     # TODO: extract into prep function so we don't keep calling it
 
@@ -150,7 +152,7 @@ function call_mekal(
     energy_range::AbstractVector{<:Real},
     temperature::Real, # keV
     nH::Real, # cm^-3
-)
+)::Vector{Float64}
 
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
@@ -219,7 +221,7 @@ function prepare_model_mekal(
     bin_sizes = max_energy - min_energy
 
     if (temperature == 0.0) || (nH == 0.0)
-        return fill(0.0u"m^-3/s", n_energy_bins)
+        return zeros(n_energy_bins)
     end
 
     if !use_interpolation
@@ -228,7 +230,7 @@ function prepare_model_mekal(
         function volume_emissivity_direct(
             t::U,
             nH::N
-        ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+        )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
             let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
                 return absorption .* call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
             end
@@ -264,10 +266,10 @@ function prepare_model_mekal(
     function volume_emissivity(
         t::U,
         nH::N
-    ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+    )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
         let interpol = interpol, n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
             try
-                return interpol(t, nH) * 1u"m^(-3)/s"
+                return interpol(t, nH)
             catch e
                 if isa(e, BoundsError)
                     t = uconvert(u"keV", t)
@@ -282,13 +284,4 @@ function prepare_model_mekal(
     end
 
     return volume_emissivity
-end
-
-function get_model_cache(f)
-    for name in propertynames(f) #if f is a closure, we walk its fields
-        if first(string(name), length(string("##cache", MemoizedMethods.salt))) == string("##cache", MemoizedMethods.salt)
-            cache = getproperty(f, name)
-            return cache[2]
-        end
-    end
 end

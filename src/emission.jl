@@ -42,8 +42,8 @@ function surface_brightness(
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
-    lim = ustrip(Float64, u"Mpc", limit)
-    pr = ustrip(u"Mpc", projected_radius)
+    lim = ustrip(Float64, u"m", limit)
+    pr = ustrip(u"m", projected_radius)
 
     nout = length(model(1.0u"keV", 0.1u"cm^-3"))
 
@@ -59,10 +59,10 @@ function surface_brightness(
         # end
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
+        # Result is in 
         f = model(t, hydrogen_number_density(p))
-        return ustrip.(u"Mpc^-3/s", f)
+        return f
 
-        # fu = ustrip.(u"Mpc^-3/s", f)
         # if !all(isfinite, fu)
         #     @mpirankedwarn "Infinity in integral with" r t p hydrogen_number_density(p)
         # end
@@ -72,7 +72,7 @@ function surface_brightness(
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     problem = IntegralProblem(integrand, 0.0, lim, (pr, temperature, density); nout=nout)
     sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
-    u = sol.u * 1u"Mpc^-2/s"
+    u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood."
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
