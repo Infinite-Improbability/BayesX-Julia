@@ -46,7 +46,7 @@ end
 SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
 
 
-const mekal_factor = flux * 3.03103e-9 / 2.53325e-3
+const mekal_factor = 3.03103e-9 / 2.53325e-3
 
 """
     call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, temperature, nH)
@@ -118,6 +118,10 @@ function call_mekal(
     # Initalise output variables
     flux = ones(Cfloat, n_energy_bins)
     ne = 10.0
+
+    if (temperature == 0.0) || (nH == 0.0)
+        return flux
+    end
 
     # When debugging with GDB it can be helpful to have a breakpoint before entering the
     # Fortran code
@@ -216,8 +220,8 @@ function prepare_model_mekal(
 
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
-    min_energy = ustrip.(Cfloat, u"keV", energy_range[1:end-1])
-    max_energy = ustrip.(Cfloat, u"keV", energy_range[2:end])
+    min_energy = ustrip.(Cfloat, u"keV", energy_bins[1:end-1])
+    max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
 
     if (temperature == 0.0) || (nH == 0.0)
