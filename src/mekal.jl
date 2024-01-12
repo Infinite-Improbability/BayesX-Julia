@@ -153,10 +153,10 @@ function call_mekal(
     return mekal_factor * flux .* bin_sizes
 end
 function call_mekal(
-    energy_range::AbstractVector{<:Real},
+    energy_range::AbstractVector{E},
     temperature::Real, # keV
     nH::Real, # cm^-3
-)::Vector{Float64}
+)::Vector{Float64} where {E<:Unitful.Energy}
 
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
