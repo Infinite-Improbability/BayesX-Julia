@@ -1,10 +1,13 @@
 using PoissonRandom
 using PyCall
+using Random
 
-# include("../src/BayesJ.jl") # for completion during dev
+numpy = pyimport("numpy")
 
 
 function test_single_cell_consistency()
+    numpy.random.seed(42)
+    Random.seed!(4242)
 
     r = 0.5u"kpc"
     T = 0.5u"keV"
