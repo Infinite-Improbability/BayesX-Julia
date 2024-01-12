@@ -48,7 +48,7 @@ function test_model(temperature, density)
                 temperature,
                 density,
                 z,
-                Quantity(Inf, u"Mpc"),
+                Quantity(1000.0, u"Mpc"),
                 emission_model,
                 0.492u"arcsecondᵃ"
             )
@@ -60,7 +60,7 @@ function test_model(temperature, density)
                 temperature,
                 density,
                 z,
-                Quantity(Inf, u"Mpc"),
+                Quantity(10.0, u"Mpc"),
                 emission_model,
                 0.492u"arcsecondᵃ"
             )
@@ -164,6 +164,8 @@ function test_vikhlinin2006()
         z = 0.5
 
         t, d = Model_Vikhlinin2006(params..., z=z)
+        # display(t(100u"kpc"))
+        # display(d(100u"kpc"))
 
         test_model(t, d)
 
