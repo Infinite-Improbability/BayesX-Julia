@@ -108,7 +108,7 @@ function call_mekal(
     # By keeping it at one we match the behaviour of MEKA when
     # it is asked to output volume emissivity rather than a spectrum
     # and so can carry across its coefficents.
-    cem = 1.0
+    cem = 1.0f0
 
     # Abundances of elements w.r.t solar values
     # Using one because it matches BayesX
@@ -117,7 +117,7 @@ function call_mekal(
 
     # Initalise output variables
     flux = zeros(Cfloat, n_energy_bins)
-    ne = 10.0
+    ne = 10.0f0
 
     if (temperature == 0.0) || (nH == 0.0)
         return flux
