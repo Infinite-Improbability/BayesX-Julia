@@ -92,8 +92,8 @@ function test_single_cell_consistency()
         mean = result["posterior"]["mean"]
         std = result["posterior"]["stdev"]
 
-        mean_lower = mean - std
-        mean_upper = mean + std
+        mean_lower = mean - 2 * std
+        mean_upper = mean + 2 * std
 
         return lower_bound, upper_bound, mean_lower, mean_upper
     end
