@@ -32,3 +32,4 @@ testbed/*
 .env
 data/*
 todo.md
+.vscode/settings.json
