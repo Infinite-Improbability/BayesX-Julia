@@ -1,4 +1,3 @@
-push!(LOAD_PATH, "src/")
 using BayesJ
 using MPI
 using Test
