@@ -180,6 +180,8 @@ function test_vikhlinin2006()
 
 end
 
-test_nfw();
-test_einasto();
-test_vikhlinin2006();
+@testset "Cluster Models" begin
+    test_nfw()
+    test_einasto()
+    test_vikhlinin2006()
+end
