@@ -116,7 +116,7 @@ function call_mekal(
     abundances = ones(Cfloat, 15)
 
     # Initalise output variables
-    flux = ones(Cfloat, n_energy_bins)
+    flux = zeros(Cfloat, n_energy_bins)
     ne = 10.0
 
     if (temperature == 0.0) || (nH == 0.0)
