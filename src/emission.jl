@@ -198,20 +198,7 @@ function make_observation(
     brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
 
     flux = Vector{Float64}(undef, size(response_function, 2))
-    counts = copy(flux)
-    for r in brightness_radii
-        emission_model(flux, temperature(r), hydrogen_number_density(density(r)))
-        counts += flux
-    end
-
-    if all(iszero, counts)
-        # @mpiwarn "Preliminary check indicates minimal emission"
-        throw(ObservationError(-1e100))
-    end
-
     brightness_line = Vector{Vector{Float64}}(undef, length(brightness_radii))
-
-
     brightness_line[1] = ustrip.(
         Float64,
         u"cm^(-2)/s",
