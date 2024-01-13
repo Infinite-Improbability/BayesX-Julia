@@ -1,6 +1,7 @@
 using Integrals
 using LinearAlgebra: dot
 using DimensionfulAngles
+using Cubature
 
 include("mekal.jl")
 
@@ -37,32 +38,30 @@ function surface_brightness(
     density::Function,
     z::Float64,
     limit::Unitful.Length,
-    model,
+    model!,
     pixel_edge_angle::DimensionfulAngles.Angle,
+    flux::AbstractVector{Float64}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
     lim = ustrip(Float64, u"m", limit)
     pr = ustrip(Float64, u"m", projected_radius)
 
-    integrand_prototype = zeros(length(model(1.0u"keV", 0.001u"cm^-3")))
+    flux .= 0.0
 
     function integrand(y, l, params)
         s, temp, density = params
         r = Quantity(hypot(s, l), u"m")
 
-
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         # Result is in m^-3/s
-        y .= model(temp(r), density(hydrogen_number_density(p)))
-
-        return y
+        model!(y, temp(r), hydrogen_number_density(density(r)))
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    ifunc = IntegralFunction(integrand, integrand_prototype)
+    ifunc = IntegralFunction(integrand, flux)
     problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
-    sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
+    sol = solve(problem, CubatureJLh(); reltol=1e-3, abstol=1.0)
     u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." sol.u
@@ -207,6 +206,7 @@ function make_observation(
 
     brightness_line = Vector{Vector{Float64}}(undef, length(brightness_radii))
 
+    flux = Vector{Float64}(undef, size(response_function, 2))
     brightness_line[1] = ustrip.(
         Float64,
         u"cm^(-2)/s",
@@ -217,7 +217,8 @@ function make_observation(
             z,
             limit,
             emission_model,
-            pixel_edge_angle
+            pixel_edge_angle,
+            flux
         )
     )
 

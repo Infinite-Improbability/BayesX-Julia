@@ -93,13 +93,14 @@ Attempts were made to invoke MEKAL through XSPEC's wrapper functions but I found
 though some were necessary and are reimplemented in `surface_brightness`. MEKAL's operations are more clearly physically motivated.
 """
 function call_mekal(
+    flux::AbstractVector{F},
     n_energy_bins::Integer,
     min_energy::V, #keV
     max_energy::V, #keV
     bin_sizes::V,
     temperature::Cfloat, # keV
     nH::Cfloat, # cm^-3
-)::Vector{Float64} where {V<:AbstractVector{Cfloat}}
+) where {F<:Float64,V<:AbstractVector{Cfloat}}
 
     # TODO: extract into prep function so we don't keep calling it
 
@@ -114,11 +115,8 @@ function call_mekal(
     # These appear to be hardcoded and thus may not match what XSPEC reports on launch.
     abundances = ones(Cfloat, 15)
 
-    # Initalise output variables
-    flux = zeros(Cfloat, n_energy_bins)
-
     if (temperature == 0.0) || (nH == 0.0)
-        return flux
+        flux .= 0.0
     end
 
     # When debugging with GDB it can be helpful to have a breakpoint before entering the
@@ -148,13 +146,16 @@ function call_mekal(
     # Then we apply the 3.03e-9 coefficent which cancels out the distance-scaled emitting volume `cem` 
     # This converts our results to photons/m^3/s/keV
     # So finally we multiply by the width of our energy bins to get photons/m^3/s/bin
-    return mekal_factor * flux .* bin_sizes
+    @simd for i in 1:n_energy_bins
+        @inbounds flux[i] = flux[i] * bin_sizes[i] * mekal_factor
+    end
 end
 function call_mekal(
+    flux::AbstractVector{F},
     energy_range::AbstractVector{E},
     temperature::Real, # keV
     nH::Real, # cm^-3
-)::Vector{Float64} where {E<:Unitful.Energy}
+) where {F<:AbstractFloat,E<:Unitful.Energy}
 
     # Convert energy range into format expected by mekal
     n_energy_bins = length(energy_range) - 1
@@ -162,7 +163,7 @@ function call_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_range[2:end])
     bin_sizes = max_energy - min_energy
 
-    return call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, convert(Cfloat, temperature), convert(Cfloat, nH))
+    return call_mekal(flux, n_energy_bins, min_energy, max_energy, bin_sizes, convert(Cfloat, temperature), convert(Cfloat, nH))
 end
 
 
@@ -226,11 +227,13 @@ function prepare_model_mekal(
         # @mpidebug "Using direct MEKAL calls" cache_size
         # @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize)
         function volume_emissivity_direct(
+            flux::AbstractVector{F},
             t::U,
             nH::N
-        )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+        )::Vector{Float64} where {F<:Float64,U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
             let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
-                return absorption .* call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
+                call_mekal(flux, n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
+                return absorption .* flux
             end
         end
         return volume_emissivity_direct
@@ -262,9 +265,10 @@ function prepare_model_mekal(
     @mpidebug "Emission model generation complete."
 
     function volume_emissivity(
+        flux::AbstractVector{F},
         t::U,
         nH::N
-    )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+    )::Vector{Float64} where {F<:Float64,U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
         let interpol = interpol, n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
             try
                 return interpol(t, nH)
@@ -273,7 +277,8 @@ function prepare_model_mekal(
                     t = uconvert(u"keV", t)
                     nH = uconvert(u"cm^-3", nH)
                     @mpirankeddebug "Exceeded MEKAL interpolation bounds. Calculating the result directly. This is expensive, consider increasing bounds." t nH
-                    return absorption .* call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
+                    call_mekal(flux, n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
+                    return absorption .* flux
                 else
                     throw(e)
                 end

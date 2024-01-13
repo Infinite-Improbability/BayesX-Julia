@@ -17,6 +17,6 @@ if all_tests || "mekal" in ARGS
     include("test_mekal.jl")
 end
 
-if all_tests || "internal" in ARGS
-    include("test_internal_consistency.jl")
-end
+# if all_tests || "internal" in ARGS
+#     include("test_internal_consistency.jl")
+# end

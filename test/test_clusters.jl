@@ -36,35 +36,49 @@ function test_model(temperature, density)
 
         @testset "Surface Brightness" begin
             z = 0.5
+            energy_range = (0.1:7)u"keV"
             emission_model = BayesJ.prepare_model_mekal(
                 2.2e20u"cm^-2",
-                (0.1:7)u"keV",
+                energy_range,
                 z,
                 use_interpolation=false
             )
+            flux = zeros(length(energy_range) - 1)
 
-            s_distant = BayesJ.surface_brightness(
-                100u"Mpc",
-                temperature,
-                density,
-                z,
-                Quantity(1000.0, u"Mpc"),
-                emission_model,
-                0.492u"arcsecondᵃ"
-            )
+            @testset "Zero at distance" begin
+                s_distant = BayesJ.surface_brightness(
+                    100u"Mpc",
+                    temperature,
+                    density,
+                    z,
+                    Quantity(1000.0, u"Mpc"),
+                    emission_model,
+                    0.492u"arcsecondᵃ",
+                    flux
+                )
 
-            @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
 
-            s_zero = BayesJ.surface_brightness(
-                0u"Mpc",
-                temperature,
-                density,
-                z,
-                Quantity(10.0, u"Mpc"),
-                emission_model,
-                0.492u"arcsecondᵃ"
-            )
-            @test all(isfinite, s_zero)
+                @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
+                if !(all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant))
+                    display(s_distant)
+                end
+            end
+
+            @testset "Finite at centre" begin
+                s_zero = BayesJ.surface_brightness(
+                    0u"Mpc",
+                    temperature,
+                    density,
+                    z,
+                    Quantity(10.0, u"Mpc"),
+                    emission_model,
+                    0.492u"arcsecondᵃ",
+                    flux
+                )
+
+                @test all(isfinite, s_zero)
+            end
+
         end
 
         # @testset "Behaviour at high radius" begin
