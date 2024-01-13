@@ -101,6 +101,11 @@ function test_mekal()
             flux1 = copy(flux)
             flux2 = copy(flux)
 
+            emission_model_0(flux0, T, nH)
+            emission_model_01(flux01, T, nH)
+            emission_model_1(flux1, T, nH)
+            emission_model_2(flux2, T, nH)
+
             @test flux0 != flux01
             @test flux0 != flux1
             @test flux0 != flux2
