@@ -117,6 +117,7 @@ function call_mekal(
 
     if (temperature == 0.0) || (nH == 0.0)
         flux .= 0.0
+        return
     end
 
     # When debugging with GDB it can be helpful to have a breakpoint before entering the
