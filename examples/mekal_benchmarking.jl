@@ -1,6 +1,7 @@
 using BayesJ
 using BenchmarkTools
 using Unitful, UnitfulAstro, DimensionfulAngles
+using Profile
 
 energy_bins = range(0u"keV", 13u"keV", length=1000)
 
@@ -48,18 +49,34 @@ display(
     end
 )
 
-display(@benchmark begin
-    BayesJ.make_observation(
-        temperature,
-        density,
-        z,
-        shape,
-        pixel_edge_angle,
-        emission_model,
-        exposure_time,
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius,
-        limit=integration_limit,
-    )
-end)
+display(
+    @benchmark begin
+        BayesJ.make_observation(
+            temperature,
+            density,
+            z,
+            shape,
+            pixel_edge_angle,
+            emission_model,
+            exposure_time,
+            response_function,
+            (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+            centre_radius,
+            limit=integration_limit,
+        )
+    end
+)
+
+@profview BayesJ.make_observation(
+    temperature,
+    density,
+    z,
+    shape,
+    pixel_edge_angle,
+    emission_model,
+    exposure_time,
+    response_function,
+    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+    centre_radius,
+    limit=integration_limit,
+)
