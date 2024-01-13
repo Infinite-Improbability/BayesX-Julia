@@ -36,7 +36,7 @@ function test_single_cell_consistency()
     )
 
     function make_predicted(r, T, ρ)
-        temperature, density = Model_NFW(r, T, ρ)
+        temperature, density = Model_Constant(r, T, ρ)
 
         predicted_count_rate = BayesJ.make_observation(
             temperature,
