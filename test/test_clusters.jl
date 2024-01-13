@@ -43,7 +43,7 @@ function test_model(temperature, density)
                 z,
                 use_interpolation=false
             )
-            flux = zeros(length(energy_range) - 1)
+            flux = zeros(Float32, length(energy_range) - 1)
 
             @testset "Zero at distance" begin
                 s_distant = BayesJ.surface_brightness(

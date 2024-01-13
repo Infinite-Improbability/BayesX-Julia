@@ -27,7 +27,7 @@ emission_model = BayesJ.prepare_model_mekal(
     use_interpolation=false
 )
 
-flux = zeros(Float64, length(energy_bins) - 1)
+flux = zeros(Float32, length(energy_bins) - 1)
 
 display(@benchmark emission_model($flux, $T, $nH))
 

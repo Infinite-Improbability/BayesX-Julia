@@ -9,11 +9,15 @@ function test_mekal()
         min_energy = ustrip.(Cfloat, u"keV", energy_bins[1:end-1])
         max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
         bin_sizes = max_energy - min_energy
+        flux = zeros(Cfloat, length(energy_bins) - 1)
 
         T = 1.0u"keV"
         nH = 1.0e-4u"cm^-3"
 
-        direct_call = BayesJ.call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", T), ustrip(Cfloat, u"cm^-3", nH))
+        direct_call = Vector{Cfloat}(undef, n_energy_bins)
+        BayesJ.call_mekal(direct_call, n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", T), ustrip(Cfloat, u"cm^-3", nH))
+
+        @test all(isfinite, direct_call)
 
         # Verify that we return zero emissions in regions of zero gas density
         # or zero temperature.
@@ -24,16 +28,22 @@ function test_mekal()
                 0.1,
                 use_interpolation=false
             )
-            @test all(iszero, emission_model(1.0u"keV", 0.0u"cm^-3"))
-            @test all(iszero, emission_model(0.0u"keV", 1.0u"cm^-3"))
-            @test all(iszero, emission_model(0.0u"keV", 0.0u"cm^-3"))
+            emission_model(flux, 1.0u"keV", 0.0u"cm^-3")
+            @test all(iszero, flux)
+            emission_model(flux, 0.0u"keV", 1.0u"cm^-3")
+            @test all(iszero, flux)
+            emission_model(flux, 0.0u"keV", 0.0u"cm^-3")
+            @test all(iszero, flux)
 
-            @test all(iszero, BayesJ.call_mekal(energy_bins, 0, 0))
+            BayesJ.call_mekal(flux, energy_bins, 0, 0)
+            @test all(iszero, flux)
         end
 
         # Verify that the helper wrapper returns the same results as doing the prep ourselves
         @testset "Wrapper" begin
-            @test BayesJ.call_mekal(energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH)) == direct_call
+            BayesJ.call_mekal(flux, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
+            @test flux == direct_call
+            display(flux ≈ direct_call)
         end
 
         # Verify that absorption behaves as expected
@@ -45,7 +55,8 @@ function test_mekal()
                 0.1,
                 use_interpolation=false
             )
-            @test_broken emission_model(T, nH) == direct_call
+            emission_model(flux, T, nH)
+            @test_broken flux == direct_call
 
             # Verify that nonzero hydrogen column density means absorption
             emission_model = BayesJ.prepare_model_mekal(
@@ -54,7 +65,8 @@ function test_mekal()
                 0.1,
                 use_interpolation=false
             )
-            @test emission_model(T, nH) < direct_call
+            emission_model(flux, T, nH)
+            @test flux < direct_call
         end
 
         # Verify that redshift affects results
@@ -84,14 +96,19 @@ function test_mekal()
                 use_interpolation=false
             )
 
-            @test emission_model_0(T, nH) != emission_model_01(T, nH)
-            @test emission_model_0(T, nH) != emission_model_1(T, nH)
-            @test emission_model_0(T, nH) != emission_model_2(T, nH)
+            flux0 = copy(flux)
+            flux01 = copy(flux)
+            flux1 = copy(flux)
+            flux2 = copy(flux)
 
-            @test emission_model_01(T, nH) != emission_model_1(T, nH)
-            @test emission_model_01(T, nH) != emission_model_2(T, nH)
+            @test flux0 != flux01
+            @test flux0 != flux1
+            @test flux0 != flux2
 
-            @test emission_model_1(T, nH) != emission_model_2(T, nH)
+            @test flux01 != flux1
+            @test flux01 != flux2
+
+            @test flux1 != flux2
         end
 
         # TODO: Store some results in a data file and check runtime results match them

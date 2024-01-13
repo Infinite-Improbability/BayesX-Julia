@@ -40,7 +40,7 @@ function surface_brightness(
     limit::Unitful.Length,
     model!,
     pixel_edge_angle::DimensionfulAngles.Angle,
-    flux::AbstractVector{Float64}
+    flux::Vector{Float32}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
     @argcheck limit > 0u"Mpc"
 
@@ -197,8 +197,8 @@ function make_observation(
     @mpirankeddebug "Creating brightness interpolation"
     brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
 
-    flux = Vector{Float64}(undef, size(response_function, 2))
-    brightness_line = Vector{Vector{Float64}}(undef, length(brightness_radii))
+    flux = Vector{Float32}(undef, size(response_function, 2))
+    brightness_line = Vector{Vector{Float32}}(undef, length(brightness_radii))
     brightness_line[1] = ustrip.(
         Float64,
         u"cm^(-2)/s",

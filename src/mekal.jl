@@ -46,7 +46,7 @@ end
 SpectralFitting.register_model_data(XS_Mekal, "mekal1.dat", "mekal2.dat", "mekal3.dat", "mekal4.dat", "mekal5.dat", "mekal6.dat")
 
 
-const mekal_factor = 3.03103e-9 / 2.53325e-3
+const mekal_factor = 3.03103f-9 / 2.53325f-3
 
 """
     call_mekal(n_energy_bins, min_energy, max_energy, bin_sizes, temperature, nH)
@@ -93,14 +93,14 @@ Attempts were made to invoke MEKAL through XSPEC's wrapper functions but I found
 though some were necessary and are reimplemented in `surface_brightness`. MEKAL's operations are more clearly physically motivated.
 """
 function call_mekal(
-    flux::AbstractVector{F},
+    flux::Vector{Cfloat},
     n_energy_bins::Integer,
     min_energy::V, #keV
     max_energy::V, #keV
     bin_sizes::V,
     temperature::Cfloat, # keV
     nH::Cfloat, # cm^-3
-) where {F<:Float64,V<:AbstractVector{Cfloat}}
+) where {V<:AbstractVector{Cfloat}}
 
     # TODO: extract into prep function so we don't keep calling it
 
@@ -113,6 +113,7 @@ function call_mekal(
     # Abundances of elements w.r.t solar values
     # Using one because it matches BayesX
     # These appear to be hardcoded and thus may not match what XSPEC reports on launch.
+    # TODO: Pull out of function, make variable
     abundances = ones(Cfloat, 15)
 
     if (temperature == 0.0) || (nH == 0.0)
@@ -164,7 +165,7 @@ function call_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_range[2:end])
     bin_sizes = max_energy - min_energy
 
-    return call_mekal(flux, n_energy_bins, min_energy, max_energy, bin_sizes, convert(Cfloat, temperature), convert(Cfloat, nH))
+    return call_mekal(convert(Vector{Cfloat}, flux), n_energy_bins, min_energy, max_energy, bin_sizes, convert(Cfloat, temperature), convert(Cfloat, nH))
 end
 
 
@@ -228,10 +229,10 @@ function prepare_model_mekal(
         # @mpidebug "Using direct MEKAL calls" cache_size
         # @memoize LRU{__Key__,__Value__}(maxsize=cache_size, by=Base.summarysize)
         function volume_emissivity_direct(
-            flux::AbstractVector{F},
+            flux::Vector{Cfloat},
             t::U,
             nH::N
-        )::Vector{Float64} where {F<:Float64,U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+        )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
             let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
                 call_mekal(flux, n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", t), ustrip(Cfloat, u"cm^-3", nH))
                 return absorption .* flux
@@ -266,10 +267,10 @@ function prepare_model_mekal(
     @mpidebug "Emission model generation complete."
 
     function volume_emissivity(
-        flux::AbstractVector{F},
+        flux::Vector{Cfloat},
         t::U,
         nH::N
-    )::Vector{Float64} where {F<:Float64,U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+    )::Vector{Float64} where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
         let interpol = interpol, n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption
             try
                 return interpol(t, nH)
