@@ -27,7 +27,9 @@ emission_model = BayesJ.prepare_model_mekal(
     use_interpolation=false
 )
 
-display(@benchmark emission_model($T, $nH))
+flux = zeros(Float64, length(energy_bins) - 1)
+
+display(@benchmark emission_model($flux, $T, $nH))
 
 projected_radius = 0.3u"kpc"
 
@@ -40,7 +42,8 @@ display(
             $z,
             $integration_limit,
             $emission_model,
-            $pixel_edge_angle
+            $pixel_edge_angle,
+            $flux
         )
     end
 )

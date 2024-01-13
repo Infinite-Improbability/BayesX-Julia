@@ -197,8 +197,13 @@ function make_observation(
     @mpirankeddebug "Creating brightness interpolation"
     brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
 
+    flux = Vector{Float64}(undef, size(response_function, 2))
+    counts = copy(flux)
+    for r in brightness_radii
+        emission_model(flux, temperature(r), hydrogen_number_density(density(r)))
+        counts += flux
+    end
 
-    counts = sum(emission_model(temperature(r), hydrogen_number_density(density(r))) for r in brightness_radii)
     if all(iszero, counts)
         # @mpiwarn "Preliminary check indicates minimal emission"
         throw(ObservationError(-1e100))
@@ -206,7 +211,7 @@ function make_observation(
 
     brightness_line = Vector{Vector{Float64}}(undef, length(brightness_radii))
 
-    flux = Vector{Float64}(undef, size(response_function, 2))
+
     brightness_line[1] = ustrip.(
         Float64,
         u"cm^(-2)/s",
@@ -227,15 +232,18 @@ function make_observation(
         throw(ObservationError(-1e100))
     end
 
-    brightness_line[2:end] = [ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-        brightness_radii[2:end],
-        temperature,
-        density,
-        z,
-        limit, # testing found that using 10Mpc as bound did not affect results
-        Ref(emission_model),
-        pixel_edge_angle
-    )]
+    brightness_line[2:end] = [
+        ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
+            brightness_radii[2:end],
+            temperature,
+            density,
+            z,
+            limit, # testing found that using 10Mpc as bound did not affect results
+            Ref(emission_model),
+            pixel_edge_angle,
+            Ref(flux)
+        )
+    ]
 
     # if all(iszero, brightness_line)
     #     @mpierror "This shouldn't happen"
