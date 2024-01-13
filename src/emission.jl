@@ -45,22 +45,22 @@ function surface_brightness(
     lim = ustrip(Float64, u"m", limit)
     pr = ustrip(Float64, u"m", projected_radius)
 
-    function integrand(l, params)
+    integrand_prototype = zeros(length(model(1.0u"keV", 0.001u"cm^-3")))
+
+    function integrand(y, l, params)
         s, temp, density = params
         r = Quantity(hypot(s, l), u"m")
 
-        t = temp(r)
-        p = density(r)
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
-        # Result is in 
-        f = model(t, hydrogen_number_density(p))
+        # Result is in m^-3/s
+        y .= model(temp(r), density(hydrogen_number_density(p)))
 
-        return f
+        return y
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    ifunc = IntegralFunction(integrand)
+    ifunc = IntegralFunction(integrand, integrand_prototype)
     problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
     sol = solve(problem, HCubatureJL(); reltol=1e-3, abstol=1.0)
     u = sol.u * 1u"m^-2/s"
