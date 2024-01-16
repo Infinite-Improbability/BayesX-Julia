@@ -10,7 +10,6 @@ using Interpolations
 using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
-using MemoizedMethods, LRUCache
 
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
