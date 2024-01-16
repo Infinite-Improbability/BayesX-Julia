@@ -12,7 +12,7 @@ Random.seed!(4242)
 
 function test_single_cell_consistency()
     numpy.random.seed(42)
-    Random.seed!(4242)
+    Random.seed!(4444)
 
     r = 0.5u"kpc"
     T = 0.5u"keV"
