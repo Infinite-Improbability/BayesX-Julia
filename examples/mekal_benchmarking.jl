@@ -20,17 +20,17 @@ integration_limit = 10.0u"kpc"
 
 temperature, density = Model_Constant(r, T, ρ)
 
-# emission_model = BayesJ.prepare_model_mekal(
-#     2.2e20u"cm^-2",
-#     energy_bins,
-#     0.1,
-# )
-
-emission_model = BayesJ.prepare_model_mekal_interpolation(
+emission_model = BayesJ.prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_bins,
     0.1,
 )
+
+# emission_model = BayesJ.prepare_model_mekal_interpolation(
+#     2.2e20u"cm^-2",
+#     energy_bins,
+#     0.1,
+# )
 
 
 flux = zeros(Float32, length(energy_bins) - 1)

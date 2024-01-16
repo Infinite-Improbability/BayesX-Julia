@@ -11,6 +11,10 @@ using Unitful, UnitfulAstro
 using ProgressMeter
 using LibXSPEC_jll
 
+const anders_log_abundance = (12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25)
+const ander_Ni_per_NH = 10 .^ (anders_log_abundance .- 12)
+const nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
+
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
 @derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓
@@ -209,6 +213,7 @@ function prepare_model_mekal(
     @mpidebug "Preparing MEKAL emission model"
 
     @argcheck length(abundances) == 15
+    @argcheck abundances[1] == 1
 
     if MPI.Comm_rank(comm) == 0
         @mpidebug "Checking for model data"
@@ -237,9 +242,10 @@ function prepare_model_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
 
-    # We inline this instead of calling hydrogen_number_density for performance.
-    Ni_per_NH = 10 .^ (abundances .- 12)
-    nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
+    # Apply our weights to the Anders and Grevesse abundances
+    Ni_per_NH = ander_Ni_per_NH .* abundances
+
+    # Precalculate some values
     total_nucelons_per_hydrogen = dot(Ni_per_NH, nucleon_total)
     gas_mass_per_hydrogen = m_p * total_nucelons_per_hydrogen
 
@@ -249,6 +255,7 @@ function prepare_model_mekal(
         end
     end
 
+    # Use the values relative to Anders and Grevesse
     abundances_float = convert(Vector{Cfloat}, abundances)
 
     function volume_emissivity!(
