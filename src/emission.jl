@@ -131,17 +131,34 @@ function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T},
     return mult
 end
 
+struct HydrogenDensity{T<:AbstractVector{<:Real},U<:Unitful.Mass}
+    relative_abundances::T
+    gas_mass_per_hydrogen::U
+end
+function HydrogenDensity(relative_abundances::AbstractVector{<:Real})
+    # Apply our weights to the Anders and Grevesse abundances
+    Ni_per_NH = ander_Ni_per_NH .* relative_abundances
 
-function hydrogen_number_density(gas_density, relative_abundance=ones(15))
-    # Our MEKAL wrapper reproduces this instead of calling the function, for performance reaons
+    # Precalculate some values
+    total_nucelons_per_hydrogen = dot(Ni_per_NH, nucleon_total)
+    gas_mass_per_hydrogen = m_p * total_nucelons_per_hydrogen
+
+    HydrogenDensity(relative_abundances, gas_mass_per_hydrogen)
+end
+function (gm::HydrogenDensity)(ρ::Unitful.Density)
+    return ρ / gm.gas_mass_per_hydrogen
+end
+
+function hydrogen_number_density(gas_density::Unitful.Density, relative_abundance=ones(15))
+    # This function has been replaced with the form above for performance reasons - precalculated values.
     # Abundances of elements, relative to values from Table 2, Anders & Grevesse (1989) https://doi.org/10.1016/0016-7037(89)90286-X
     # H, He, C, N, O, Ne, Na, Mg, Al, Si, S, Ar, Ca, Fe and Ni
-    Base.depwarn("This function has been merged into the prepare_mekal wrapper for performance reasons.", :hydrogen_number_density)
     abundance = (12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25)
     Ni_per_NH = 10 .^ (abundance .* relative_abundance .- 12)
     nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
     return gas_density / (m_p * dot(Ni_per_NH, nucleon_total))
 end
+# @deprecate hydrogen_number_density(gas_density::Unitful.Density, relative_abundance::AbstractVector{<:Real}) HydrogenDensity(relative_abundance)(gas_density::Unitful.Density)
 
 function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, z, shape::NTuple{2,<:Integer}) where {A<:DimensionfulAngles.Angle}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)

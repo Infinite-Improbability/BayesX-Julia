@@ -108,26 +108,18 @@ function call_mekal(
     temperature::Cfloat, # keV
     nH::Cfloat, # cm^-3
 ) where {V<:AbstractVector{Cfloat}}
-
-    # TODO: extract into prep function so we don't keep calling it
-
-    # Scale by volume of and distance to emitting area.
-    # MEKAL expects units of 1e50cm^3 / 1pc^2
-    # By keeping it at one we match the behaviour of MEKA when
-    # it is asked to output volume emissivity rather than a spectrum
-    # and so can carry across its coefficents.
-
-    # Abundances of elements w.r.t solar values
-    # Using one because it matches BayesX
-    # These appear to be hardcoded and thus may not match what XSPEC reports on launch.
-    # TODO: Pull out of function, make variable
-
     if (temperature == 0.0) || (nH == 0.0)
         for i in 1:n_energy_bins
             @inbounds flux[i] = 0.0f0
         end
         return
     end
+
+    # cem: Scale by volume of and distance to emitting area.
+    # MEKAL expects units of 1e50cm^3 / 1pc^2
+    # By keeping it at one we match the behaviour of MEKA when
+    # it is asked to output volume emissivity rather than a spectrum
+    # and so can carry across its coefficents.
 
     # When debugging with GDB it can be helpful to have a breakpoint before entering the
     # Fortran code
@@ -228,6 +220,8 @@ function prepare_model_mekal(
     absorption = invokemodel(ustrip.(u"keV", energy_bins), absorption_model)
 
     @assert all(isfinite, absorption)
+    @assert all(absorption .<= 1.0)
+    @assert all(absorption .>= 0.0)
 
     # We approximate the absorping hydrogen as at rest w.r.t. observer
     # But the cluster isn't
@@ -242,28 +236,20 @@ function prepare_model_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
 
-    # Apply our weights to the Anders and Grevesse abundances
-    Ni_per_NH = ander_Ni_per_NH .* abundances
-
-    # Precalculate some values
-    total_nucelons_per_hydrogen = dot(Ni_per_NH, nucleon_total)
-    gas_mass_per_hydrogen = m_p * total_nucelons_per_hydrogen
-
-    function nH(ρ::Unitful.Density)
-        let gas_mass_per_hydrogen = gas_mass_per_hydrogen
-            return ρ / gas_mass_per_hydrogen
-        end
-    end
+    nH = HydrogenDensity(abundances)
 
     # Use the values relative to Anders and Grevesse
     abundances_float = convert(Vector{Cfloat}, abundances)
+
+    # TODO: Rewrite inner function to use struct, like we've done with hydrogen_number_density
+    # That should retain performance without needing to use let so much.
 
     function volume_emissivity!(
         flux::Vector{Cfloat},
         t::U,
         ρ::N
     ) where {U<:Unitful.Energy,N<:Unitful.Density}
-        let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption, abundances_float = abundances_float
+        let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption, abundances_float = abundances_float, nH = nH
             call_mekal(
                 flux,
                 abundances_float,

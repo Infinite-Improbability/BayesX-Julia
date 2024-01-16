@@ -10,9 +10,10 @@ function test_mekal()
         max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
         bin_sizes = max_energy - min_energy
         abundances = ones(Cfloat, 15)
+        nH = BayesJ.HydrogenDensity(abundances)
 
         T = 1.0u"keV"
-        nH = 1.0e-4u"cm^-3"
+        ρ = 1.0e-6u"g/cm^3"
 
         # Prepare output
         flux = zeros(Cfloat, n_energy_bins)
@@ -26,23 +27,23 @@ function test_mekal()
             max_energy,
             bin_sizes,
             ustrip(Cfloat, u"keV", T),
-            ustrip(Cfloat, u"cm^-3", nH)
+            ustrip(Cfloat, u"cm^-3", nH(ρ))
         )
 
         @test all(isfinite, direct_call)
+        @test any(!iszero, direct_call)
 
         # Test that initial flux values don't affect results
         @testset "Nonzero inital flux" begin
             flux .= 3.0
-            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
+            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH(ρ)))
             @test flux == direct_call
         end
 
         # Verify that the helper wrapper returns the same results as doing the prep ourselves
         @testset "Wrapper" begin
-            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
+            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH(ρ)))
             @test flux == direct_call
-            display(flux ≈ direct_call)
         end
 
         # Verify that we return zero emissions in regions of zero gas density
@@ -54,11 +55,11 @@ function test_mekal()
                 0.1,
                 abundances
             )
-            emission_model(flux, 1.0u"keV", 0.0u"cm^-3")
+            emission_model(flux, 1.0u"keV", 0.0u"g/cm^3")
             @test all(iszero, flux)
-            emission_model(flux, 0.0u"keV", 1.0u"cm^-3")
+            emission_model(flux, 0.0u"keV", 1.0e-23u"g/cm^3")
             @test all(iszero, flux)
-            emission_model(flux, 0.0u"keV", 0.0u"cm^-3")
+            emission_model(flux, 0.0u"keV", 0.0u"g/cm^3")
             @test all(iszero, flux)
 
             BayesJ.call_mekal(flux, abundances, energy_bins, 0, 0)
@@ -71,18 +72,18 @@ function test_mekal()
             emission_model = BayesJ.prepare_model_mekal(
                 0.0u"cm^-2",
                 energy_bins,
-                0.1,
+                0.0,
             )
-            emission_model(flux, T, nH)
-            @test_broken flux == direct_call
+            emission_model(flux, T, ρ)
+            @test flux == direct_call
 
             # Verify that nonzero hydrogen column density means absorption
             emission_model = BayesJ.prepare_model_mekal(
                 2.2e20u"cm^-2",
                 energy_bins,
-                0.1,
+                0.0,
             )
-            emission_model(flux, T, nH)
+            emission_model(flux, T, ρ)
             @test flux < direct_call
         end
 
@@ -118,10 +119,10 @@ function test_mekal()
             flux1 = copy(flux)
             flux2 = copy(flux)
 
-            emission_model_0(flux0, T, nH)
-            emission_model_01(flux01, T, nH)
-            emission_model_1(flux1, T, nH)
-            emission_model_2(flux2, T, nH)
+            emission_model_0(flux0, T, ρ)
+            emission_model_01(flux01, T, ρ)
+            emission_model_1(flux1, T, ρ)
+            emission_model_2(flux2, T, ρ)
 
             @test flux0 != flux01
             @test flux0 != flux1

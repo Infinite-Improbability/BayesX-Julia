@@ -9,12 +9,12 @@ else
     all_tests = false
 end
 
-if all_tests || "clusters" in ARGS
-    include("test_clusters.jl")
-end
-
 if all_tests || "mekal" in ARGS
     include("test_mekal.jl")
+end
+
+if all_tests || "clusters" in ARGS
+    include("test_clusters.jl")
 end
 
 # if all_tests || "internal" in ARGS
