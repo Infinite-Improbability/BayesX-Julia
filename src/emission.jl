@@ -38,7 +38,7 @@ function surface_brightness(
     density::Function,
     z::Float64,
     limit::Unitful.Length,
-    model!,
+    model!::Function,
     pixel_edge_angle::DimensionfulAngles.Angle,
     flux::Vector{Float32}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
@@ -47,9 +47,9 @@ function surface_brightness(
     lim = ustrip(Float64, u"m", limit)
     pr = ustrip(Float64, u"m", projected_radius)
 
-    flux .= 0.0
+    flux .= 0.0f0
 
-    function integrand(y, l, params)
+    function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Function,Function})
         s, temp, density = params
         r = Quantity(hypot(s, l), u"m")
 
@@ -122,10 +122,12 @@ Some people format the RMF as RMF(E, PI), others as RMF(PI, E). This latter conv
 function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T}, exposure_time::T)::Vector{T} where {T<:AbstractFloat}
     @argcheck length(counts_per_bin) == size(response)[2]
 
-    time_scaled_counts = counts_per_bin * exposure_time
+    for i in eachindex(counts_per_bin)
+        counts_per_bin[i] = counts_per_bin[i] * exposure_time
+    end
 
     # All we have to do is matrix multiplication
-    mult = response * time_scaled_counts
+    mult = response * counts_per_bin
     return mult
 end
 
