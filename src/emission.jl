@@ -55,7 +55,7 @@ function surface_brightness(
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         # Result is in m^-3/s
-        model!(y, temp(r), hydrogen_number_density(density(r)))
+        model!(y, temp(r), density(r))
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
@@ -67,7 +67,7 @@ function surface_brightness(
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." sol.u
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
-        @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc") hydrogen_number_density(density(0u"kpc")) hydrogen_number_density(density(1u"kpc")) hydrogen_number_density(density(10u"kpc")) hydrogen_number_density(density(100u"kpc"))
+        @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc")
     end
     return 2 * u * pixel_edge_angle^2 / Quantity(4π, u"srᵃ") / (1 + z)^2
 
@@ -132,11 +132,12 @@ function apply_response_function(counts_per_bin::Vector{T}, response::Matrix{T},
 end
 
 
-function hydrogen_number_density(gas_density)
+function hydrogen_number_density(gas_density, abundance=[12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25])
+    # Our MEKAL wrapper reproduces this instead of calling the function, for performance reaons
     # Abundances of elements, relative to nH. Taken from Anders & Grevesse (1989) https://doi.org/10.1016/0016-7037(89)90286-X
-    abundance = 10 .^ ([12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25] .- 12)
-    nucleon_total = [1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0]
-    return gas_density / (m_p * dot(abundance, nucleon_total))
+    Ni_per_NH = 10 .^ (abundance .- 12)
+    nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
+    return gas_density / (m_p * dot(Ni_per_NH, nucleon_total))
 end
 
 function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, z, shape::NTuple{2,<:Integer}) where {A<:DimensionfulAngles.Angle}

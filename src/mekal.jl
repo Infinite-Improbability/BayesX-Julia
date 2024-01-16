@@ -237,13 +237,25 @@ function prepare_model_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
 
+    # We inline this instead of calling hydrogen_number_density for performance.
+    Ni_per_NH = 10 .^ (abundances .- 12)
+    nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
+    total_nucelons_per_hydrogen = dot(Ni_per_NH, nucleon_total)
+    gas_mass_per_hydrogen = m_p * total_nucelons_per_hydrogen
+
+    function nH(ρ::Unitful.Density)
+        let gas_mass_per_hydrogen = gas_mass_per_hydrogen
+            return ρ / gas_mass_per_hydrogen
+        end
+    end
+
     abundances_float = convert(Vector{Cfloat}, abundances)
 
     function volume_emissivity!(
         flux::Vector{Cfloat},
         t::U,
-        nH::N
-    ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+        ρ::N
+    ) where {U<:Unitful.Energy,N<:Unitful.Density}
         let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption, abundances_float = abundances_float
             call_mekal(
                 flux,
@@ -253,7 +265,7 @@ function prepare_model_mekal(
                 max_energy,
                 bin_sizes,
                 ustrip(Cfloat, u"keV", t),
-                ustrip(Cfloat, u"cm^-3", nH)
+                ustrip(Cfloat, u"cm^-3", nH(ρ))
             )
             @simd for i in 1:n_energy_bins
                 @inbounds flux[i] = flux[i] * absorption[i]
@@ -284,8 +296,8 @@ function prepare_model_mekal_interpolation(
     z::Real,
     abundances::AbstractVector{A}=ones(15);
     temperatures::AbstractRange{U}=(0:0.05:9.0)u"keV",
-    hydrogen_densities::AbstractRange{V}=(0:1e-3:1.0)u"cm^-3",
-) where {A<:Real,T<:Unitful.Energy,U<:Unitful.Energy,V<:NumberDensity}
+    gas_densities::AbstractRange{V}=(0:1.0e-26:1.0e-23)u"g/cm^3",
+) where {A<:Real,T<:Unitful.Energy,U<:Unitful.Energy,V<:Unitful.Density}
 
     # Get wrapper around standard MEKAL call
     base_model = prepare_model_mekal(nHcol, energy_bins, z, abundances)
@@ -298,9 +310,9 @@ function prepare_model_mekal_interpolation(
     end
 
     # Generate source flux
-    total_points = length(temperatures) * length(hydrogen_densities)
-    @mpidebug "Setting MEKAL evaluation points" size(temperatures) size(hydrogen_densities) total_points
-    points = [(t, nH) for t in temperatures, nH in hydrogen_densities]
+    total_points = length(temperatures) * length(gas_densities)
+    @mpidebug "Setting MEKAL evaluation points" size(temperatures) size(gas_densities) total_points
+    points = [(t, nH) for t in temperatures, nH in gas_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
         x -> calc_flux(x[1], x[2]),
@@ -309,22 +321,22 @@ function prepare_model_mekal_interpolation(
     @assert all(all.(isfinite, emission))
 
     @mpidebug "Generating interpolation"
-    interpol = Interpolations.scale(interpolate!(emission, BSpline(Linear())), temperatures, hydrogen_densities)
+    interpol = Interpolations.scale(interpolate!(emission, BSpline(Linear())), temperatures, gas_densities)
     @mpidebug "Emission interpolation generation complete."
 
     function volume_emissivity!(
         flux::Vector{Cfloat},
         t::U,
-        nH::N
-    ) where {U<:Unitful.Energy{Float64},N<:NumberDensity{Float64}}
+        ρ::N
+    ) where {U<:Unitful.Energy,N<:Unitful.Density}
         let interpol = interpol, base_model = base_model
             try
                 # return interpolation if possible
-                flux .= interpol(t, nH)
+                flux .= interpol(t, ρ)
             catch e
                 # otherwise fall back to direct call
                 if isa(e, BoundsError)
-                    base_model(flux, t, nH)
+                    base_model(flux, t, ρ)
                 else
                     rethrow(e)
                 end
