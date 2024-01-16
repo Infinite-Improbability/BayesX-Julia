@@ -120,7 +120,9 @@ function call_mekal(
     # TODO: Pull out of function, make variable
 
     if (temperature == 0.0) || (nH == 0.0)
-        flux .= 0.0
+        for i in 1:n_energy_bins
+            @inbounds flux[i] = 0.0f0
+        end
         return
     end
 
