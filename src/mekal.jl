@@ -266,7 +266,7 @@ function prepare_model_mekal(
 end
 
 """
-prepare_mekal_model_interpolation(nHcol, energy_bins, z, [abundances, temperatures, hydrogen_densities])
+prepare_model_mekal_interpolation(nHcol, energy_bins, z, [abundances, temperatures, hydrogen_densities])
 
 Generate an interpolation function to calculate emission with MEKAL.
 
@@ -278,7 +278,7 @@ No redshift is currently applied to energy bins - they should be assumed to be i
 It may be wise to adjust this but then `surface_brightness` will need adjustment so it doesn't apply the
 correction twice.
 """
-function prepare_mekal_model_interpolation(
+function prepare_model_mekal_interpolation(
     nHcol::SurfaceDensity,
     energy_bins::AbstractVector{T},
     z::Real,
@@ -290,16 +290,23 @@ function prepare_mekal_model_interpolation(
     # Get wrapper around standard MEKAL call
     base_model = prepare_model_mekal(nHcol, energy_bins, z, abundances)
 
+    # setup output array
+    flux::Vector{Float32} = zeros(Float32, length(energy_bins) - 1)
+    function calc_flux(T, nH)
+        base_model(flux, T, nH)
+        return flux
+    end
+
     # Generate source flux
-    total_points = size(temperatures) * size(hydrogen_densities)
+    total_points = length(temperatures) * length(hydrogen_densities)
     @mpidebug "Setting MEKAL evaluation points" size(temperatures) size(hydrogen_densities) total_points
-    points = [(ustrip(u"keV", t), ustrip(u"cm^-3", nH)) for t in temperatures, nH in hydrogen_densities]
+    points = [(t, nH) for t in temperatures, nH in hydrogen_densities]
     @mpidebug "Invoking MEKAL"
     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> base_model(x[1], x[2]),
+        x -> calc_flux(x[1], x[2]),
         points
     )
-    @assert all(isfinite, emission)
+    @assert all(all.(isfinite, emission))
 
     @mpidebug "Generating interpolation"
     interpol = Interpolations.scale(interpolate!(emission, BSpline(Linear())), temperatures, hydrogen_densities)
