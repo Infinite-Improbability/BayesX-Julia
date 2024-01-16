@@ -124,7 +124,7 @@ function sample(
     param_wrapper::Function,
     pixel_edge_angle::DimensionfulAngles.Angle=0.492u"arcsecondᵃ",
     centre_radius::Integer=0,
-    mask=nothing,
+    mask::Union{Matrix{Bool},Nothing}=nothing,
     integration_limit::Unitful.Length=Quantity(10, u"Mpc"),
     use_stepsampler=false,
     log_dir="logs",
@@ -156,6 +156,10 @@ function sample(
     @mpiinfo "Observation has shape $(size(observed))"
     @mpiinfo "Background has shape $(size(observed_background))"
     @mpiinfo "Response matrix has shape $(size(response_function))"
+
+    if isnothing(mask)
+        mask = zeros(Bool, shape)
+    end
 
     # generate count rates matrix for given parameters
     function predict_counts(params::AbstractVector{Float64})
