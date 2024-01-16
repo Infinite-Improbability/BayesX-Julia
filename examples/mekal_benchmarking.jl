@@ -25,7 +25,6 @@ emission_model = BayesJ.prepare_model_mekal(
     2.2e20u"cm^-2",
     energy_bins,
     0.1,
-    use_interpolation=false
 )
 
 flux = zeros(Float32, length(energy_bins) - 1)

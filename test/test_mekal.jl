@@ -9,15 +9,41 @@ function test_mekal()
         min_energy = ustrip.(Cfloat, u"keV", energy_bins[1:end-1])
         max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
         bin_sizes = max_energy - min_energy
-        flux = zeros(Cfloat, length(energy_bins) - 1)
+        abundances = ones(Cfloat, 15)
 
         T = 1.0u"keV"
         nH = 1.0e-4u"cm^-3"
 
-        direct_call = Vector{Cfloat}(undef, n_energy_bins)
-        BayesJ.call_mekal(direct_call, n_energy_bins, min_energy, max_energy, bin_sizes, ustrip(Cfloat, u"keV", T), ustrip(Cfloat, u"cm^-3", nH))
+        # Prepare output
+        flux = zeros(Cfloat, n_energy_bins)
+        direct_call = zeros(Cfloat, n_energy_bins)
+
+        BayesJ.call_mekal(
+            direct_call,
+            abundances,
+            n_energy_bins,
+            min_energy,
+            max_energy,
+            bin_sizes,
+            ustrip(Cfloat, u"keV", T),
+            ustrip(Cfloat, u"cm^-3", nH)
+        )
 
         @test all(isfinite, direct_call)
+
+        # Test that initial flux values don't affect results
+        @testset "Nonzero inital flux" begin
+            flux .= 3.0
+            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
+            @test flux == direct_call
+        end
+
+        # Verify that the helper wrapper returns the same results as doing the prep ourselves
+        @testset "Wrapper" begin
+            BayesJ.call_mekal(flux, abundances, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
+            @test flux == direct_call
+            display(flux ≈ direct_call)
+        end
 
         # Verify that we return zero emissions in regions of zero gas density
         # or zero temperature.
@@ -26,7 +52,7 @@ function test_mekal()
                 2.2e20u"cm^-2",
                 energy_bins,
                 0.1,
-                use_interpolation=false
+                abundances
             )
             emission_model(flux, 1.0u"keV", 0.0u"cm^-3")
             @test all(iszero, flux)
@@ -35,15 +61,8 @@ function test_mekal()
             emission_model(flux, 0.0u"keV", 0.0u"cm^-3")
             @test all(iszero, flux)
 
-            BayesJ.call_mekal(flux, energy_bins, 0, 0)
+            BayesJ.call_mekal(flux, abundances, energy_bins, 0, 0)
             @test all(iszero, flux)
-        end
-
-        # Verify that the helper wrapper returns the same results as doing the prep ourselves
-        @testset "Wrapper" begin
-            BayesJ.call_mekal(flux, energy_bins, ustrip(u"keV", T), ustrip(u"cm^-3", nH))
-            @test flux == direct_call
-            display(flux ≈ direct_call)
         end
 
         # Verify that absorption behaves as expected
@@ -53,7 +72,6 @@ function test_mekal()
                 0.0u"cm^-2",
                 energy_bins,
                 0.1,
-                use_interpolation=false
             )
             emission_model(flux, T, nH)
             @test_broken flux == direct_call
@@ -63,7 +81,6 @@ function test_mekal()
                 2.2e20u"cm^-2",
                 energy_bins,
                 0.1,
-                use_interpolation=false
             )
             emission_model(flux, T, nH)
             @test flux < direct_call
@@ -75,25 +92,25 @@ function test_mekal()
                 2.2e20u"cm^-2",
                 energy_bins,
                 0.0,
-                use_interpolation=false
+                abundances
             )
             emission_model_01 = BayesJ.prepare_model_mekal(
                 2.2e20u"cm^-2",
                 energy_bins,
                 0.1,
-                use_interpolation=false
+                abundances
             )
             emission_model_1 = BayesJ.prepare_model_mekal(
                 2.2e20u"cm^-2",
                 energy_bins,
                 1.0,
-                use_interpolation=false
+                abundances
             )
             emission_model_2 = BayesJ.prepare_model_mekal(
                 2.2e20u"cm^-2",
                 energy_bins,
                 2.0,
-                use_interpolation=false
+                abundances
             )
 
             flux0 = copy(flux)

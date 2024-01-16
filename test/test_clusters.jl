@@ -41,7 +41,6 @@ function test_model(temperature, density)
                 2.2e20u"cm^-2",
                 energy_range,
                 z,
-                use_interpolation=false
             )
             flux = zeros(Float32, length(energy_range) - 1)
 

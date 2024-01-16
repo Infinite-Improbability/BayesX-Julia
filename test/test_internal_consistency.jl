@@ -32,7 +32,6 @@ function test_single_cell_consistency()
         2.0e20u"cm^-2",
         energy_bins,
         z,
-        use_interpolation=false
     )
 
     function make_predicted(r, T, ρ)
@@ -169,7 +168,6 @@ function test_nfw_consistency()
         2.0e20u"cm^-2",
         energy_bins,
         z,
-        use_interpolation=false
     )
 
     temperature, density = Model_NFW(mass, fg, c_dm, gnfw..., z=z)

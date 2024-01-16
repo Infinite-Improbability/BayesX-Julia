@@ -317,7 +317,7 @@ function sample(
     use_interpolation::Bool=false,
     centre_radius=0,
     mask=nothing,
-    cache_size::Int64=1000000000,
+    abundances=ones(10),
     kwargs...
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
@@ -348,7 +348,11 @@ function sample(
     transform, param_wrapper = make_cube_transform(priors...)
 
     @mpiinfo "Generating emissions model"
-    emission_model = prepare_model_mekal(nHcol, energy_range, redshift, use_interpolation=use_interpolation, cache_size=cache_size)
+    if use_interpolation
+        emission_model = prepare_model_mekal_interpolated(nHcol, energy_range, redshift, abundances)
+    else
+        emission_model = prepare_model_mekal(nHcol, energy_range, redshift, abundances)
+    end
 
     if mask isa AbstractString
         @mpidebug "Loading mask"
