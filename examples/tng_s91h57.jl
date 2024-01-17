@@ -58,7 +58,7 @@ sample(
     data,
     (0.1u"keV", 3.0u"keV"),
     model,
-    priors_centre_finding,
+    priors_nfw,
     0.022e22u"cm^-2",
     0.1,
     (1340, 3400),
@@ -68,6 +68,6 @@ sample(
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_find_centre",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100),
+    log_dir="logs/s91h57_nfw",
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=200),
 )
