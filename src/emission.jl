@@ -5,6 +5,8 @@ using Cubature
 
 include("mekal.jl")
 
+export HydrogenDensity
+
 """
     ObservationError(likelihood)
 
