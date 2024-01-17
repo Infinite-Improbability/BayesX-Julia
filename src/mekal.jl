@@ -13,10 +13,6 @@ using LibXSPEC_jll
 
 export prepare_model_mekal, prepare_model_mekal_interpolation
 
-const anders_log_abundance = (12.00, 10.99, 8.56, 8.05, 8.93, 8.09, 6.33, 7.58, 6.47, 7.55, 7.21, 6.56, 6.36, 7.67, 6.25)
-const ander_Ni_per_NH = 10 .^ (anders_log_abundance .- 12)
-const nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
-
 @derived_dimension SurfaceDensity Unitful.𝐋^-2
 @derived_dimension NumberDensity Unitful.𝐋^-3
 @derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓
