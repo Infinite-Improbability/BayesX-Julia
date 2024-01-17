@@ -353,7 +353,7 @@ function sample(
 
     @mpiinfo "Generating emissions model"
     if use_interpolation
-        emission_model = prepare_model_mekal_interpolated(nHcol, energy_range, redshift, abundances)
+        emission_model = prepare_model_mekal_interpolation(nHcol, energy_range, redshift, abundances)
     else
         emission_model = prepare_model_mekal(nHcol, energy_range, redshift, abundances)
     end
