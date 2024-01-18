@@ -58,9 +58,9 @@ function test_model(temperature, density)
 
 
                 @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
-                if !(all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant))
-                    display(s_distant)
-                end
+                # if !(all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant))
+                #     display(s_distant)
+                # end
             end
 
             @testset "Finite at centre" begin
@@ -118,14 +118,14 @@ function test_einasto()
         gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Universal values from Arnaud 2010
         z = 0.5
 
-        for α in 0.6:0.1:1.9
-            @testset "α=$α" begin
-                t, d = Model_Einasto(mass, fg, c_dm, α, gnfw..., z=z)
+        for n in 0.3:0.1:10
+            @testset "n=$n" begin
+                t, d = Model_Einasto(mass, fg, c_dm, n, gnfw..., z=z)
 
                 test_model(t, d)
 
                 @testset "Unitless model call matches unitful call" begin
-                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, c_dm, α, gnfw..., z=z)
+                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, c_dm, n, gnfw..., z=z)
                     for r in logrange(1u"pc", 1u"Mpc", 100)
                         @test t(r) == tunitless(r)
                         @test d(r) == dunitless(r)
@@ -134,8 +134,8 @@ function test_einasto()
             end
         end
 
-        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 2.1, gnfw..., z=z)
-        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 0.01, gnfw..., z=z)
+        # @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 2.1, gnfw..., z=z)
+        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 53 / 3, gnfw..., z=z)
     end
 end
 

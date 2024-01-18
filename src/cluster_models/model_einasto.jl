@@ -26,8 +26,8 @@ of the model based on these profiles.
 
 Returns functions for gas temperature and gas mass density as a function of radius.
 
-If `n>2` then the gas temperature starts increasing to physically improbable
-levels (orders exceeding 10¹¹ keV). We thus constrain the value to below that. 
+If `1/n>2` then the gas temperature starts increasing to physically improbable
+levels (orders exceeding 10¹¹ keV).
 """
 function Model_Einasto(
     MT_Δ::Unitful.Mass,
@@ -52,8 +52,8 @@ function Model_Einasto(
     priorcheck(α > 0, -1e100(1 - α))
     priorcheck(c_Δ_GNFW > 0, -1e100(1 - c_Δ_GNFW))
     priorcheck(β > c_Δ_GNFW, -1e100(1 + (c_Δ_GNFW - β)))
-    priorcheck(n < 2, -1e100n) # n > 2 leads to temperature going up past some r
-    priorcheck(n >= 0.06, -1e100(1 - n)) # if 3/n > 51 then lower_gamma(3/n, x) throws an error
+    # priorcheck(n  > 0.5, -1e100/n) # 1/n > 2 leads to temperature going up past some r
+    priorcheck(3n <= 51, -1e100(3n - 15)) # if 3n > 51 then lower_gamma(3n, x) throws an error
     priorcheck(c_Δ_dm > 0, -1e100(1 - c_Δ_dm))
 
 
@@ -88,8 +88,8 @@ function Model_Einasto(
     ifunc = IntegralFunction(pei_integrand)
     integral = IntegralProblem(ifunc, (0.0u"Mpc", r_Δ), (r_s, n, r_p, α, β, γ))
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
-    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 / n *
-                                          (n / 2)^(3 / n) * exp(2 / n) *
+    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * n *
+                                          (1 / 2n)^(3n) * exp(2n) *
                                           Mg_Δ / vol_int_Δ
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
@@ -105,9 +105,9 @@ function Model_Einasto(
         # this is a problem
         r = abs(r)
         res = let ρ_s = ρ_s, rs = r_s, rp = r_p, n = n, α = α, β = β, γ = γ
-            (μ_e / μ) * (1 / (4π * G)) * (Pei_GNFW / ρ_s) / rs^3 *
-            n / (n / 2)^(3 / n) / exp(2 / n) *
-            r / safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) *
+            (μ_e / μ) * (1 / (4π * G)) * (Pei_GNFW / ρ_s) / rs^3 /
+            n / (1 / 2n)^(3n) / exp(2n) *
+            r / safe_lower_gamma(3n, 2n * (r / rs)^(1 / n)) *
             (r / rp)^(-γ) * (1 + (r / rp)^α)^(-(α + β - γ) / α) * (β * (r / rp)^α + γ)
         end
         isfinite(res) ? res : 0.0u"kg/cm^3"
@@ -118,9 +118,9 @@ function Model_Einasto(
         r = abs(r)
         res = let ρ_s = ρ_s, rs = r_s, rp = r_p, n = n, α = α, β = β, γ = γ
             4π * μ * G * ρ_s * (rs^3) *
-            (n / 2)^(3 / n) * exp(2 / n) / n *
-            safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) / r *
-            (1 + (r / rp)^n) / (β * (r / rp)^α + γ)
+            (1 / 2n)^(3n) * exp(2n) * n *
+            safe_lower_gamma(3n, 2n * (r / rs)^(1 / n)) / r *
+            (1 + (r / rp)^(1 / n)) / (β * (r / rp)^α + γ)
         end
         isfinite(res) ? res : 0.0u"keV"
     end

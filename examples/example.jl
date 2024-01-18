@@ -41,7 +41,7 @@ priors_eiansto = [
     UniformPrior("MT_500", 1.0e14, 1.0e15),
     UniformPrior("fg_500", 0.08, 0.2),
     UniformPrior("c_500", 0, 10),
-    UniformPrior("α", 0.1, 1.0),
+    UniformPrior("n", 0.1, 10),
     DeltaPrior("a", 1.0510),
     DeltaPrior("b", 5.4905),
     DeltaPrior("c", 0.3081),
