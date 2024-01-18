@@ -28,46 +28,43 @@ gas_metals = [
 ]
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
-priors_nfw = [
+priors_v2006 = [
     DeltaPrior("x0", 80.534), # from centre finding fit
     DeltaPrior("y0", 67.006), # from centering finding fit
-    UniformPrior("MT_200", 1.0e14, 5.0e14),
-    UniformPrior("fg_200", 0.03, 0.20),
-    DeltaPrior("c_200", 6.0774), # from halo structure catalogue
-    NormalPrior("a", 1.0620, 0.06),
-    NormalPrior("b", 5.4807, 1.0),
-    NormalPrior("c", 0.3292, 0.02),
-    NormalPrior("c_500_GNFW", 1.156, 0.02)
+    UniformPrior("n0", 0.1e-3, 40.0e-3),
+    UniformPrior("n02", 0.001e-2, 6.0e-1),
+    DependentLogUniformPrior("rc", "rc2", 600.0),
+    UniformPrior("rc2", 1.0, 100.0),
+    UniformPrior("α", 0.1, 3.0),
+    UniformPrior("β", 0.1, 2.0),
+    UniformPrior("β2", 0.1, 5.0),
+    UniformPrior("ϵ", 0.1, 5.0), # constrain ϵ<5
+    DependentLogUniformPrior("rs", "rc", 1400.0),
+    UniformPrior("T0", 1.0, 20.0),
+    UniformPrior("Tmin/T0", 0.01, 1.0),
+    UniformPrior("rcool", 1.0, 250.0),
+    UniformPrior("acool", 0.1, 10.0),
+    UniformPrior("rt", 0.01, 10.0),
+    UniformPrior("a", -1.0, 1.0),
+    UniformPrior("b", 0.1, 6.0),
+    UniformPrior("c", 0.1, 10.0),
+    LogUniformPrior("d", 1.0e-12, 1.0),
 ]
-
-priors_centre_finding = [
-    UniformPrior("x0", -500.0, 500.0),
-    UniformPrior("y0", -500.0, 500.0),
-    DeltaPrior("MT_200", 2.8e14),
-    DeltaPrior("fg_200", 0.13),
-    DeltaPrior("c_200", 3.0),
-    DeltaPrior("a", 1.0510),
-    DeltaPrior("b", 5.4905),
-    DeltaPrior("c", 0.3081),
-    DeltaPrior("c_500_GNFW", 1.177)
-]
-
-model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
 
 sample(
     data,
-    (0.1u"keV", 3.0u"keV"),
-    model,
-    priors_nfw,
+    (0.7u"keV", 7.0u"keV"),
+    Model_Vikhlinin2006,
+    priors_v2006,
     0.022e22u"cm^-2",
     0.1,
     (1340, 3400),
     (1340, 3400);
-    bin_size=80,
+    bin_size=40,
     centre_radius=0,
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_nfw",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=200),
+    log_dir="logs/s91h57_vikh",
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400, show_status=false),
 )
