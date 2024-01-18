@@ -286,8 +286,8 @@ function prepare_model_mekal_interpolation(
     energy_bins::AbstractVector{T},
     z::Real,
     abundances::AbstractVector{A}=ones(15);
-    temperatures::AbstractRange{U}=(0:0.05:9.0)u"keV",
-    gas_densities::AbstractRange{V}=(0:1.0e-26:1.0e-23)u"g/cm^3",
+    temperatures::AbstractRange{U}=range(0u"keV", 9u"keV", 1000),
+    gas_densities::AbstractRange{V}=range(0u"g/cm^3", m_p * 1u"cm^-3", 1000),
 ) where {A<:Real,T<:Unitful.Energy,U<:Unitful.Energy,V<:Unitful.Density}
 
     # Get wrapper around standard MEKAL call
