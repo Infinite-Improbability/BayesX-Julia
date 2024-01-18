@@ -164,7 +164,7 @@ function transform(::DependentPrior, x::Real)
 end
 
 """
-    UniformLTPrior(name::AbstractString, depends_on::AbstractString, range::Number)
+    DependentUniformPrior(name::AbstractString, depends_on::AbstractString, range::Number)
 
 Generates a dependent uniform prior.
 
