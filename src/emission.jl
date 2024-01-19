@@ -192,10 +192,10 @@ Generate an image of the cluster given functions for the radial profile of gas t
 - The limit is passed through to [`surface_brightness`](@ref)
 """
 function make_observation(
-    temperature::Function,
-    density::Function,
-    z,
-    shape,
+    temperature,
+    density,
+    z::Real,
+    shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
     emission_model,
     exposure_time::T,
@@ -252,8 +252,8 @@ function make_observation(
     brightness_line[2:end] = [
         ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
             brightness_radii[2:end],
-            temperature,
-            density,
+            Ref(temperature),
+            Ref(density),
             z,
             limit, # testing found that using 10Mpc as bound did not affect results
             Ref(emission_model),
@@ -307,10 +307,10 @@ end
 Unitless wrapper for [`make_observation`](@ref)
 """
 function make_observation(
-    temperature::Function,
-    density::Function,
-    z,
-    shape,
+    temperature,
+    density,
+    z::Real,
+    shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
     emission_model,
     exposure_time::T,
