@@ -5,7 +5,7 @@ export Model_Vikhlinin2006
 
 Generate a cluster profile using the highly free models from [vikhlininChandraSampleNearby2006](@cite).
 
-
+`d` was introduced to experiment with changing the behaviour of temperature at the core. Leave it at zero that match the original Vikhlinin equations.
 """
 function Model_Vikhlinin2006(
     n0::NumberDensity,
@@ -25,7 +25,7 @@ function Model_Vikhlinin2006(
     a,
     b,
     c,
-    d;
+    d=0;
     γ=3,
     kwargs...
 )::NTuple{2,Function}
@@ -91,12 +91,12 @@ function Model_Vikhlinin2006(
     rt = ustrip(u"kpc", rt)
 
     """
-        t(r, rt, a, b, c)
+        t(r, rt, a, b, c, d=0)
 
     Equation 4 from Vikhlinin et al. 2006. Models temperature profile outside
     central cooling region.
     """
-    function t(r, rt, a, b, c, d)
+    function t(r, rt, a, b, c, d=0)
         # Tweaking Vikhlinin's equation to avoid an infinite temperature at the core
         (r / rt + d)^(-a) / (1 + (r / rt)^b)^(c / b)
     end
