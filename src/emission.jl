@@ -42,8 +42,8 @@ The result returned is the expected count rate per unit observing area, as a vec
 """
 function surface_brightness(
     projected_radius::Unitful.Length,
-    temperature::Function,
-    density::Function,
+    temperature,
+    density,
     z::Float64,
     limit::Unitful.Length,
     model!::Function,
@@ -57,13 +57,12 @@ function surface_brightness(
 
     flux .= 0.0f0
 
-    function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Function,Function})
-        s, temp, density = params
-        r = Quantity(hypot(s, l), u"m")
+    function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Any,Any})
+        r = Quantity(hypot(params[1], l), u"m")
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         # Result is in m^-3/s
-        model!(y, temp(r), density(r))
+        model!(y, params[2](r), params[3](r))
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
