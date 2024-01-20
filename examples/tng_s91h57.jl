@@ -46,11 +46,11 @@ sample(
     0.1,
     (1340, 3400),
     (1340, 3400);
-    bin_size=40,
+    bin_size=120,
     centre_radius=0,
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_vikh",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=400, show_status=false),
+    log_dir="logs/s91h57_piecewise",
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=50, show_status=false),
 )
