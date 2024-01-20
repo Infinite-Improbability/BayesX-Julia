@@ -229,38 +229,42 @@ function make_observation(
 
     flux = Vector{Float32}(undef, size(response_function, 2))
     brightness_line = Vector{Vector{Float32}}(undef, length(brightness_radii))
-    brightness_line[1] = ustrip.(
-        Float64,
-        u"cm^(-2)/s",
-        surface_brightness(
-            brightness_radii[1],
-            temperature,
-            density,
-            z,
-            limit,
-            emission_model,
-            pixel_edge_angle,
-            flux
-        )
-    )
+    # brightness_line[1] = ustrip.(
+    #     Float64,
+    #     u"cm^(-2)/s",
+    #     surface_brightness(
+    #         brightness_radii[1],
+    #         temperature,
+    #         density,
+    #         z,
+    #         limit,
+    #         emission_model,
+    #         pixel_edge_angle,
+    #         flux
+    #     )
+    # )
 
-    if all(iszero, brightness_line[1])
-        # @mpiwarn "Inner emission is empty"
-        throw(ObservationError(-1e100))
+    # if all(iszero, brightness_line[1])
+    #     # @mpiwarn "Inner emission is empty"
+    #     throw(ObservationError(-1e100))
+    # end
+
+    for i in eachindex(brightness_line)
+        brightness_line[i] = ustrip.(
+            Float64,
+            u"cm^(-2)/s",
+            surface_brightness(
+                brightness_radii[i],
+                temperature,
+                density,
+                z,
+                limit,
+                emission_model,
+                pixel_edge_angle,
+                flux
+            )
+        )
     end
-
-    brightness_line[2:end] = [
-        ustrip.(Float64, u"cm^(-2)/s", x) for x in surface_brightness.(
-            brightness_radii[2:end],
-            Ref(temperature),
-            Ref(density),
-            z,
-            limit, # testing found that using 10Mpc as bound did not affect results
-            Ref(emission_model),
-            pixel_edge_angle,
-            Ref(flux)
-        )
-    ]
 
     # if all(iszero, brightness_line)
     #     @mpierror "This shouldn't happen"
