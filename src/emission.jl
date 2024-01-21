@@ -207,7 +207,7 @@ function make_observation(
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
-    radii_x, radii_y = shape ./ 2
+    radii_x, radii_y = shape ./ 2 # TODO: Does it need to be reversed?
 
     function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
         x = (i - radii_x) * pixel_edge_length - centre_length[1]

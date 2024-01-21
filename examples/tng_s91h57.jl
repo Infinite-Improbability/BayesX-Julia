@@ -29,12 +29,11 @@ gas_metals = [
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
 priors_piecewise = [
-    DeltaPrior("x0", 67.006), DeltaPrior("y0", 80.534), # from centering finding fit
-    # DeltaPrior("r0", 0.0), UniformPrior("ρ0", 0.0, 1e-22), UniformPrior("T0", 0.0, 10.0),
-    DeltaPrior("r1", 100.0), LogUniformPrior("ρ1", 1.e-29, 1.e-22), UniformPrior("T1", 0.0, 10.0),
-    DeltaPrior("r2", 300.0), LogUniformPrior("ρ2", 1.e-29, 1e-22), UniformPrior("T2", 0.0, 10.0),
-    DeltaPrior("r3", 500.0), DeltaPrior("ρ3", 0.0), DeltaPrior("T3", 0.0),
-    # DependentUniformPrior("r4", "r3", 1000.0), DeltaPrior("ρ4", 0.0), DeltaPrior("T4", 0.0),
+    DeltaPrior("x0", 80.534), DeltaPrior("y0", 67.006), # from centering finding fit
+    DeltaPrior("r0", 0.958), DeltaPrior("ρ0", 1.28e-26), DeltaPrior("T0", 5.04),
+    DeltaPrior("r1", 250.0), UniformPrior("ρ1", 1.e-27, 1.e-26), UniformPrior("T1", 2.0, 3.0),
+    DeltaPrior("r2", 500.0), UniformPrior("ρ2", 1.e-28, 1e-27), UniformPrior("T2", 2.0, 3.0),
+    DeltaPrior("r4", 2257), DeltaPrior("ρ4", 6.35e-29), DeltaPrior("T4", 0.27),
 ]
 
 sample(
@@ -44,10 +43,10 @@ sample(
     priors_piecewise,
     0.022e22u"cm^-2",
     0.1,
-    (1400, 3340),
-    (1400, 3340);
+    (1340, 3400),
+    (1340, 3400);
     bin_size=120,
-    centre_radius=2,
+    centre_radius=0,
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
