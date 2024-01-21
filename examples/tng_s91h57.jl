@@ -29,12 +29,12 @@ gas_metals = [
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
 priors_piecewise = [
-    DeltaPrior("x0", 80.534), DeltaPrior("y0", 67.006), # from centering finding fit
-    DeltaPrior("r0", 0.0), UniformPrior("ρ0", 0.0, 1e-22), UniformPrior("T0", 0.0, 10.0),
-    UniformPrior("r1", 0.0, 1000.0), UniformPrior("ρ1", 0.0, 1e-22), UniformPrior("T1", 0.0, 10.0),
-    DependentUniformPrior("r2", "r1", 1000.0), UniformPrior("ρ2", 0.0, 1e-22), UniformPrior("T2", 0.0, 10.0),
-    DependentUniformPrior("r3", "r2", 1000.0), UniformPrior("ρ3", 0.0, 1e-22), UniformPrior("T3", 0.0, 10.0),
-    DependentUniformPrior("r4", "r3", 1000.0), DeltaPrior("ρ4", 0.0), DeltaPrior("T4", 0.0),
+    DeltaPrior("x0", 67.006), DeltaPrior("y0", 80.534), # from centering finding fit
+    # DeltaPrior("r0", 0.0), UniformPrior("ρ0", 0.0, 1e-22), UniformPrior("T0", 0.0, 10.0),
+    UniformPrior("r1", 0.0, 1000.0), LogUniformPrior("ρ1", 1.e-29, 1.e-22), UniformPrior("T1", 0.0, 10.0),
+    DependentUniformPrior("r2", "r1", 1000.0), LogUniformPrior("ρ2", 1.e-29, 1e-22), UniformPrior("T2", 0.0, 10.0),
+    DependentUniformPrior("r3", "r2", 1000.0), DeltaPrior("ρ3", 0.0), DeltaPrior("T3", 0.0),
+    # DependentUniformPrior("r4", "r3", 1000.0), DeltaPrior("ρ4", 0.0), DeltaPrior("T4", 0.0),
 ]
 
 sample(
@@ -44,13 +44,14 @@ sample(
     priors_piecewise,
     0.022e22u"cm^-2",
     0.1,
-    (1340, 3400),
-    (1340, 3400);
+    (1400, 3340),
+    (1400, 3340);
     bin_size=120,
-    centre_radius=0,
+    centre_radius=2,
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
     log_dir="logs/s91h57_piecewise",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=50, show_status=false),
+    # resume="resume",
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100, show_status=true),
 )
