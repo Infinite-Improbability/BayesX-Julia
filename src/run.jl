@@ -93,6 +93,57 @@ function prepare_background(
     return predicted_obs_bg, predicted_bg_bg
 end
 
+function plateau_test(
+    cube_transform::Function,
+    prior_names::Vector{<:AbstractString},
+    likelihood_wrapper::Function;
+    n_tests::Integer=500
+)
+    @mpiinfo "Testing likelihood calculation"
+    test_runs = Matrix{Float64}(undef, length(prior_names) + 1, n_tests)
+
+    @showprogress for i in axes(test_runs, 2)
+        params = cube_transform(rand(length(prior_names)))
+        test_runs[:, i] .= [params; likelihood_wrapper(params)]
+    end
+    likelihoods = test_runs[end, :]
+
+    @mpiinfo "Test runs results" n_tests minimum(likelihoods) maximum(likelihoods) mean(likelihoods) median(likelihoods) mode(likelihoods)
+    value = mode(likelihoods)
+    occurrences = count(i -> i == value, likelihoods)
+    if occurrences / n_tests > 0.1
+        @mpiwarn "Likelihood plateau detected" value occurrences
+    else
+        @mpiinfo "Most common likelihood" value occurrences
+    end
+    plateau_points = test_runs[:, likelihoods.==value]
+    other_points = test_runs[:, likelihoods.!==value]
+    @assert size(plateau_points, 2) == occurrences
+    @assert size(other_points, 2) == n_tests - occurrences
+    for i in axes(plateau_points, 1)
+        if i == axes(plateau_points, 1)[end]
+            continue
+        end
+        @mpiinfo "Plateau parameter" i minimum(plateau_points[i, :]) maximum(plateau_points[i, :]) mean(plateau_points[i, :]) median(plateau_points[i, :]) mode(plateau_points[i, :])
+        @mpiinfo "Other parameter" i minimum(other_points[i, :]) maximum(other_points[i, :]) mean(other_points[i, :]) median(other_points[i, :]) mode(other_points[i, :])
+        if minimum(plateau_points[i, :]) > maximum(other_points[i, :]) || maximum(plateau_points[i, :]) < minimum(other_points[i, :])
+            @mpiwarn "Plateau and other parameter ranges do not overlap" i
+        elseif !any(minimum(plateau_points[i, :]) .< other_points[i, :] .< maximum(plateau_points[i, :]))
+            @mpiwarn "Plateau and other parameter ranges do not overlap but plateau is embedded in other" i
+        elseif maximum(plateau_points[i, :]) > maximum(other_points[i, :])
+            pct = (maximum(plateau_points[i, :]) - maximum(other_points[i, :])) / maximum(other_points[i, :]) * 100
+            if pct > 5
+                @mpiwarn "Plateau range extends above other range by $pct%."
+            end
+        elseif minimum(plateau_points[i, :]) < minimum(other_points[i, :])
+            pct = (minimum(other_points[i, :]) - minimum(plateau_points[i, :])) / minimum(other_points[i, :]) * 100
+            if pct > 5
+                @mpiwarn "Plateau range extends below other range by $pct%."
+            end
+        end
+    end
+end
+
 """
     sample(observed,observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
 
@@ -129,6 +180,7 @@ function sample(
     use_stepsampler=false,
     log_dir="logs",
     resume="subfolder",
+    plateau_tests=0,
     ultranest_run_args=NamedTuple()
 ) where {T<:AbstractArray}
     @mpidebug "Preparing for ultranest"
@@ -197,6 +249,10 @@ function sample(
             end
             rethrow()
         end
+    end
+
+    if plateau_tests > 0
+        plateau_test(transform, prior_names, likelihood_wrapper; n_tests=plateau_tests)
     end
 
     # ultranest setup
