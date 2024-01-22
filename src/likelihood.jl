@@ -194,13 +194,11 @@ struct DependentLogUniformPrior{S<:AbstractString,T<:Number} <: DependentPrior
     range::T
 end
 function transform(prior::DependentLogUniformPrior, x::Real, parent_value::Real)
-    lparent = log10(parent_value)
-    lrange = log10(prior.range)
+    max = parent_value + prior.range
+    lmin = log10(parent_value)
+    lmax = log10(max)
 
-    val = 10^(x * lrange + lparent)
-    @mpirankeddebug "Transforming dependent prior" prior.name prior.depends_on x parent_value val
-
-    return val
+    return 10^(x * (lmax - lmin) + lmin)
 end
 
 
