@@ -315,8 +315,8 @@ function sample(
                         log_obs_factorial
                     ),
                     get_centre_indices(
-                        best_fit[1] * 1u"arcsecondᵃ",
-                        best_fit[2] * 1u"arcsecondᵃ",
+                        param_wrapper(best_fit)[1] * 1u"arcsecondᵃ",
+                        param_wrapper(best_fit)[2] * 1u"arcsecondᵃ",
                         pixel_edge_angle,
                         redshift,
                         tuple(shape...)
