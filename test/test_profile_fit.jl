@@ -12,7 +12,7 @@ Random.seed!(4242)
 z = 0.1
 shape = (1, 1)
 
-pixel_edge_angle = 0.0492u"arcsecondᵃ"
+pixel_edge_angle = 0.492u"arcsecondᵃ"
 energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
 exposure_time = 3.0u"s"
 response_function = rand(Float64, (500, length(energy_bins) - 1)) * 1u"cm^2"
@@ -92,6 +92,7 @@ if MPI.Comm_rank(BayesJ.comm) == 0
     errup = results["posterior"]["errup"]
 
     best_fit_temperature, best_fit_density = Model_Piecewise(param_wrapper(best_fit)[3:end]...)
+    mean_fit_temperature, mean_fit_density = Model_Piecewise(param_wrapper(results["posterior"]["mean"])[3:end]...)
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [Model_Piecewise(param_wrapper(p)[3:end]...) for p in rand_points]
@@ -102,28 +103,31 @@ if MPI.Comm_rank(BayesJ.comm) == 0
     densities = [extrema([model[2](r) for model in models]) for r in radii]
     output_dir = sampler.logs["run_dir"]
 
-    f = Figure()
+    f = Figure(size=(1200, 1200))
     ax = Axis(f[1, 1], title="Temperature")
     lines!(radii_u, ustrip.(u"keV", temperature.(radii)), label="Original (NFW)")
     lines!(radii_u, ustrip.(u"keV", best_fit_temperature.(radii)), label="Best fit (Piecewise)")
-    band!(radii_u, ustrip.(u"keV", [t[1] for t in temperatures]), ustrip.(u"keV", [t[2] for t in temperatures]), label="68%")
+    lines!(radii_u, ustrip.(u"keV", mean_fit_temperature.(radii)), label="Mean fit (Piecewise)")
+    band!(radii_u, ustrip.(u"keV", [t[1] for t in temperatures]), ustrip.(u"keV", [t[2] for t in temperatures]), label="68%", alpha=0.5)
     axislegend()
     # ylims!(0.0, 5.0)
 
     ax2 = Axis(f[2, 1], title="Density")
-    lines!(radii_u, log10.(ustrip.(u"Msun/kpc^3", density.(radii))), label="Original (NFW)")
-    lines!(radii_u, log10.(ustrip.(u"Msun/kpc^3", best_fit_density.(radii))), label="Best fit (Piecewise)")
-    band!(radii_u, log10.(ustrip.(u"g/cm^3", [t[1] for t in densities])), log10.(ustrip.(u"g/cm^3", [t[2] for t in densities])), label="68%")
+    lines!(radii_u, ustrip.(u"Msun/kpc^3", density.(radii)), label="Original (NFW)")
+    lines!(radii_u, ustrip.(u"Msun/kpc^3", best_fit_density.(radii)), label="Best fit (Piecewise)")
+    lines!(radii_u, ustrip.(u"Msun/kpc^3", mean_fit_density.(radii)), label="Mean fit (Piecewise)")
+    band!(radii_u, ustrip.(u"Msun/kpc^3", [t[1] for t in densities]), ustrip.(u"Msun/kpc^3", [t[2] for t in densities]), label="68%", alpha=0.5)
     axislegend()
 
     ax3 = Axis(f[3, 1], title="∝ Pressure")
-    lines!(radii_u, log10.(ustrip.(u"keV*Msun/kpc^3", temperature.(radii) .* density.(radii))), label="Original (NFW)")
-    lines!(radii_u, log10.(ustrip.(u"keV*Msun/kpc^3", best_fit_temperature.(radii) .* best_fit_density.(radii))), label="Best fit (Piecewise)")
+    lines!(radii_u, ustrip.(u"keV*Msun/kpc^3", temperature.(radii) .* density.(radii)), label="Original (NFW)")
+    lines!(radii_u, ustrip.(u"keV*Msun/kpc^3", best_fit_temperature.(radii) .* best_fit_density.(radii)), label="Best fit (Piecewise)")
+    lines!(radii_u, ustrip.(u"keV*Msun/kpc^3", mean_fit_temperature.(radii) .* mean_fit_density.(radii)), label="Mean fit (Piecewise)")
     band!(
         radii_u,
-        log10.(ustrip.(u"keV*Msun/kpc^3", [t[1] * p[1] for (t, p) in zip(temperatures, densities)])),
-        log10.(ustrip.(u"keV*Msun/kpc^3", [t[2] * p[2] for (t, p) in zip(temperatures, densities)])),
-        label="68%"
+        ustrip.(u"keV*Msun/kpc^3", [t[1] * p[1] for (t, p) in zip(temperatures, densities)]),
+        ustrip.(u"keV*Msun/kpc^3", [t[2] * p[2] for (t, p) in zip(temperatures, densities)]),
+        label="68%", alpha=0.25
     )
     axislegend()
 
