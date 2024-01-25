@@ -221,7 +221,7 @@ function make_observation(
 
     shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
     if shortest_radius <= min_radius
-        error("Minimum radius $min_radius greater than oberved radius in at least one direction ($shortest_radius).")
+        error("Minimum radius $min_radius greater than observed radius in at least one direction ($shortest_radius).")
     end
 
     @mpirankeddebug "Creating brightness interpolation"

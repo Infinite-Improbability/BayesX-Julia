@@ -1,16 +1,18 @@
+using BayesJ
 using Random, PoissonRandom
 using Unitful, UnitfulAstro, DimensionfulAngles
-using BayesJ
+using LinearAlgebra: I
 
-function test_single_cell_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Density=1.0e-20u"g/cm^3")
+function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Density=1.0e-20u"g/cm^3")
     r::Unitful.Length = 0.5u"kpc"
     z = 0.1
     shape = (3, 3)
 
-    pixel_edge_angle = 0.0492u"arcsecondᵃ"
+    pixel_edge_angle = 0.492u"arcsecondᵃ"
     energy_bins = range(0.7u"keV", 7.0u"keV", length=700)
+    n_energy_bins = length(energy_bins) - 1
     exposure_time = 30000.0u"s"
-    response_function = rand(Float64, (500, length(energy_bins) - 1)) * 1u"cm^2"
+    response_function = 1u"cm^2" * Matrix(I, (n_energy_bins, n_energy_bins))
     centre_radius = 0
     integration_limit = 2 * r
 
@@ -93,7 +95,7 @@ function test_single_cell_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.D
     tu = ustrip(u"keV", T)
     ρu = ustrip(u"g/cm^3", ρ)
     label = "$(tu)keV_ρ=$(ρu)gcm3"
-    base_log_dir = joinpath("logs", "single_cell3x3", label)
+    base_log_dir = joinpath("logs", "single_cell3x3_Irmf", label)
     mkpath(base_log_dir)
 
     # Fit density
@@ -144,7 +146,7 @@ end
 
 for T in [0.5u"keV", 1.0u"keV", 2.0u"keV", 5.0u"keV"]
     for ρ in [1.0e-28u"g/cm^3", 1.0e-27u"g/cm^3", 1.0e-26u"g/cm^3", 1.0e-25u"g/cm^3", 1.0e-24u"g/cm^3"]
-        test_single_cell_consistency(T, ρ)
+        test_constant_consistency(T, ρ)
     end
 end
 
