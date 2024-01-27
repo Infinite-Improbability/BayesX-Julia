@@ -36,11 +36,27 @@ priors_piecewise = [
     DeltaPrior("r4", 2257), DeltaPrior("ρ4", 6.35e-29), DeltaPrior("T4", 0.27),
 ]
 
+priors_nfw = [
+    # UniformPrior("x0", -100.0, 100.0),
+    # UniformPrior("y0", -100.0, 100.0),
+    DeltaPrior("x0", 47.5),
+    DeltaPrior("y0", 47.5),
+    DeltaPrior("MT_200", 2.8e14),
+    NormalPrior("fg_500", 0.13, 0.01),
+    DeltaPrior("c_200", 6.07),
+    NormalPrior("a", 1.0620, 0.06),
+    NormalPrior("b", 5.4807, 1.0),
+    NormalPrior("c", 0.3292, 0.02),
+    NormalPrior("c_500_GNFW", 1.156, 0.02)
+]
+
+model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
+
 sample(
     data,
     (0.7u"keV", 7.0u"keV"),
-    Model_Piecewise,
-    priors_piecewise,
+    model,
+    priors_nfw,
     0.022e22u"cm^-2",
     0.1,
     (1340, 3400),
@@ -50,7 +66,7 @@ sample(
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_piecewise",
-    # resume="resume",
+    log_dir="logs/s91h57_nfw/run7",
+    resume="resume",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100, show_status=true),
 )
