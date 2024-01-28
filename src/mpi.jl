@@ -83,3 +83,4 @@ macro mpirankederror(exs...)
     Expr(:macrocall, Base.CoreLogging.var"@logmsg", location, level, message, kwargs...)
 end
 
+isroot() = MPI.Comm_rank(comm) == 0

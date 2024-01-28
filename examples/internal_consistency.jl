@@ -2,22 +2,41 @@ using BayesJ
 using Random, PoissonRandom
 using Unitful, UnitfulAstro, DimensionfulAngles
 using LinearAlgebra: I
+using CairoMakie
 
-function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Density=1.0e-20u"g/cm^3")
-    r::Unitful.Length = 0.5u"kpc"
+function plot(obs::Array, pred::Array, path::AbstractString)
+    if BayesJ.isroot()
+        if pred[:, 1, 1] != pred[:, 4, 4]
+            @warn "Something funky with the best fit array"
+        end
+        slice_obs = Vector{Float64}(obs[:, 4, 4])
+        slice_pred = Vector{Float64}(pred[:, 4, 4])
+
+        f = Figure()
+        ax = Axis(f[1, 1], xlabel="Channel", ylabel="Counts", yscale=Makie.pseudolog10)
+        lines!(slice_obs ./ maximum(slice_obs), label="Observation")
+        lines!(slice_pred ./ maximum(slice_pred), label="Best Fit")
+        axislegend()
+
+        save(joinpath(path, "spectra.svg"), f)
+    end
+end
+
+function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
+    r::Unitful.Length = 5.0u"Mpc"
     z = 0.1
-    shape = (3, 3)
+    shape = (9, 9)
 
-    pixel_edge_angle = 0.492u"arcsecondᵃ"
-    energy_bins = range(0.7u"keV", 7.0u"keV", length=700)
+    pixel_edge_angle = 20.0u"arcsecondᵃ"
+    energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
     n_energy_bins = length(energy_bins) - 1
-    exposure_time = 30000.0u"s"
-    response_function = 1u"cm^2" * Matrix(I, (n_energy_bins, n_energy_bins))
+    exposure_time = 3.0e6u"s"
+    response_function = 250.0u"cm^2" * Matrix(I, (n_energy_bins, n_energy_bins))
     centre_radius = 0
     integration_limit = 2 * r
 
     emission_model = BayesJ.prepare_model_mekal(
-        2.0e20u"cm^-2",
+        0.0e0u"cm^-2",
         energy_bins,
         z,
     )
@@ -41,14 +60,14 @@ function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Dens
 
         @assert all(isfinite, predicted_count_rate)
 
-        observation = pois_rand.(predicted_count_rate)
-        background_rate = rand()
-        background = Array{Int64}(undef, size(observation)...)
-        for i in eachindex(background)
-            background[i] = pois_rand(background_rate) + 1
+        obs = pois_rand.(predicted_count_rate)
+        bg_rate = rand() * min(1, maximum(predicted_count_rate))
+        bg = Array{Int64}(undef, size(obs)...)
+        for i in eachindex(bg)
+            bg[i] = pois_rand(bg_rate) + 1
         end
 
-        return observation, background
+        return obs, bg
     end
 
     function run_sampler(obs, bg, priors, log_dir=nothing)
@@ -79,6 +98,18 @@ function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Dens
             )
         )
 
+        try
+            output_dir = sampler.logs["run_dir"]
+            if output_dir isa AbstractString
+                plot(obs, best_fit_observation, joinpath(output_dir, "plots"))
+            end
+        catch e
+            if !(e isa KeyError)
+                rethrow(e)
+            end
+            BayesJ.@mpidebug "Skipping spectra plot because unable to find log information"
+        end
+
         lower_bound = result["posterior"]["errlo"]
         upper_bound = result["posterior"]["errup"]
         mean = result["posterior"]["mean"]
@@ -95,7 +126,7 @@ function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Dens
     tu = ustrip(u"keV", T)
     ρu = ustrip(u"g/cm^3", ρ)
     label = "$(tu)keV_ρ=$(ρu)gcm3"
-    base_log_dir = joinpath("logs", "single_cell3x3_Irmf", label)
+    base_log_dir = joinpath("logs", "single_cell_4", label)
     mkpath(base_log_dir)
 
     # Fit density
@@ -145,9 +176,7 @@ function test_constant_consistency(T::Unitful.Energy=0.5u"keV", ρ::Unitful.Dens
 end
 
 for T in [0.5u"keV", 1.0u"keV", 2.0u"keV", 5.0u"keV"]
-    for ρ in [1.0e-28u"g/cm^3", 1.0e-27u"g/cm^3", 1.0e-26u"g/cm^3", 1.0e-25u"g/cm^3", 1.0e-24u"g/cm^3"]
+    for ρ in [3.0e-28u"g/cm^3", 3.0e-27u"g/cm^3", 3.0e-26u"g/cm^3", 3.0e-25u"g/cm^3", 3.0e-24u"g/cm^3"]
         test_constant_consistency(T, ρ)
     end
 end
-
-# test_nfw_consistency()
