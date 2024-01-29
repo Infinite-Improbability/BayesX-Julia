@@ -68,7 +68,7 @@ function surface_brightness(
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     ifunc = IntegralFunction(integrand, flux)
     problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
-    sol = solve(problem, CubatureJLh(); reltol=1e-3, abstol=1.0)
+    sol = solve(problem, CubatureJLh(); reltol=1e-2)
     u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." sol.u
