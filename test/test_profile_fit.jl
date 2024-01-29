@@ -1,21 +1,17 @@
-using PyCall
 using Random, PoissonRandom
 using Unitful, UnitfulAstro, DimensionfulAngles
 using BayesJ
 using CairoMakie
 using MPI
-
-numpy = pyimport("numpy")
-numpy.random.seed(42)
-Random.seed!(4242)
+using LinearAlgebra: I
 
 z = 0.1
-shape = (1, 1)
+shape = (5, 5)
 
-pixel_edge_angle = 0.492u"arcsecondᵃ"
+pixel_edge_angle = 20.0u"arcsecondᵃ"
 energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
-exposure_time = 3.0u"s"
-response_function = rand(Float64, (500, length(energy_bins) - 1)) * 1u"cm^2"
+exposure_time = 3.0e6u"s"
+response_function = 250u"cm^2" * Matrix(I, (length(energy_bins) - 1, length(energy_bins) - 1))
 centre_radius = 0
 integration_limit = 10.0u"Mpc"
 
@@ -54,11 +50,10 @@ priors = [
     DeltaPrior("x0", 0.0),
     DeltaPrior("y0", 0.0),
     DeltaPrior("r0", 0.0), LogUniformPrior("ρ0", 1.e-28, 1.e-23), UniformPrior("T0", 0.0, 5.0),
-    UniformPrior("r1", 0.0, 2000.0), LogUniformPrior("ρ1", 1.e-28, 1.e-23), UniformPrior("T1", 0.0, 5.0),
-    DependentUniformPrior("r2", "r1", 2000.0), LogUniformPrior("ρ2", 1.e-28, 1.e-23), UniformPrior("T2", 0.0, 5.0),
-    DependentUniformPrior("r3", "r2", 2000.0), LogUniformPrior("ρ3", 1.e-28, 1.e-23), UniformPrior("T3", 0.0, 5.0),
-    DependentUniformPrior("r4", "r3", 2000.0), LogUniformPrior("ρ4", 1.e-28, 1.e-23), UniformPrior("T4", 0.0, 5.0),
-    DependentUniformPrior("r5", "r4", 2000.0), DeltaPrior("ρ5", 0.0), DeltaPrior("T5", 0.0),
+    DeltaPrior("r1", 300.0), LogUniformPrior("ρ1", 1.e-28, 1.e-23), UniformPrior("T1", 0.0, 5.0),
+    DeltaPrior("r2", 500.0), LogUniformPrior("ρ2", 1.e-28, 1.e-23), UniformPrior("T2", 0.0, 5.0),
+    DeltaPrior("r3", 1000.0), LogUniformPrior("ρ3", 1.e-28, 1.e-23), UniformPrior("T3", 0.0, 5.0),
+    DeltaPrior("r4", 2000.0), LogUniformPrior("ρ4", 1.e-28, 1.e-23), UniformPrior("T4", 0.0, 5.0),
 ]
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
