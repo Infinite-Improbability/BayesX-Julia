@@ -80,6 +80,7 @@ end
 Load response function for specified energy range, adjusting it to align with channel edges.
 
 Returns response matrix, energy bins and included channels.
+Assumes the RMF and ARF are formatted according to the HEASARC OGIP Calibration Memo CAL/GEN/92-002
 """
 function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::Unitful.Energy)::Tuple{Matrix{<:Unitful.Area{Float64}},Vector{<:Unitful.Energy},NTuple{2,Int64}}
     @mpidebug "Loading response matrices"
@@ -114,30 +115,48 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # Get channel ranges for each energy bin
     # F_CHAN is the first channel for a bin
     # N_CHAN is the number of channels for a bin
-    # For mysterious reasons both are given as vectors of length one
-    # We'll verify that in case anyone ever passes in a RMF that behaves differently
-    @assert all(length.(read(rmf, "F_CHAN")) .== 1) "Multiple first channel (F_CHAN) values found for single energy bin."
-    @assert all(length.(read(rmf, "N_CHAN")) .== 1) "Multiple number of channels (N_CHAN) values found for single energy bin."
-    # Then we read in the first channel for each energy bin
-    first_channel_of_bin = [i[1] for i in read(rmf, "F_CHAN")]
-    # And the number of channels
-    number_of_channels_in_bin = [i[1] for i in read(rmf, "N_CHAN")]
-    # And calculate the last channel as first_channel + number_of_channels - 1
+    # Both are given as vectors because there can be multiple ranges
+    # This is to optimise the storage of sparse matrices
+    # And also to annoy me
+    # (See https://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/docs/memos/cal_gen_92_002/cal_gen_92_002.html)
+    first_channels = read(rmf, "F_CHAN")
+    num_channels = read(rmf, "N_CHAN")
+    @assert all(length.(first_channels) .== length.(num_channels))
+    # Calculate the last channel as first_channel + number_of_channels - 1
     # The -1 accounts for the first channel channel contributing to the total number of channels
-    last_channel_of_bin = first_channel_of_bin .+ number_of_channels_in_bin .- 1
-
-    # Then we load in MATRIX
-    # For each bin this a vector giving the probability of a photon going to each channel
-    # So we want the vector to be the same length as the number of channels in the bin
-    energy_to_channel_mapping = read(rmf, "MATRIX")
-    @assert length.(energy_to_channel_mapping) == number_of_channels_in_bin "Discrepency between stated number of channels in bin (N_CHAN) and length of energy to channel mapping vector (MATRIX)"
+    last_channels = [f .+ n .- 1 for (f, n) in zip(first_channels, num_channels)]
 
     # Preallocate output matrix
     # Response matrix has shape (PI, E) where PI is channel and E is energy bin
     # NAXIS gives the number of rows (energy bins) in the table
     # We'll verify this matches our other data
-    @assert read_key(rmf, "NAXIS2")[1] == length(first_channel_of_bin) "Claimed number of rows in table does not match length of data"
-    response_matrix = zeros(Float64, (maximum(last_channel_of_bin), read_key(rmf, "NAXIS2")[1]))
+    n_bins = read_key(rmf, "NAXIS2")[1]
+    @assert n_bins == length(first_channels) "Claimed number of rows in table does not match length of data"
+    # Get the greatest channel for each bin and then the greatest channel across all bins
+    n_channels = maximum(maximum.(last_channels))
+    response_matrix = zeros(Float64, n_channels, n_bins)
+
+    # Then we load in MATRIX
+    # For each bin this a vector giving the probability of a photon going to each channel
+    # So we want the vector to be the same length as the number of channels in the bin
+    # How does this interact with multiple range? Presumbly it should be the sum of the channel subsets.
+    energy_to_channel_mapping = read(rmf, "MATRIX")
+    @assert length.(energy_to_channel_mapping) == sum.(num_channels) "Discrepency between stated number of channels in bin (N_CHAN) and length of energy to channel mapping vector (MATRIX)"
+
+    e_to_c = Vector{Vector{Vector{Float64}}}(undef, n_bins)
+    for i in eachindex(energy_to_channel_mapping)
+        ns = num_channels[i]
+        ec = energy_to_channel_mapping[i]
+        pointer = 1
+        e_to_c[i] = Vector{Vector{Float64}}(undef, length(ns))
+        for j in 1:length(ns)
+            n = ns[j]
+            last = pointer + n - 1
+            e_to_c[i][j] = ec[pointer:last]
+            pointer = last + 1
+        end
+        @assert pointer == length(ec) + 1
+    end
 
     # tidy up
     close(f_rmf)
@@ -145,9 +164,12 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # Load values into matrix
     # We iterate over energy bins, which are our columns
     @views for bin in axes(response_matrix, 2)
-        # for each bin `i` we select the appropriate channel range from the matrix with first_channel_of_bin[i]:last_channel_of_bin[i]
-        # and assign the energy mapping to it
-        response_matrix[first_channel_of_bin[bin]:last_channel_of_bin[bin], bin] = energy_to_channel_mapping[bin]
+        # Each bin may have several ranges
+        for (f, l, ec) in zip(first_channels[bin], last_channels[bin], e_to_c[bin])
+            # for each bin `i` we select the appropriate channel range from the matrix with first_channel_of_bin[i]:last_channel_of_bin[i]
+            # and assign the energy mapping to it
+            response_matrix[f:l, bin] = ec
+        end
     end
 
     # Now we have the RMF in matrix form RMF(PI, E)
@@ -184,13 +206,15 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
         response_matrix[:, bin] .*= effective_area_per_energy_bin[bin]
     end
 
+    # Get valid bin range
     # Get first bin where lower edge >= user specified `min_energy``
     min_bin = searchsortedfirst(rmf_energy_bin_minimums, min_energy)
-    min_channel = first_channel_of_bin[min_bin]
-
     # Get last bin where upper edge <= user specificed `max_energy``
     max_bin = searchsortedlast(rmf_energy_bin_maximums, max_energy)
-    max_channel = last_channel_of_bin[max_bin]
+
+    # Get minimum and maximum channels in valid bin range
+    min_channel = minimum(minimum(first_channels[min_bin:max_bin]))
+    max_channel = maximum(maximum(last_channels[min_bin:max_bin]))
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
     trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # we only apply units here for type reasons
