@@ -126,10 +126,10 @@ version = "0.4.7"
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.BayesJ]]
-deps = ["ArgCheck", "CairoMakie", "Clustering", "Cosmology", "Cubature", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "PhysicalConstants", "PoissonRandom", "ProgressMeter", "PyCall", "QuadGK", "Random", "SpecialFunctions", "SpectralFitting", "Statistics", "Unitful", "UnitfulAstro"]
+deps = ["ArgCheck", "CairoMakie", "Clustering", "Cosmology", "DelimitedFiles", "DimensionfulAngles", "Distributions", "FITSIO", "Integrals", "Interpolations", "LibXSPEC_jll", "LinearAlgebra", "MPI", "MPIPreferences", "PhysicalConstants", "PoissonRandom", "ProgressMeter", "PyCall", "QuadGK", "Random", "SpecialFunctions", "SpectralFitting", "Statistics", "Unitful", "UnitfulAstro"]
 path = ".."
 uuid = "35f7d120-1210-4aa9-b260-6d18979f7586"
-version = "0.8.0"
+version = "0.10.1"
 
 [[deps.BibInternal]]
 git-tree-sha1 = "0c62b284a52ec39ee831e10bf62c17d587dde75f"
