@@ -31,6 +31,8 @@ emission_model = BayesJ.prepare_model_mekal(
 #     0.1,
 # )
 
+resp = ustrip.(Float32, u"m^2", response_function)
+exp_time = ustrip.(Float32, u"s", exposure_time)
 
 flux = zeros(Float32, length(energy_bins) - 1)
 
@@ -50,7 +52,9 @@ display(
             $integration_limit,
             $emission_model,
             $pixel_edge_angle,
-            $flux
+            $flux,
+            $resp,
+            $exp_time
         )
     end
 )
@@ -90,7 +94,9 @@ display(
             $integration_limit,
             $emission_model,
             $pixel_edge_angle,
-            $flux
+            $flux,
+            $resp,
+            $exp_time
         )
     end
 )
@@ -112,31 +118,31 @@ display(
     end
 )
 
-@profview BayesJ.make_observation(
-    temperature_cnst,
-    density_cnst,
-    z,
-    shape,
-    pixel_edge_angle,
-    emission_model,
-    exposure_time,
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    centre_radius,
-    limit=integration_limit,
-)
+# @profview BayesJ.make_observation(
+#     temperature_cnst,
+#     density_cnst,
+#     z,
+#     shape,
+#     pixel_edge_angle,
+#     emission_model,
+#     exposure_time,
+#     response_function,
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#     centre_radius,
+#     limit=integration_limit,
+# )
 
 
-@profview BayesJ.make_observation(
-    temperature_pw,
-    density_pw,
-    z,
-    shape,
-    pixel_edge_angle,
-    emission_model,
-    exposure_time,
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    centre_radius,
-    limit=integration_limit,
-)
+# @profview BayesJ.make_observation(
+#     temperature_pw,
+#     density_pw,
+#     z,
+#     shape,
+#     pixel_edge_angle,
+#     emission_model,
+#     exposure_time,
+#     response_function,
+#     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+#     centre_radius,
+#     limit=integration_limit,
+# )

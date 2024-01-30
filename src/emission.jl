@@ -47,35 +47,42 @@ function surface_brightness(
     limit::Unitful.Length,
     model!::Function,
     pixel_edge_angle::DimensionfulAngles.Angle,
-    flux::Vector{Float32}
-)::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
+    flux::Vector{Float32},
+    response_function::Matrix{Float32},
+    exposure_time::Float32,
+)::Vector{Float64}
+    @mpirankeddebug "Surface brightness called" projected_radius
+
     @argcheck limit > 0u"Mpc"
 
     lim = ustrip(Float64, u"m", limit)
     pr = ustrip(Float64, u"m", projected_radius)
 
     flux .= 0.0f0
+    channels = Vector{Float32}(undef, size(response_function, 1))
 
     function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Any,Any})
-        r = Quantity(hypot(params[1], l), u"m")
+        let flux = flux
+            r = Quantity(hypot(params[1], l), u"m")
 
-        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
-        # Result is in m^-3/s
-        model!(y, params[2](r), params[3](r))
+            # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
+            # Result is in m^-3/s
+            model!(flux, params[2](r), params[3](r))
+            y .= apply_response_function(flux, response_function, exposure_time)
+        end
     end
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    ifunc = IntegralFunction(integrand, flux)
+    ifunc = IntegralFunction(integrand, channels)
     problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
     sol = solve(problem, HCubatureJL(); reltol=1e-2)
-    u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." sol.u
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
         @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc")
     end
-    return 2 * u * pixel_edge_angle^2 / Quantity(4π, u"srᵃ") / (1 + z)^2
+    return 2 * sol.u * ustrip(u"radᵃ", pixel_edge_angle)^2 / 4π / (1 + z)^2
 
     # sol is volume emissivity per face area of column
     # because of how we defined the limits we have to double it
@@ -223,6 +230,17 @@ function make_observation(
         error("Minimum radius $min_radius greater than observed radius in at least one direction ($shortest_radius).")
     end
 
+    @mpirankeddebug "Preparing response function"
+    resp::Matrix{Float32} = ustrip.(Float32, u"m^2", response_function)
+    exp_time::Float32 = ustrip(Float32, u"s", exposure_time)
+    @mpirankeddebug "Creating counts array"
+
+
+    @mpirankeddebug "Checking mask"
+    if isnothing(mask)
+        mask = zeros(Bool, shape...)
+    end
+
     brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
     @mpirankeddebug "Creating brightness interpolation" length(brightness_radii)
 
@@ -249,19 +267,17 @@ function make_observation(
     # end
 
     for i in eachindex(brightness_line)
-        brightness_line[i] = ustrip.(
-            Float64,
-            u"cm^(-2)/s",
-            surface_brightness(
-                brightness_radii[i],
-                temperature,
-                density,
-                z,
-                limit,
-                emission_model,
-                pixel_edge_angle,
-                flux
-            )
+        brightness_line[i] = surface_brightness(
+            brightness_radii[i],
+            temperature,
+            density,
+            z,
+            limit,
+            emission_model,
+            pixel_edge_angle,
+            flux,
+            resp,
+            exp_time
         )
     end
 
@@ -273,16 +289,7 @@ function make_observation(
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
     @mpirankeddebug "Calculating counts"
-    @mpirankeddebug "Preparing response function"
-    resp::Matrix{Float64} = ustrip.(Float64, u"cm^2", response_function)
-    exp_time::Float64 = ustrip(Float64, u"s", exposure_time)
-    @mpirankeddebug "Creating counts array"
     counts = Array{Union{Float64,Missing}}(undef, size(response_function, 1), shape...)
-
-    @mpirankeddebug "Checking mask"
-    if isnothing(mask)
-        mask = zeros(Bool, shape...)
-    end
 
     @mpirankeddebug "Iterating over pixels"
     for j in 1:shape[2]
@@ -293,8 +300,7 @@ function make_observation(
             elseif mask[i, j]
                 counts[:, i, j] .= missing
             else
-                brightness::Vector{Float64} = brightness_interpolation(radius)
-                counts[:, i, j] = apply_response_function(brightness, resp, exp_time)::Vector{Float64}
+                counts[:, i, j] = brightness_interpolation(radius)
             end
         end
     end
