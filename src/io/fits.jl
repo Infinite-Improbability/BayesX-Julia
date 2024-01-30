@@ -338,9 +338,6 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     min_channel = minimum(minimum.(trimmed_first))
     max_channel = maximum(maximum.(last_channels[min_bin:max_bin]))
 
-    display([min_bin max_bin min_channel max_channel])
-    display(minimum(first_channels[min_bin:max_bin]))
-
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
     trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # we only apply units here for type reasons
 
