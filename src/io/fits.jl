@@ -1,8 +1,8 @@
-# Import our patch
 using FITSIO
 
 export FITSData
 
+# Import our patch
 include("fitsio_fix.jl")
 
 # TODO: Be more specific with types
@@ -22,7 +22,7 @@ struct FITSData{S<:AbstractString,T<:DimensionfulAngles.Angle} <: Dataset
     pixel_edge_angle::T
 end
 function FITSData(obs::S, bg::S, arf::S, rmf::S, pea::Unitful.DimensionlessQuantity) where {S<:AbstractString}
-    @warn "You should use dimensionful angles"
+    @mpiwarn "You should use dimensionful angles"
     FITSData(obs, bg, arf, rmf, ustrip(u"rad", pea) * 1u"radᵃ")
 end
 
@@ -94,14 +94,19 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
 
     # Open RMF file
     f_rmf = FITS(data.rmf)
+
+    # Get the HDU with the matrix
     rmf_hdus::Vector{TableHDU} = [
-        h for h in f_rmf if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] == "MATRIX"
+        h for h in f_rmf if safe_read_key(h, "extname", "Exception when looking for matrix HDU. Probably a HDU without extname.")[1] in ["MATRIX", "SPECRESP MATRIX"]
     ]
     if length(rmf_hdus) > 1
-        @warn "$(length(rmf_hdus)) HDUs with matrix extension found. Using the first."
+        @mpiwarn "$(length(rmf_hdus)) HDUs with matrix extension found. Using the first."
     end
     rmf = rmf_hdus[1]
     @mpidebug "Selected HDU with MATRIX extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.rmf) for RMF"
+
+    # Load the header
+    header = read_header(rmf)
 
     # ENERG_LO and ENERGY_HI are the bounding energies of the bins.
     # We verify these bins are continuous and not overlapping.
@@ -119,8 +124,99 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # This is to optimise the storage of sparse matrices
     # And also to annoy me
     # (See https://heasarc.gsfc.nasa.gov/docs/heasarc/caldb/docs/memos/cal_gen_92_002/cal_gen_92_002.html)
+    # Furthermore they may use fixed or variable length arrays
+
+    # We need to find the index of the F_CHAN column
+    # It should always be 4 but we won't assume
+    f_index = 0
+    for key in keys(header)
+        if header[key] == "F_CHAN"
+            stripped = strip(key, ('T', 'Y', 'P', 'E'))
+            f_index = parse(Int, stripped)
+            break
+        end
+    end
+    if f_index == 0
+        @mpierror "Could not find F_CHAN column in RMF header"
+    elseif f_index != 4
+        @mpiwarn "F_CHAN column is not in the expected position (4). This suggests a nonstandard RMF."
+    end
+
+    n_index = 0
+    for key in keys(header)
+        if header[key] == "N_CHAN"
+            stripped = strip(key, ('T', 'Y', 'P', 'E'))
+            n_index = parse(Int, stripped)
+            break
+        end
+    end
+    if n_index == 0
+        @mpierror "Could not find N_CHAN column in RMF header"
+    elseif n_index != 5
+        @mpiwarn "N_CHAN column is not in the expected position (5). This suggests a nonstandard RMF."
+    end
+
+    m_index = 0
+    for key in keys(header)
+        if header[key] == "MATRIX"
+            stripped = strip(key, ('T', 'Y', 'P', 'E'))
+            m_index = parse(Int, stripped)
+            break
+        end
+    end
+    if m_index == 0
+        @mpierror "Could not find MATRIX column in RMF header"
+    elseif m_index != 6
+        @mpiwarn "MATRIX column is not in the expected position (6). This suggests a nonstandard RMF."
+    end
+
+    # Load in the channel ranges
     first_channels = read(rmf, "F_CHAN")
     num_channels = read(rmf, "N_CHAN")
+
+    # But fixed and variable length arrays behave differently
+    # We add special fixed length handling here
+    # Format code examples follow
+    # Fixed length: 3J
+    # Variable length: PJ(3)
+    f_format = header["TFORM$f_index"] # First channel data format
+    if isdigit(f_format[1])
+        digits = []
+        for c in f_format
+            if isdigit(c)
+                push!(digits, c)
+            else
+                break
+            end
+        end
+        len = parse(Int, join(digits))
+
+        if 'P' in f_format && len > 1
+            @mpierror "F_CHAN reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
+        end
+
+        first_channels = [collect(Iterators.partition(first_channels, len))]
+    end
+
+    n_format = header["TFORM$n_index"]
+    if isdigit(n_format[1])
+        digits = []
+        for c in n_format
+            if isdigit(c)
+                push!(digits, c)
+            else
+                break
+            end
+        end
+        len = parse(Int, join(digits))
+
+        if 'P' in n_format && len > 1
+            @mpierror "N_CHAN reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
+        end
+
+        num_channels = [collect(Iterators.partition(num_channels, len))]
+    end
+
     @assert all(length.(first_channels) .== length.(num_channels))
     # Calculate the last channel as first_channel + number_of_channels - 1
     # The -1 accounts for the first channel channel contributing to the total number of channels
@@ -130,10 +226,10 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # Response matrix has shape (PI, E) where PI is channel and E is energy bin
     # NAXIS gives the number of rows (energy bins) in the table
     # We'll verify this matches our other data
-    n_bins = read_key(rmf, "NAXIS2")[1]
-    @assert n_bins == length(first_channels) "Claimed number of rows in table does not match length of data"
-    # Get the greatest channel for each bin and then the greatest channel across all bins
-    n_channels = maximum(maximum.(last_channels))
+    n_bins = header["NAXIS2"]
+    @assert n_bins == length(first_channels) "Claimed number of rows in table ($n_bins) does not match length of data $(length(first_channels))"
+    # Get the number of channels from the header
+    n_channels = header["DETCHANS"]
     response_matrix = zeros(Float64, n_channels, n_bins)
 
     # Then we load in MATRIX
@@ -141,6 +237,25 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # So we want the vector to be the same length as the number of channels in the bin
     # How does this interact with multiple range? Presumbly it should be the sum of the channel subsets.
     energy_to_channel_mapping = read(rmf, "MATRIX")
+    m_format = header["TFORM$m_index"]
+    if isdigit(m_format[1])
+        digits = []
+        for c in m_format
+            if isdigit(c)
+                push!(digits, c)
+            else
+                break
+            end
+        end
+        len = parse(Int, join(digits))
+
+        if 'P' in m_format && len > 1
+            @mpierror "MATRIX reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
+        end
+
+        energy_to_channel_mapping = [collect(Iterators.partition(energy_to_channel_mapping, len))]
+    end
+
     @assert length.(energy_to_channel_mapping) == sum.(num_channels) "Discrepency between stated number of channels in bin (N_CHAN) and length of energy to channel mapping vector (MATRIX)"
 
     e_to_c = Vector{Vector{Vector{Float64}}}(undef, n_bins)
@@ -149,7 +264,7 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
         ec = energy_to_channel_mapping[i]
         pointer = 1
         e_to_c[i] = Vector{Vector{Float64}}(undef, length(ns))
-        for j in 1:length(ns)
+        for j in 1:length(ns) # we don't want eachindex(ns) because we want order guaranteed
             n = ns[j]
             last = pointer + n - 1
             e_to_c[i][j] = ec[pointer:last]
