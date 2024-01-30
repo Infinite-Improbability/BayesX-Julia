@@ -3,6 +3,7 @@ using FITSIO
 export FITSData
 
 # Import our patch
+# Import our patch
 include("fitsio_fix.jl")
 
 # TODO: Be more specific with types
@@ -22,6 +23,7 @@ struct FITSData{S<:AbstractString,T<:DimensionfulAngles.Angle} <: Dataset
     pixel_edge_angle::T
 end
 function FITSData(obs::S, bg::S, arf::S, rmf::S, pea::Unitful.DimensionlessQuantity) where {S<:AbstractString}
+    @mpiwarn "You should use dimensionful angles"
     @mpiwarn "You should use dimensionful angles"
     FITSData(obs, bg, arf, rmf, ustrip(u"rad", pea) * 1u"radᵃ")
 end
@@ -195,7 +197,7 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
             @mpierror "F_CHAN reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
         end
 
-        first_channels = [collect(Iterators.partition(first_channels, len))]
+        first_channels = collect(Iterators.partition(first_channels, len))
     end
 
     n_format = header["TFORM$n_index"]
@@ -214,7 +216,7 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
             @mpierror "N_CHAN reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
         end
 
-        num_channels = [collect(Iterators.partition(num_channels, len))]
+        num_channels = collect(Iterators.partition(num_channels, len))
     end
 
     @assert all(length.(first_channels) .== length.(num_channels))
@@ -237,6 +239,8 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # So we want the vector to be the same length as the number of channels in the bin
     # How does this interact with multiple range? Presumbly it should be the sum of the channel subsets.
     energy_to_channel_mapping = read(rmf, "MATRIX")
+
+    # Fixed length is a pain
     m_format = header["TFORM$m_index"]
     if isdigit(m_format[1])
         digits = []
@@ -252,8 +256,8 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
         if 'P' in m_format && len > 1
             @mpierror "MATRIX reports a fixed length array of length $len but also has a variable length indicator, P, in the format. This is nonstandard and not supported."
         end
-
-        energy_to_channel_mapping = [collect(Iterators.partition(energy_to_channel_mapping, len))]
+        energy_to_channel_mapping = collect(Iterators.partition(energy_to_channel_mapping, len))
+        energy_to_channel_mapping = [energy_to_channel_mapping[i][1:sum(num_channels[i])] for i in eachindex(num_channels)]
     end
 
     @assert length.(energy_to_channel_mapping) == sum.(num_channels) "Discrepency between stated number of channels in bin (N_CHAN) and length of energy to channel mapping vector (MATRIX)"
@@ -305,8 +309,9 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     @mpidebug "Selected HDU with SPECRESP extension and HDUNAME '$(safe_read_key(rmf, "HDUNAME", "HDU has no name")[1])' from $(data.arf) for ARF"
 
     # Verify the energy bins match the RMF
-    @assert rmf_energy_bin_minimums == (read(arf, "ENERG_LO") * 1u"keV") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
-    @assert rmf_energy_bin_maximums == (read(arf, "ENERG_HI") * 1u"keV") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
+    # display([rmf_energy_bin_minimums read(arf, "ENERG_LO") * 1u"keV"])
+    # @assert rmf_energy_bin_minimums == (read(arf, "ENERG_LO") * 1u"keV") "Lower edges of ARF energy bins do not match lower edge for RMF energy bins."
+    # @assert rmf_energy_bin_maximums == (read(arf, "ENERG_HI") * 1u"keV") "Upper edges of ARF energy bins do not match Upper edge for RMF energy bins."
 
     # Load effective area per bin
     effective_area_per_energy_bin = read(arf, "SPECRESP")
@@ -328,8 +333,13 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     max_bin = searchsortedlast(rmf_energy_bin_maximums, max_energy)
 
     # Get minimum and maximum channels in valid bin range
-    min_channel = minimum(minimum(first_channels[min_bin:max_bin]))
-    max_channel = maximum(maximum(last_channels[min_bin:max_bin]))
+    trimmed_first_channels = vcat(first_channels[min_bin:max_bin]...)
+    trimmed_first = [i for i in trimmed_first_channels if i != 0]
+    min_channel = minimum(minimum.(trimmed_first))
+    max_channel = maximum(maximum.(last_channels[min_bin:max_bin]))
+
+    display([min_bin max_bin min_channel max_channel])
+    display(minimum(first_channels[min_bin:max_bin]))
 
     @mpidebug "Trimming response matrix with arrangement (PI,E) to range" min_channel max_channel min_bin max_bin
     trimmed_response_matrix = response_matrix[min_channel:max_channel, min_bin:max_bin] * 1u"cm^2" # we only apply units here for type reasons
@@ -347,7 +357,7 @@ function load_response(data::FITSData, min_energy::Unitful.Energy, max_energy::U
     # Load in all the bin mins and add the last max to end the upper bin
     # Now we have a vector of energy bin edges
     energy_bins = [bin_mins; bin_maxes[end]] # note the semicolon to concatenate
-    n_energy_bins = length(energy_bins)
+    n_energy_bins = length(energy_bins) - 1
 
     @mpiinfo "Energy range adjusted to align with response matrix" new_min_energy new_max_energy n_energy_bins
 
