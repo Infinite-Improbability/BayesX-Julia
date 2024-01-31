@@ -377,7 +377,7 @@ function sample(
     use_interpolation::Bool=false,
     centre_radius=0,
     mask=nothing,
-    abundances=ones(10),
+    abundances=ones(15),
     kwargs...
 )
     @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
