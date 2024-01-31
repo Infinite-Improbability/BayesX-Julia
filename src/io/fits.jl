@@ -60,7 +60,21 @@ function load_events_from_fits(path::AbstractString)::Pair{<:Matrix,<:Unitful.Ti
         live_time = read_key(h, "EXPOSURE")[1] # We don't want safe_read_key because we want an exception if this fails.
     end
 
-    return [read(h, "x") read(h, "y") read(h, "pi")] => live_time * 1u"s" # TODO: manual units bad
+    x = read(h, "x")
+    y = read(h, "y")
+
+    # Get pulse invariant (PI) or raw pulse (PHA) channels
+    # The fits column fetch is case insensitive but the julia check isn't so we'll force case
+    cols = uppercase.(FITSIO.colnames(h))
+    if "PI" in cols
+        channels = read(h, "PI")
+    elseif "PHA" in cols
+        channels = read(h, "PHA")
+    else
+        error("Unable to find 'PI' or 'PHA' channel column in events file.\nColumns are: $cols")
+    end
+
+    return [x y channels] => live_time * 1u"s" # TODO: manual units bad
 end
 
 """
