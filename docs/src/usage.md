@@ -61,3 +61,12 @@ sample(
 )
 ```
 The available models are described in [Cluster Models](@ref cluster_models_page).
+
+!!! tip
+    Bayes-X can be run with MPI using the standard MPI methods.
+    ```shell
+    mpiexec julia --color=yes --project=@. script.jl
+    ```
+    `@.` determines the Julia environment from the working directory. You may also specify a path to the environment - see the command help..
+    The colour flag is optional but recommended for interactive use - it simply forces coloured terminal output.
+    It is generally desirable to have `1/e` processes where `e` is the expected sampling efficiency.
