@@ -3,6 +3,7 @@ using Unitful, DimensionfulAngles
 
 include("metallicity.jl")
 
+# Load data
 data = FITSData(
     "data/tng/tng_s91_h57_y_obs_evt.fits",
     "data/tng/tng_s91_h57_y_bg.fits",
@@ -11,6 +12,7 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
+# Load abundances from tng metadata
 gas_metal_fractions = [
     0.7543419003486633,
     0.24289754033088684,
@@ -28,6 +30,7 @@ gas_metals = [
 ]
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
+# sample prior set for piecewise fit
 priors_piecewise = [
     DeltaPrior("x0", 80.534), DeltaPrior("y0", 67.006), # from centering finding fit
     DeltaPrior("r0", 0.958), DeltaPrior("ρ0", 1.28e-26), DeltaPrior("T0", 5.04),
@@ -36,6 +39,7 @@ priors_piecewise = [
     DeltaPrior("r4", 2257), DeltaPrior("ρ4", 6.35e-29), DeltaPrior("T4", 0.27),
 ]
 
+# sample prior set for nfw fit
 priors_nfw = [
     # UniformPrior("x0", -100.0, 100.0),
     # UniformPrior("y0", -100.0, 100.0),
@@ -50,6 +54,7 @@ priors_nfw = [
     NormalPrior("c_500_GNFW", 1.156, 0.02)
 ]
 
+# override the default overdensity of 500
 model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
 
 sample(
@@ -66,7 +71,7 @@ sample(
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_nfw/run7",
-    resume="resume",
+    log_dir="logs/s91h57_nfw",
+    resume="subfolder",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100, show_status=true),
 )
