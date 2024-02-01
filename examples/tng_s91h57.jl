@@ -1,14 +1,15 @@
 using BayesJ
-using Unitful, DimensionfulAngles
+using Unitful, UnitfulAstro, DimensionfulAngles
+using Cosmology
 
 include("metallicity.jl")
 
 # Load data
 data = FITSData(
-    "data/tng/tng_s91_h57_y_obs_evt.fits",
-    "data/tng/tng_s91_h57_y_bg.fits",
-    "data/tng/acisi_aimpt_cy0.arf",
-    "data/tng/acisi_aimpt_cy0.rmf",
+    "../data/tng_s91_h57_3/y/chandra_acisi_cy0_obs_evts.fits",
+    "../data/tng_s91_h57_3/bg/chandra_acisi_cy0_bg_evts.fits",
+    "../data/tng_s91_h57_3/response_files/acisi/acisi_aimpt_cy0.arf",
+    "../data/tng_s91_h57_3/response_files/acisi/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
 )
 
@@ -30,48 +31,35 @@ gas_metals = [
 ]
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
+redshift = 0.1
+centre_radius = 7
+bin_size = 103
+centre_radius_kpc = ustrip(u"kpc", centre_radius * bin_size * ustrip(u"radᵃ", data.pixel_edge_angle) * angular_diameter_dist(BayesJ.cosmo, redshift))
+BayesJ.BayesJ.@mpiinfo "Fixed inner radius from centre exclusion." centre_radius_kpc
+
 # sample prior set for piecewise fit
 priors_piecewise = [
     DeltaPrior("x0", 80.534), DeltaPrior("y0", 67.006), # from centering finding fit
-    DeltaPrior("r0", 0.958), DeltaPrior("ρ0", 1.28e-26), DeltaPrior("T0", 5.04),
-    DeltaPrior("r1", 250.0), UniformPrior("ρ1", 1.e-27, 1.e-26), UniformPrior("T1", 2.0, 3.0),
-    DeltaPrior("r2", 500.0), UniformPrior("ρ2", 1.e-28, 1e-27), UniformPrior("T2", 2.0, 3.0),
-    DeltaPrior("r4", 2257), DeltaPrior("ρ4", 6.35e-29), DeltaPrior("T4", 0.27),
+    DeltaPrior("r500", 885.7), DeltaPrior("ρ500", 2.195e-28), DeltaPrior("T500", 1.70),
+    DeltaPrior("r200", 1338.2), UniformPrior("ρ200", 1.e-29, 1.e-28), UniformPrior("T200", 0.0, 5.0),
+    DeltaPrior("r_edge", 2000.0), UniformPrior("ρ_edge", 1.e-29, 1.e-28), UniformPrior("T_edge", 0.0, 5.0)
 ]
-
-# sample prior set for nfw fit
-priors_nfw = [
-    # UniformPrior("x0", -100.0, 100.0),
-    # UniformPrior("y0", -100.0, 100.0),
-    DeltaPrior("x0", 47.5),
-    DeltaPrior("y0", 47.5),
-    DeltaPrior("MT_200", 2.8e14),
-    NormalPrior("fg_500", 0.13, 0.01),
-    DeltaPrior("c_200", 6.07),
-    NormalPrior("a", 1.0620, 0.06),
-    NormalPrior("b", 5.4807, 1.0),
-    NormalPrior("c", 0.3292, 0.02),
-    NormalPrior("c_500_GNFW", 1.156, 0.02)
-]
-
-# override the default overdensity of 500
-model(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
 
 sample(
     data,
-    (0.7u"keV", 7.0u"keV"),
-    model,
-    priors_nfw,
+    (0.1u"keV", 7.0u"keV"),
+    Model_Piecewise,
+    priors_piecewise,
     0.022e22u"cm^-2",
-    0.1,
+    redshift,
     (1340, 3400),
     (1340, 3400);
-    bin_size=120,
-    centre_radius=0,
+    bin_size=bin_size,
+    centre_radius=centre_radius,
     abundances=abundances,
     use_interpolation=false,
     use_stepsampler=false,
-    log_dir="logs/s91h57_nfw",
+    log_dir="../logs/s91h57_edge",
     resume="subfolder",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100, show_status=true),
 )
