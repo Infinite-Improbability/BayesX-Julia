@@ -357,11 +357,10 @@ energy range.
 
 * The cluster model can be any function that takes a set of parameters matching the priors and a `z` keyword argument, 
 and returns two functions for the gas temperature and gas mass density as a function of radius.
-* The first two priors should always be `x0` and `y0`, giving cluster centre position.
-* `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation.
+* The first two priors should always be named "x0" and "y0", giving cluster centre position ("x" and "y" are also accepted).
+* `x` and `y` are tuples of `(min, max)` in pixels. These crop the observation. Bin size is specified in the same units.
 * `mask` is optional. If included it should be a string pointing to a mask file using CIAO syntax. Only ellipses are supported.
 * `centre_radius` excludes some radius, in pixels, around the centre from analysis
-* `cache_size` controls the MEKAL cache size, in bytes (default is 1GB) [disabled]
 * Additional kwargs will be passed through to the next `sample` function.
 """
 function sample(
