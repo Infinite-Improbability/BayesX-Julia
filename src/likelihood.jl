@@ -8,26 +8,23 @@ export DeltaPrior, LogUniformPrior, UniformPrior, NormalPrior, GenericPrior, Dep
 Calculate the log-likelihood of the prediction given an observation.
 
 The observed and predicted arrays include background events.
-Log factorial is calculated as `ln(observed) + ln(observed_background)`.
-We require it to be supplied to improve performance - no need to calculate it every time.
 
-We assume the predicted_background is scaled to the same exposure time as the observed background.
+The constant likelihood includes all parts of the likelihood that remain
+constant across observations. We require it to be supplied to improve performance - no need to calculate it every time. 
+It also includes the log factorial components calculated as `ln(observed) + ln(observed_background)`.
+As we haven't implemented support for background fitting on the user input side of things this includes the background.
 """
 function log_likelihood(
     observed,
-    observed_background,
     predicted,
-    predicted_background,
-    observed_log_factorial
+    constant_likelihood
 )
     # @mpirankeddebug "Calculating log likelihood"
 
     t = log_likelihood_array(
         observed,
-        observed_background,
         predicted,
-        predicted_background,
-        observed_log_factorial
+        constant_likelihood
     )
     # @mpirankeddebug "likelihood is" sum(skipmissing(t))
     return sum(skipmissing(t))
@@ -35,22 +32,10 @@ end
 
 function log_likelihood_array(
     observed,
-    observed_background,
     predicted,
-    predicted_background,
-    observed_log_factorial
+    constant_likelihood
 )
-    @assert size(observed) == size(predicted) "Observations have size $(size(observed)) whereas predictions have size $(size(predicted))"
-    @assert size(observed) == size(observed_background)
-    @assert size(predicted) == size(predicted_background) || Tuple(size(predicted, 1)) == size(predicted_background) || size(predicted_background) == ()
-
-    @assert all(i -> (i > 0) || !isfinite(i), skipmissing(predicted))
-
-    t1 = @. observed * log(predicted) - predicted
-    t2 = @. observed_background * log(predicted_background) - predicted_background
-
-    t = t1 + t2 - observed_log_factorial
-
+    t = @. observed * log(predicted) - predicted + constant_likelihood
     @assert all(isfinite, skipmissing(t))
 
     return t

@@ -213,41 +213,49 @@ function sample(
         mask = zeros(Bool, shape)
     end
 
+    # The likelihood calculated from the background is constant
+    # We might as well precalculate it
+    # If we ever want to fit the background we can change it again.
+    background_likelihood = @. observed_background * log(predicted_bg_bg) - predicted_bg_bg
+    constant_likelihood = background_likelihood - log_obs_factorial
+
     # generate count rates matrix for given parameters
     function predict_counts(params::AbstractVector{Float64})
-        full_params = param_wrapper(params)
-        predict_counts_with_params(
-            full_params;
-            cluster_model=cluster_model,
-            emission_model=emission_model,
-            redshift=redshift,
-            predicted_bg_over_obs_time=predicted_obs_bg,
-            shape=shape,
-            pixel_edge_angle=pixel_edge_angle,
-            observation_exposure_time=obs_exposure_time,
-            response_function=response_function,
-            centre_radius=centre_radius,
-            mask=mask,
-            integration_limit=integration_limit
-        )
+        let cluster_model = cluster_model, emission_model = emission_model, redshift = redshift, predicted_obs_bg = predicted_obs_bg, shape = shape, pixel_edge_angle = pixel_edge_angle, obs_exposure_time = obs_exposure_time, response_function = response_function, centre_radius = centre_radius, mask = mask, integration_limit = integration_limit
+            full_params = param_wrapper(params)
+            predict_counts_with_params(
+                full_params;
+                cluster_model=cluster_model,
+                emission_model=emission_model,
+                redshift=redshift,
+                predicted_bg_over_obs_time=predicted_obs_bg,
+                shape=shape,
+                pixel_edge_angle=pixel_edge_angle,
+                observation_exposure_time=obs_exposure_time,
+                response_function=response_function,
+                centre_radius=centre_radius,
+                mask=mask,
+                integration_limit=integration_limit
+            )
+        end
     end
 
     # a wrapper to handle running the gas model and likelihood calculation
     function likelihood_wrapper(params::AbstractVector{Float64})::Float64
-        try
-            return log_likelihood(
-                observed,
-                observed_background,
-                predict_counts(params),
-                predicted_bg_bg,
-                log_obs_factorial
-            )
-        catch e
-            if e isa PriorError || e isa ObservationError
-                @mpidebug "Prior or observation error" e params
-                return e.likelihood
+        let observed = observed, constant_likelihood = constant_likelihood
+            try
+                return log_likelihood(
+                    observed,
+                    predict_counts(params),
+                    constant_likelihood,
+                )
+            catch e
+                if e isa PriorError || e isa ObservationError
+                    @mpidebug "Prior or observation error" e params
+                    return e.likelihood
+                end
+                rethrow()
             end
-            rethrow()
         end
     end
 
@@ -309,10 +317,8 @@ function sample(
                     observed,
                     log_likelihood_array(
                         observed,
-                        observed_background,
                         best_fit_observation,
-                        predicted_bg_bg,
-                        log_obs_factorial
+                        constant_likelihood
                     ),
                     get_centre_indices(
                         param_wrapper(best_fit)[1] * 1u"arcsecondᵃ",
