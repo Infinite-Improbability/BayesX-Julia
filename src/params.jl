@@ -1,5 +1,5 @@
 using Cosmology
-using Unitful
+using Unitful, DimensionfulAngles, Cosmology
 using PhysicalConstants.CODATA2018: m_p, G, k_B
 
 """
@@ -30,3 +30,16 @@ const μ = 0.6 * m_p
 
 """Mean gas mass per electron = 1.14mₚ"""
 const μ_e = 1.14 * m_p
+
+function angle_to_length(θ::A, redshift) where {A<:DimensionfulAngles.Angle}
+    return ustrip(u"radᵃ", θ) * angular_diameter_dist(cosmo, redshift)
+end
+
+function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, shape::NTuple{2,<:Integer}) where {A<:DimensionfulAngles.Angle}
+    radii_x, radii_y = shape ./ 2
+
+    i = centre_x / pixel_edge_angle + radii_x
+    j = centre_y / pixel_edge_angle + radii_y
+
+    return (i, j)
+end

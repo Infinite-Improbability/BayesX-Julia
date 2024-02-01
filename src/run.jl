@@ -195,7 +195,7 @@ function sample(
     @argcheck size(observed) == size(observed_background)
     @argcheck size(observed, 1) == size(response_function, 1)
 
-    @mpiinfo "Preparing background"
+    @mpidebug "Preparing background model"
     predicted_obs_bg, predicted_bg_bg = prepare_background(
         observed,
         observed_background,
@@ -208,12 +208,25 @@ function sample(
 
     shape = (size(observed, 2), size(observed, 3))
 
-    @mpiinfo "Observation has shape $(size(observed))"
-    @mpiinfo "Background has shape $(size(observed_background))"
-    @mpiinfo "Response matrix has shape $(size(response_function))"
+    @mpidebug "Observation has shape $(size(observed))"
+    @mpidebug "Background has shape $(size(observed_background))"
+    @mpidebug "Response matrix has shape $(size(response_function))"
 
     if isnothing(mask)
         mask = zeros(Bool, shape)
+    else
+        @mpiinfo "Mask excludes $(count(mask))/$(shape[1] * shape[2]) pixels from analysis."
+    end
+    @assert size(mask) == shape
+
+    let
+        n_channels, n_x_bins, n_y_bins = size(observed)
+        x_width = angle_to_length(n_x_bins * pixel_edge_angle, redshift)
+        y_width = angle_to_length(n_y_bins * pixel_edge_angle, redshift)
+        pixel_edge_length = angle_to_length(pixel_edge_angle, redshift)
+        # TODO: Display number of events, accounting for mask
+        @mpiinfo "Data has $n_channels channels, $n_x_bins x bins and $n_y_bins y bins." pixel_edge_angle pixel_edge_length x_width y_width
+        @mpiinfo "Core exclusion radius is $centre_radius pixels or $(angle_to_length(centre_radius * pixel_edge_angle, redshift))."
     end
 
     # The likelihood calculated from the background is constant
@@ -327,7 +340,6 @@ function sample(
                         param_wrapper(best_fit)[1] * 1u"arcsecondᵃ",
                         param_wrapper(best_fit)[2] * 1u"arcsecondᵃ",
                         pixel_edge_angle,
-                        redshift,
                         tuple(shape...)
                     ),
                 )
@@ -356,7 +368,7 @@ end
         y::NTuple{2,<:Real};
         bin_size::Real=10,
         use_interpolation::Bool=false,
-        centre_radius=0,
+        centre_radius::Int=0,
         mask=nothing,
         cache_size::Int64=1000000000
         )
@@ -383,7 +395,7 @@ function sample(
     y::NTuple{2,<:Real};
     bin_size::Real=10,
     use_interpolation::Bool=false,
-    centre_radius=0,
+    centre_radius::Int=0,
     mask=nothing,
     abundances=ones(15),
     kwargs...
@@ -403,10 +415,10 @@ function sample(
     y_edges = y[1]:bin_size:y[2]
     @mpidebug "Spatial bounds" x_edges y_edges
 
-    @mpiinfo "Binning observation data"
+    @mpiinfo "Binning data using $bin_size pixel bins."
+    @mpidebug "Binning observation data"
     obs = bin_events(data, observation.first, channel_range, x_edges, y_edges)
-
-    @mpiinfo "Binning background data"
+    @mpidebug "Binning background data"
     bg = bin_events(data, observed_background.first, channel_range, x_edges, y_edges)
 
     pixel_edge_angle = bin_size * data.pixel_edge_angle
@@ -423,9 +435,8 @@ function sample(
     end
 
     if mask isa AbstractString
-        @mpidebug "Loading mask"
+        @mpiinfo "Loading mask"
         mask = load_mask(mask, x_edges, y_edges)
-        @mpiinfo "Mask size is $(size(mask))"
     end
 
     sample(

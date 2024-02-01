@@ -166,19 +166,6 @@ function hydrogen_number_density(gas_density::Unitful.Density, relative_abundanc
 end
 # @deprecate hydrogen_number_density(gas_density::Unitful.Density, relative_abundance::AbstractVector{<:Real}) HydrogenDensity(relative_abundance)(gas_density::Unitful.Density)
 
-function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, z, shape::NTuple{2,<:Integer}) where {A<:DimensionfulAngles.Angle}
-    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
-    x = ustrip.(u"radᵃ", centre_x) .* angular_diameter_dist(cosmo, z)
-    y = ustrip.(u"radᵃ", centre_y) .* angular_diameter_dist(cosmo, z)
-
-    radii_x, radii_y = shape ./ 2
-
-    i = x / pixel_edge_length + radii_x
-    j = y / pixel_edge_length + radii_y
-
-    return (i, j)
-end
-
 """
     make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit=10u"Mpc")
 
@@ -204,7 +191,7 @@ function make_observation(
     mask::Union{Matrix{Bool},Nothing}=nothing,
     limit::Unitful.Length=Quantity(10, u"Mpc")
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
-    pixel_edge_length = ustrip(u"radᵃ", pixel_edge_angle) * angular_diameter_dist(cosmo, z)
+    pixel_edge_length = angle_to_length(pixel_edge_angle, z)
     centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
     radii_x, radii_y = shape ./ 2 # TODO: Does it need to be reversed?
 
