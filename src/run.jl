@@ -345,6 +345,8 @@ function sample(
                     ),
                 )
                 save("$output_dir/plots/blobs.svg", p)
+                @mpiinfo "Copying original script to log folder"
+                cp(PROGRAM_FILE, "$output_dir/$(basename(PROGRAM_FILE))")
             end
         catch e
             if !(e isa KeyError)
