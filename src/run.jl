@@ -287,7 +287,8 @@ function sample(
         transform=transform,
         vectorized=false,
         log_dir=log_dir,
-        resume=resume
+        resume=resume,
+        draw_multiple=false
     )
 
     if use_stepsampler
