@@ -6,11 +6,11 @@ include("metallicity.jl")
 
 # Load data
 data = FITSData(
-    "../data/tng_s91_h57_3/y/chandra_acisi_cy0_obs_evts.fits",
-    "../data/tng_s91_h57_3/bg/chandra_acisi_cy0_bg_evts.fits",
-    "../data/tng_s91_h57_3/response_files/acisi/acisi_aimpt_cy0.arf",
-    "../data/tng_s91_h57_3/response_files/acisi/acisi_aimpt_cy0.rmf",
-    0.492u"arcsecondᵃ"
+    "../data/tng_s91_h57_4/y/lynx_hdxi_obs_evts.fits",
+    "../data/tng_s91_h57_4/bg/lynx_hdxi_bg_evts.fits",
+    "../data/tng_s91_h57_4/response_files/lynx_hdxi/xrs_hdxi_3x10.arf",
+    "../data/tng_s91_h57_4/response_files/lynx_hdxi/xrs_hdxi.rmf",
+    0.322u"arcsecondᵃ"
 )
 
 # Load abundances from tng metadata
@@ -33,27 +33,29 @@ abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
 redshift = 0.1
 centre_radius = 7
-bin_size = 103
+bin_size = 128
 centre_radius_kpc = ustrip(u"kpc", centre_radius * bin_size * ustrip(u"radᵃ", data.pixel_edge_angle) * angular_diameter_dist(BayesJ.cosmo, redshift))
-BayesJ.BayesJ.@mpiinfo "Fixed inner radius from centre exclusion." centre_radius_kpc
+inner_radius = centre_radius_kpc * 1.1
+r1 = (inner_radius + 1200.0) / 2
+BayesJ.BayesJ.@mpiinfo "Fixed inner radius from centre exclusion." centre_radius_kpc inner_radius r1
 
 # sample prior set for piecewise fit
 priors_piecewise = [
-    DeltaPrior("x0", 80.534), DeltaPrior("y0", 67.006), # from centering finding fit
-    DeltaPrior("r500", 885.7), DeltaPrior("ρ500", 2.195e-28), DeltaPrior("T500", 1.70),
-    DeltaPrior("r200", 1338.2), UniformPrior("ρ200", 1.e-29, 1.e-28), UniformPrior("T200", 0.0, 5.0),
-    DeltaPrior("r_edge", 2000.0), UniformPrior("ρ_edge", 1.e-29, 1.e-28), UniformPrior("T_edge", 0.0, 5.0)
+    DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
+    DeltaPrior("r0", inner_radius), DeltaPrior("ρ0", 5.24e-28), DeltaPrior("T0", 2.074),
+    DeltaPrior("r1", r1), UniformPrior("ρ1", 1.e-28, 1.e-27), UniformPrior("T1", 1.407, 2.074),
+    DeltaPrior("r2", 1200.0), DeltaPrior("ρ2", 1.137e-28), DeltaPrior("T2", 1.407),
 ]
 
 sample(
     data,
-    (0.1u"keV", 7.0u"keV"),
+    (0.05u"keV", 2.5u"keV"),
     Model_Piecewise,
     priors_piecewise,
     0.022e22u"cm^-2",
     redshift,
-    (1340, 3400),
-    (1340, 3400);
+    (2048, 6144),
+    (2048, 6144);
     bin_size=bin_size,
     centre_radius=centre_radius,
     abundances=abundances,
