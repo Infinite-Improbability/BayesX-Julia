@@ -23,15 +23,35 @@ function plot(obs::Array, pred::Array, path::AbstractString)
 end
 
 function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
+    tu = ustrip(u"keV", T)
+    ρu = ustrip(u"g/cm^3", ρ)
+    label = "$(tu)keV_ρ=$(ρu)gcm3"
+    base_log_dir = joinpath("..", "logs", "constant", "acisi-cy0", label)
+
+    if isfile(joinpath(base_log_dir, "temperature_density", "run1", "info", "results.json"))
+        BayesJ.@mpiwarn "Skipping run as folder exists for this combination" T ρ base_log_dir
+        return
+    end
+
+    mkpath(base_log_dir)
+
     r::Unitful.Length = 5.0u"Mpc"
     z = 0.1
     shape = (9, 9)
 
     pixel_edge_angle = 20.0u"arcsecondᵃ"
-    energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
-    n_energy_bins = length(energy_bins) - 1
+    energy_bins = range(0.7u"keV", 7.0u"keV", step=0.05u"keV")
     exposure_time = 3.0e6u"s"
-    response_function = 250.0u"cm^2" * Matrix(I, (n_energy_bins, n_energy_bins))
+
+    data = FITSData(
+        "",
+        "",
+        "../data/tng/acisi_aimpt_cy0.arf",
+        "../data/tng/acisi_aimpt_cy0.rmf",
+        0.492u"arcsecondᵃ"
+    )
+
+    response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
     centre_radius = 0
     integration_limit = 2 * r
 
@@ -40,35 +60,6 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
         energy_bins,
         z,
     )
-
-    function make_predicted(r, T, ρ)
-        temperature, density = Model_Constant(r, T, ρ)
-
-        predicted_count_rate = BayesJ.make_observation(
-            temperature,
-            density,
-            z,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            exposure_time,
-            response_function,
-            (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-            centre_radius,
-            limit=integration_limit,
-        )
-
-        @assert all(isfinite, predicted_count_rate)
-
-        obs = pois_rand.(predicted_count_rate)
-        bg_rate = rand() * min(1, maximum(predicted_count_rate))
-        bg = Array{Int64}(undef, size(obs)...)
-        for i in eachindex(bg)
-            bg[i] = pois_rand(bg_rate) + 1
-        end
-
-        return obs, bg
-    end
 
     function run_sampler(obs, bg, priors, log_dir=nothing)
         prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
@@ -121,13 +112,30 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
         return lower_bound, upper_bound, mean_lower, mean_upper
     end
 
-    observation, background = make_predicted(r, T, ρ)
+    temperature, density = Model_Constant(r, T, ρ)
 
-    tu = ustrip(u"keV", T)
-    ρu = ustrip(u"g/cm^3", ρ)
-    label = "$(tu)keV_ρ=$(ρu)gcm3"
-    base_log_dir = joinpath("logs", "single_cell_4", label)
-    mkpath(base_log_dir)
+    predicted_count_rate = BayesJ.make_observation(
+        temperature,
+        density,
+        z,
+        shape,
+        pixel_edge_angle,
+        emission_model,
+        exposure_time,
+        response_function,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        centre_radius,
+        limit=integration_limit,
+    )
+
+    @assert all(isfinite, predicted_count_rate)
+
+    observation = pois_rand.(predicted_count_rate)
+    bg_rate = rand() * min(1, maximum(predicted_count_rate))
+    background = Array{Int64}(undef, size(observation)...)
+    for i in eachindex(background)
+        background[i] = pois_rand(bg_rate) + 1
+    end
 
     # Fit density
     priors = [
@@ -176,7 +184,9 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
 end
 
 for T in [0.5u"keV", 1.0u"keV", 2.0u"keV", 5.0u"keV"]
-    for ρ in [3.0e-28u"g/cm^3", 3.0e-27u"g/cm^3", 3.0e-26u"g/cm^3", 3.0e-25u"g/cm^3", 3.0e-24u"g/cm^3"]
+    for ρ in [3.0e-28u"g/cm^3", 3.0e-27u"g/cm^3", 3.0e-26u"g/cm^3"]
         test_constant_consistency(T, ρ)
+        # GC.gc(true)
+        # ccall(:malloc_trim, Int32, (Int32,), 0)
     end
 end
