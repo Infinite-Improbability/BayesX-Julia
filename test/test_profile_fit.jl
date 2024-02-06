@@ -6,10 +6,10 @@ using MPI
 using LinearAlgebra: I
 
 z = 0.1
-shape = (5, 5)
+shape = (9, 9)
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
-energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
+energy_bins = range(0.7u"keV", 7.0u"keV", step=0.05u"keV")
 exposure_time = 3.0e6u"s"
 response_function = 250u"cm^2" * Matrix(I, (length(energy_bins) - 1, length(energy_bins) - 1))
 centre_radius = 0
@@ -21,7 +21,7 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
+temperature, density = Model_Piecewise(0.0, 3.0e-27, 4.0, 1000.0, 3.0e-28, 1.5)
 
 predicted_count_rate = BayesJ.make_observation(
     temperature,
@@ -46,15 +46,16 @@ for i in eachindex(background)
     background[i] = pois_rand(background_rate) + 1
 end
 
+
 priors = [
     DeltaPrior("x0", 0.0),
     DeltaPrior("y0", 0.0),
-    DeltaPrior("r0", 0.0), LogUniformPrior("ρ0", 1.e-28, 1.e-23), UniformPrior("T0", 0.0, 5.0),
-    DeltaPrior("r1", 300.0), LogUniformPrior("ρ1", 1.e-28, 1.e-23), UniformPrior("T1", 0.0, 5.0),
-    DeltaPrior("r2", 500.0), LogUniformPrior("ρ2", 1.e-28, 1.e-23), UniformPrior("T2", 0.0, 5.0),
-    DeltaPrior("r3", 1000.0), LogUniformPrior("ρ3", 1.e-28, 1.e-23), UniformPrior("T3", 0.0, 5.0),
-    DeltaPrior("r4", 2000.0), LogUniformPrior("ρ4", 1.e-28, 1.e-23), UniformPrior("T4", 0.0, 5.0),
+    DeltaPrior("r0", 0.0), DeltaPrior("ρ0", 3.0e-27), DeltaPrior("T0", 4.0),
+    DeltaPrior("r1", 500.0), LogUniformPrior("ρ1", 3.e-28, 3.e-27), UniformPrior("T1", 0.0, 5.0),
+    DeltaPrior("r2", 1000.0), DeltaPrior("ρ2", 3.0e-28), DeltaPrior("T2", 1.5),
 ]
+
+BayesJ.@mpiinfo "Fitting single point" uconvert(u"g/cm^3", density(500.0u"kpc")) uconvert(u"keV", temperature(500.0u"kpc"))
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
 prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
@@ -91,7 +92,7 @@ if MPI.Comm_rank(BayesJ.comm) == 0
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [Model_Piecewise(param_wrapper(p)[3:end]...) for p in rand_points]
-    radii = range(0.0u"kpc", 6000.0u"kpc", length=1000)
+    radii = range(0.0u"kpc", 1200.0u"kpc", length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
     temperatures = [extrema([model[1](r) for model in models]) for r in radii]
