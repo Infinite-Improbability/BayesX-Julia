@@ -26,7 +26,7 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
     tu = ustrip(u"keV", T)
     ρu = ustrip(u"g/cm^3", ρ)
     label = "$(tu)keV_ρ=$(ρu)gcm3"
-    base_log_dir = joinpath("..", "logs", "constant", "acisi-cy0", label)
+    base_log_dir = joinpath("..", "logs", "constant", "xrism-xtend", label)
 
     if isfile(joinpath(base_log_dir, "temperature_density", "run1", "info", "results.json"))
         BayesJ.@mpiwarn "Skipping run as folder exists for this combination" T ρ base_log_dir
@@ -46,9 +46,9 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
     data = FITSData(
         "",
         "",
-        "../data/tng/acisi_aimpt_cy0.arf",
-        "../data/tng/acisi_aimpt_cy0.rmf",
-        0.492u"arcsecondᵃ"
+        "../data/tng_s91_h57_4/response_files/xrism_xtend/sxt-i_140505_ts02um_int01.8r_intall_140618psf.arf",
+        "../data/tng_s91_h57_4/response_files/xrism_xtend/ah_sxi_20120702.rmf",
+        1.77u"arcsecondᵃ"
     )
 
     response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
@@ -137,35 +137,35 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
         background[i] = pois_rand(bg_rate) + 1
     end
 
-    # Fit density
-    priors = [
-        BayesJ.DeltaPrior("x0", 0.0),
-        BayesJ.DeltaPrior("y0", 0.0),
-        BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-        BayesJ.DeltaPrior("T", ustrip(u"keV", T)),
-        BayesJ.LogUniformPrior("ρ", 1.0e-29, 1.0e-23),
-    ]
-    lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "density"))
-    if lb[1] < ρu < ub[1]
-        BayesJ.@mpiinfo "Density fit passed" lb[1] ρu ub[1]
-    else
-        BayesJ.@mpiwarn "Density fit failed" lb[1] ρu ub[1]
-    end
+    # # Fit density
+    # priors = [
+    #     BayesJ.DeltaPrior("x0", 0.0),
+    #     BayesJ.DeltaPrior("y0", 0.0),
+    #     BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
+    #     BayesJ.DeltaPrior("T", ustrip(u"keV", T)),
+    #     BayesJ.LogUniformPrior("ρ", 1.0e-29, 1.0e-23),
+    # ]
+    # lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "density"))
+    # if lb[1] < ρu < ub[1]
+    #     BayesJ.@mpiinfo "Density fit passed" lb[1] ρu ub[1]
+    # else
+    #     BayesJ.@mpiwarn "Density fit failed" lb[1] ρu ub[1]
+    # end
 
-    # Fit temperature
-    priors = [
-        BayesJ.DeltaPrior("x0", 0.0),
-        BayesJ.DeltaPrior("y0", 0.0),
-        BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-        BayesJ.UniformPrior("T", 0.0, 8.0),
-        BayesJ.DeltaPrior("ρ", ustrip(u"g/cm^3", ρ)),
-    ]
-    lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "temperature"))
-    if lb[1] < tu < ub[1]
-        BayesJ.@mpiinfo "Temperature fit passed" lb[1] tu ub[1]
-    else
-        BayesJ.@mpiwarn "Temperature fit failed" lb[1] tu ub[1]
-    end
+    # # Fit temperature
+    # priors = [
+    #     BayesJ.DeltaPrior("x0", 0.0),
+    #     BayesJ.DeltaPrior("y0", 0.0),
+    #     BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
+    #     BayesJ.UniformPrior("T", 0.0, 8.0),
+    #     BayesJ.DeltaPrior("ρ", ustrip(u"g/cm^3", ρ)),
+    # ]
+    # lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "temperature"))
+    # if lb[1] < tu < ub[1]
+    #     BayesJ.@mpiinfo "Temperature fit passed" lb[1] tu ub[1]
+    # else
+    #     BayesJ.@mpiwarn "Temperature fit failed" lb[1] tu ub[1]
+    # end
 
     # Fit both
     priors = [
