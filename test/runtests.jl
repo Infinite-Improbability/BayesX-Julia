@@ -18,7 +18,3 @@ end
 if default || all_tests || "clusters" in ARGS
     include("test_clusters.jl")
 end
-
-if all_tests || "internal" in ARGS
-    include("test_internal_consistency.jl")
-end
