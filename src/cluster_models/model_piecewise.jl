@@ -46,6 +46,16 @@ function (li::LinearInterpolator)(x::Number)
     return li.y[i] + (li.y[i+1] - li.y[i]) / (li.x[i+1] - li.x[i]) * (x - li.x[i])
 end
 
+"""
+    Model_Piecewise(radius, density, temperature, radius, density, temperature, ...)
+
+Construct a piecewise model for the given data.
+
+The model is constructed by linearly interpolating the given data. See [`LinearInterpolator`](@ref)
+for details on the interpolation behaviour.
+
+Density is assumed to be in units of `g/cm^3`, temperature in units of `keV`, and radius in units of `kpc`.
+"""
 function Model_Piecewise(args::Vararg{Real}; kwargs...)
     @argcheck length(args) % 3 == 0 "Model_Piecewise args must be a multiple of three, in a sequence `r_i`, `ρ_i`, `T_i`"
 
