@@ -87,7 +87,17 @@ function Model_Einasto(
     @mpirankeddebug "Integrating to find Pei"
     ifunc = IntegralFunction(pei_integrand)
     integral = IntegralProblem(ifunc, (0.0u"Mpc", r_Δ), (r_s, n, r_p, α, β, γ))
-    vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
+    vol_int_Δ = try
+        solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
+    catch e
+        if e isa DomainError
+            @mpirankeddebug "Pei integral failed, returning -1e-100"
+            throw(PriorError(-1e-100))
+        else
+            rethrow()
+        end
+    end
+
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * n *
                                           (1 / 2n)^(3n) * exp(2n) *
                                           Mg_Δ / vol_int_Δ
