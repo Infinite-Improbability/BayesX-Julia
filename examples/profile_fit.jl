@@ -4,7 +4,7 @@ using BayesJ
 using CairoMakie
 using LinearAlgebra: I
 
-z = 0.5
+z = 0.1
 shape = (32, 32)
 
 data = FITSData(
@@ -17,7 +17,7 @@ data = FITSData(
 
 response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-pixel_edge_angle = 4.92u"arcsecondᵃ"
+pixel_edge_angle = 49.2u"arcsecondᵃ"
 exposure_time = 30.0e6u"s"
 centre_radius = 0
 
@@ -27,7 +27,9 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
+cluster_model(args...; kwargs...) = Model_NFW(args...; kwargs...)
+
+temperature, density = cluster_model(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
 
 predicted_count_rate = BayesJ.make_observation(
     temperature,
@@ -83,12 +85,12 @@ sampler, results, best_fit_observation = BayesJ.sample(
     exposure_time, # TODO: Make different
     z;
     prior_names=prior_names,
-    cluster_model=Model_NFW,
+    cluster_model=cluster_model,
     emission_model=emission_model,
     param_wrapper=param_wrapper,
     pixel_edge_angle=pixel_edge_angle,
     centre_radius=centre_radius,
-    log_dir="../logs/nfw_piecewise",
+    log_dir="../logs/ic/nfw",
     # resume="resume",
     ultranest_run_args=(
         max_num_improvement_loops=3,
@@ -100,11 +102,11 @@ if BayesJ.isroot()
     errlo = results["posterior"]["errlo"]
     errup = results["posterior"]["errup"]
 
-    best_fit_temperature, best_fit_density = Model_NFW(param_wrapper(best_fit)[3:end]..., z=z)
-    mean_fit_temperature, mean_fit_density = Model_NFW(param_wrapper(results["posterior"]["mean"])[3:end]..., z=z)
+    best_fit_temperature, best_fit_density = cluster_model(param_wrapper(best_fit)[3:end]..., z=z)
+    mean_fit_temperature, mean_fit_density = cluster_model(param_wrapper(results["posterior"]["mean"])[3:end]..., z=z)
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
-    models = [Model_Piecewise(param_wrapper(p)[3:end]...) for p in rand_points]
+    models = [cluster_model(param_wrapper(p)[3:end]..., z=z) for p in rand_points]
     radii = range(0.0u"kpc", 1000u"kpc", length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
