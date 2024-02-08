@@ -57,17 +57,17 @@ display(
 display(
     @benchmark begin
         BayesJ.make_observation(
-            temperature_cnst,
-            density_cnst,
-            z,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            exposure_time,
-            response_function,
-            (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-            centre_radius,
-            limit=integration_limit,
+            $temperature_cnst,
+            $density_cnst,
+            $z,
+            $shape,
+            $pixel_edge_angle,
+            $emission_model,
+            $exposure_time,
+            $response_function,
+            $(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+            $centre_radius,
+            limit=$integration_limit,
         )
     end
 )
@@ -97,46 +97,17 @@ display(
 display(
     @benchmark begin
         BayesJ.make_observation(
-            temperature_pw,
-            density_pw,
-            z,
-            shape,
-            pixel_edge_angle,
-            emission_model,
-            exposure_time,
-            response_function,
-            (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-            centre_radius,
-            limit=integration_limit,
+            $temperature_pw,
+            $density_pw,
+            $z,
+            $shape,
+            $pixel_edge_angle,
+            $emission_model,
+            $exposure_time,
+            $response_function,
+            $(0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+            $centre_radius,
+            limit=$integration_limit,
         )
     end
-)
-
-@profview BayesJ.make_observation(
-    temperature_cnst,
-    density_cnst,
-    z,
-    shape,
-    pixel_edge_angle,
-    emission_model,
-    exposure_time,
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    centre_radius,
-    limit=integration_limit,
-)
-
-
-@profview BayesJ.make_observation(
-    temperature_pw,
-    density_pw,
-    z,
-    shape,
-    pixel_edge_angle,
-    emission_model,
-    exposure_time,
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    centre_radius,
-    limit=integration_limit,
 )
