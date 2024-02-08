@@ -167,6 +167,18 @@ end
 # @deprecate hydrogen_number_density(gas_density::Unitful.Density, relative_abundance::AbstractVector{<:Real}) HydrogenDensity(relative_abundance)(gas_density::Unitful.Density)
 
 """
+    pixel_offset(ij, array_centre_indices, centre_offset_pixels)
+
+Calculate the distance from the centre of the cluster to the pixel at indices ij.
+
+Result in pixels.
+"""
+function pixel_offset(ij, array_centre_indices, centre_offset_pixels)::Float64
+    offset = Tuple(ij) .- array_centre_indices .- centre_offset_pixels
+    return hypot(offset...)
+end
+
+"""
     make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit=10u"Mpc")
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
@@ -187,60 +199,39 @@ function make_observation(
     exposure_time::T,
     response_function::AbstractArray{<:Unitful.Area,2},
     centre::NTuple{2,<:DimensionfulAngles.Angle},
-    centre_radius;
+    centre_radius::Real;
     mask::Union{Matrix{Bool},Nothing}=nothing,
     limit::Unitful.Length=Quantity(10, u"Mpc")
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
+    # pixel size
     pixel_edge_length = angle_to_length(pixel_edge_angle, z)
-    centre_length = ustrip.(u"radᵃ", centre) .* angular_diameter_dist(cosmo, z)
-    radii_x, radii_y = shape ./ 2 # TODO: Does it need to be reversed?
 
-    function radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
-        x = (i - radii_x) * pixel_edge_length - centre_length[1]
-        y = (j - radii_y) * pixel_edge_length - centre_length[2]
-        abs(hypot(x, y))
+    # Centre of the data array
+    array_centre_pixels = (shape .+ 1) ./ 2
+
+    # Offset of cluster centre from data array centre
+    centre_offset = angle_to_length.(centre, z)
+    centre_offset_pixels = centre_offset ./ pixel_edge_length
+
+    if any(centre_radius .> array_centre_pixels)
+        @mpirankedwarn "Centre exclusion radius greater than observed radius in at least one direction" centre_radius array_centre_pixels
     end
 
-    # Setting the min radius proportional to R500 throws off the results in favour of large mass
-    # by varying the number of pixels contributing to the likelihood.
-    min_radius = centre_radius * pixel_edge_length
-
-    shortest_radius = min(radii_x * pixel_edge_length, radii_y * pixel_edge_length)
-    if shortest_radius <= min_radius
-        error("Minimum radius $min_radius greater than observed radius in at least one direction ($shortest_radius).")
-    end
-
-    brightness_radii = min_radius:(2*pixel_edge_length):(hypot(radii_x + 2, radii_y + 2)*pixel_edge_length+hypot(centre_length...))
+    brightness_radii = range(
+        centre_radius,
+        stop=hypot((array_centre_pixels .+ centre_offset_pixels .+ 1)...),
+        step=2.0
+    )
     @mpirankeddebug "Creating brightness interpolation" length(brightness_radii)
 
     flux = Vector{Float32}(undef, size(response_function, 2))
     brightness_line = Vector{Vector{Float32}}(undef, length(brightness_radii))
-    # brightness_line[1] = ustrip.(
-    #     Float64,
-    #     u"cm^(-2)/s",
-    #     surface_brightness(
-    #         brightness_radii[1],
-    #         temperature,
-    #         density,
-    #         z,
-    #         limit,
-    #         emission_model,
-    #         pixel_edge_angle,
-    #         flux
-    #     )
-    # )
-
-    # if all(iszero, brightness_line[1])
-    #     # @mpiwarn "Inner emission is empty"
-    #     throw(ObservationError(-1e100))
-    # end
-
     for i in eachindex(brightness_line)
         brightness_line[i] = ustrip.(
             Float64,
-            u"cm^(-2)/s",
+            u"m^(-2)/s",
             surface_brightness(
-                brightness_radii[i],
+                brightness_radii[i] * pixel_edge_length,
                 temperature,
                 density,
                 z,
@@ -252,48 +243,44 @@ function make_observation(
         )
     end
 
-    # if all(iszero, brightness_line)
-    #     @mpierror "This shouldn't happen"
-    #     throw(ObservationError(-1e100))
-    # end
-
     brightness_interpolation = linear_interpolation(brightness_radii, brightness_line, extrapolation_bc=Throw())
 
     @mpirankeddebug "Calculating counts"
     @mpirankeddebug "Preparing response function"
-    resp::Matrix{Float64} = ustrip.(Float64, u"cm^2", response_function)
+    resp::Matrix{Float64} = ustrip.(Float64, u"m^2", response_function)
     exp_time::Float64 = ustrip(Float64, u"s", exposure_time)
     @mpirankeddebug "Creating counts array"
-    counts = Array{Union{Float64,Missing}}(undef, size(response_function, 1), shape...)
+    counts::Array{Union{Float64,Missing}} = fill(missing, size(response_function, 1), shape...)
 
     @mpirankeddebug "Checking mask"
     if isnothing(mask)
         mask = zeros(Bool, shape...)
     end
 
+    possible_indices = CartesianIndices(ceil.(Int, array_centre_pixels))
+    possible_radii = unique((pixel_offset(ij, array_centre_pixels, centre_offset_pixels) for ij in possible_indices))
+    possible_radii = filter!(r -> r >= centre_radius, possible_radii)
+
+    emissions = Dict{Float64,Vector{Float64}}(r => apply_response_function(brightness_interpolation(r), resp, exp_time) for r in possible_radii)
+
     @mpirankeddebug "Iterating over pixels"
-    for j in 1:shape[2]
-        for i in 1:shape[1]
-            radius = radius_at_index(i, j, radii_x, radii_y, pixel_edge_length, centre_length)
-            if radius < min_radius
-                counts[:, i, j] .= missing
-            elseif mask[i, j]
-                counts[:, i, j] .= missing
-            else
-                brightness::Vector{Float64} = brightness_interpolation(radius)
-                counts[:, i, j] = apply_response_function(brightness, resp, exp_time)::Vector{Float64}
+    for ij in CartesianIndices(shape)
+        if !mask[ij[1], ij[2]]
+            radius = pixel_offset(ij, array_centre_pixels, centre_offset_pixels)
+            if radius >= centre_radius
+                counts[:, ij[1], ij[2]] = emissions[radius]
             end
         end
     end
 
-    @mpirankeddebug "Checking counts"
+    # @mpirankeddebug "Checking counts"
 
-    if all(ismissing, counts)
-        @mpierror "All counts generated by make_observation are missing. This is likely due to masking problems"
-    elseif all(iszero, counts) !== false # can return true, false or missing (if all non-missing values are true)
-        # this should be unreachable with the earlier checks
-        @mpidebug "All counts generated by make_observation are zero. Somehow."
-    end
+    # if all(ismissing, counts)
+    #     @mpierror "All counts generated by make_observation are missing. This is likely due to masking problems"
+    # elseif all(iszero, counts) !== false # can return true, false or missing (if all non-missing values are true)
+    #     # this should be unreachable with the earlier checks
+    #     @mpidebug "All counts generated by make_observation are zero. Somehow."
+    # end
 
     return counts
 end
