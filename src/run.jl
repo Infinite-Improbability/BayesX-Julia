@@ -306,7 +306,7 @@ function sample(
     @mpiinfo "Launching sampler"
     ultranest_default_run_args = (
         max_num_improvement_loops=10,
-        region_class=mlfriends.MLFriends,
+        region_class=use_stepsampler ? mlfriends.SimpleRegion : mlfriends.MLFriends,
     )
     @mpidebug "Ultranest arguments" ultranest_default_run_args ultranest_run_args
     merged = merge(ultranest_default_run_args, ultranest_run_args)
