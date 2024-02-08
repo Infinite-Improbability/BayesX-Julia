@@ -2,7 +2,6 @@ using Random, PoissonRandom
 using Unitful, UnitfulAstro, DimensionfulAngles
 using BayesJ
 using CairoMakie
-using MPI
 using LinearAlgebra: I
 
 z = 0.5
@@ -11,8 +10,8 @@ shape = (32, 32)
 data = FITSData(
     "",
     "",
-    "data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
-    "data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
+    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
+    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
 )
 
@@ -64,7 +63,7 @@ priors = [
     DeltaPrior("x0", 0.0),
     DeltaPrior("y0", 0.0),
     UniformPrior("MT_500", 1.0e14, 4.0e14),
-    UniformPrior("fg_500", 0.08, 0.5),
+    DeltaPrior("fg_500", 0.13),
     DeltaPrior("c_500", 3.0),
     DeltaPrior("a", 1.0510),
     DeltaPrior("b", 5.4905),
@@ -89,14 +88,14 @@ sampler, results, best_fit_observation = BayesJ.sample(
     param_wrapper=param_wrapper,
     pixel_edge_angle=pixel_edge_angle,
     centre_radius=centre_radius,
-    log_dir="logs/nfw_piecewise",
+    log_dir="../logs/nfw_piecewise",
     # resume="resume",
     ultranest_run_args=(
         max_num_improvement_loops=3,
         min_num_live_points=100,)
 )
 
-if MPI.Comm_rank(BayesJ.comm) == 0
+if BayesJ.isroot()
     best_fit = results["maximum_likelihood"]["point"]
     errlo = results["posterior"]["errlo"]
     errup = results["posterior"]["errup"]
