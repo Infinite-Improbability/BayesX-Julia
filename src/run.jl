@@ -323,7 +323,18 @@ function sample(
     sampler.plot_run()
 
     best_fit = results["maximum_likelihood"]["point"]
-    best_fit_observation = predict_counts(best_fit)
+    best_fit_observation = try
+        predict_counts(best_fit)
+    catch e
+        if e isa PriorError || e isa ObservationError
+            @mpierror "Prior or observation error while generating best fit observation" e best_fit
+            bf = Array{Union{Float64,Missing},3}(undef, size(observed))
+            fill!(bf, missing)
+            bf
+        else
+            rethrow()
+        end
+    end
 
     if MPI.Comm_rank(comm) == 0 && sampler.log == true
         try
