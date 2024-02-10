@@ -1,4 +1,5 @@
 using Distributions
+using SpecialFunctions: loggamma
 
 export DeltaPrior, LogUniformPrior, UniformPrior, NormalPrior, GenericPrior, DependentUniformPrior, DependentLogUniformPrior
 
@@ -46,12 +47,11 @@ end
 
 Finds ``\\ln{n!}`` the natural logarithm of the factorial of `n`.
 
-`n` rapidly gets to large to quickly and directly calculate the factorial
-so we exploit logarithm rules to expand it out to a series of sums.
+As Γ(n) = (n-1)! we can use SpecialFunctions.jl loggamma function to quickly calculate the log factorial.
 
 It is intended to be broadcast across all values of the data array.
 """
-log_factorial(n::N) where {N<:Integer} = sum(log.(1:n))
+log_factorial(n::N) where {N<:Integer} = loggamma(n + 1)
 
 """
 Abstract supertype for priors. Should implement:
