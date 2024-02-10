@@ -1,6 +1,8 @@
 using MPI
 MPI.Init()
 
+export @mpidebug, @mpiinfo, @mpiwarn, @mpierror, @mpirankeddebug, @mpirankedinfo, @mpirankedwarn, @mpirankederror
+
 """Wrappers around the logging macros to ensure they behave well with MPI."""
 
 const comm::MPI.Comm = MPI.COMM_WORLD
