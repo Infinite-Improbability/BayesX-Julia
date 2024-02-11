@@ -317,10 +317,19 @@ function sample(
     # output data
     @mpidebug "Sampler done"
     # print("result has these keys:", keys(results), "\n")
-    sampler.print_results()
-    sampler.plot_corner()
-    sampler.plot_trace()
-    sampler.plot_run()
+
+    try
+        sampler.print_results()
+        sampler.plot_corner()
+        sampler.plot_trace()
+        sampler.plot_run()
+    catch e
+        if e isa PyCall.PyError
+            @mpierror "Error during Ultranest plotting" e
+        else
+            rethrow()
+        end
+    end
 
     best_fit = results["maximum_likelihood"]["point"]
     best_fit_observation = try

@@ -21,8 +21,9 @@ energy_bins = range(0.7u"keV", 6.0u"keV", step=0.01u"keV")
 response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
-exposure_time = 3.0e6u"s"
+exposure_time = 3.0e8u"s"
 centre_radius = 0
+integration_limit = 1u"kpc"
 
 emission_model = BayesJ.prepare_model_mekal(
     0.0e20u"cm^-2", # TODO: Disable absorption!
@@ -45,6 +46,7 @@ predicted_count_rate = BayesJ.make_observation(
     response_function,
     (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
     centre_radius,
+    limit=integration_limit
 )
 
 @assert all(isfinite, predicted_count_rate)
@@ -62,16 +64,22 @@ end
 t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
 d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
 
-r1 = 2000
-r2 = 2200
-r3 = 2400
+r1 = 900
+r2 = 1100
+r3 = 1200
 
 
 if BayesJ.isroot()
+    pixel_edge_length = BayesJ.angle_to_length(pixel_edge_angle, z)
+
     halfx = size(observation, 2) ÷ 2
     halfy = size(observation, 3) ÷ 2
+    offset_x = r2 / ustrip(u"kpc", pixel_edge_length)
+    offset_y = r2 / ustrip(u"kpc", pixel_edge_length)
+    rx = round(Int, offset_x)
+    ry = round(Int, offset_y)
 
-    display(lines(observation[:, halfx, halfy], color=:green, yscale=Makie.pseudolog10))
+    display(lines(observation[:, rx, ry], color=:green, yscale=Makie.pseudolog10))
 end
 
 @mpiinfo "Target values" r2 t(r2) d(r2)
@@ -101,11 +109,14 @@ sampler, results, best_fit_observation = BayesJ.sample(
     pixel_edge_angle=pixel_edge_angle,
     centre_radius=centre_radius,
     log_dir="../logs/nfw_piecewise_2/",
+    integration_limit=integration_limit,
     # resume="resume",
     ultranest_run_args=(
-        max_num_improvement_loops=3,
+        max_num_improvement_loops=1,
         min_num_live_points=100,)
 )
+
+@mpiinfo "Making plots"
 
 if BayesJ.isroot()
     best_fit = results["maximum_likelihood"]["point"]
@@ -117,7 +128,7 @@ if BayesJ.isroot()
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [cluster_model(param_wrapper(p)[3:end]..., z=z) for p in rand_points]
-    radii = range(0.0u"kpc", 1000u"kpc", length=1000)
+    radii = range(0.0u"kpc", r3 * 1.1u"kpc", length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
     temperatures = [extrema([model[1](r) for model in models]) for r in radii]
