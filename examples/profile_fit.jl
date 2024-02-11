@@ -5,7 +5,7 @@ using CairoMakie
 using LinearAlgebra: I
 
 z = 0.1
-shape = (32, 32)
+shape = (64, 64)
 
 data = FITSData(
     "",
@@ -17,8 +17,8 @@ data = FITSData(
 
 response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-pixel_edge_angle = 49.2u"arcsecondᵃ"
-exposure_time = 30.0e6u"s"
+pixel_edge_angle = 40.0u"arcsecondᵃ"
+exposure_time = 3.0e9u"s"
 centre_radius = 0
 
 emission_model = BayesJ.prepare_model_mekal(
@@ -27,9 +27,9 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-cluster_model(args...; kwargs...) = Model_NFW(args...; kwargs...)
+cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
 
-temperature, density = cluster_model(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
+temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
 
 predicted_count_rate = BayesJ.make_observation(
     temperature,
@@ -56,21 +56,28 @@ end
 @assert all(isfinite, observation)
 @assert all(isfinite, background)
 
+t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
+d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
+
+r1 = 2000
+r2 = 2100
+r3 = 2200
+
+
 if BayesJ.isroot()
-    display(lines(predicted_count_rate[:, 24, 24]))
-    display(lines(observation[:, 24, 24]))
+    halfx = size(observation, 2) ÷ 2
+    halfy = size(observation, 3) ÷ 2
+
+    display(lines(observation[:, halfx, halfy], color=:green, yscale=Makie.pseudolog10))
 end
 
+@mpiinfo "Target values" r2 t(r2) d(r2)
+
 priors = [
-    DeltaPrior("x0", 0.0),
-    DeltaPrior("y0", 0.0),
-    UniformPrior("MT_500", 1.0e14, 4.0e14),
-    DeltaPrior("fg_500", 0.13),
-    DeltaPrior("c_500", 3.0),
-    DeltaPrior("a", 1.0510),
-    DeltaPrior("b", 5.4905),
-    DeltaPrior("c", 0.3081),
-    DeltaPrior("c_500_GNFW", 1.177)
+    DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
+    DeltaPrior("r1", r1), DeltaPrior("ρ1", d(r1)), DeltaPrior("T1", t(r1)),
+    DeltaPrior("r2", r2), DeltaPrior("ρ2", d(r2)), LogUniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
+    DeltaPrior("r3", r3), DeltaPrior("ρ3", d(r3)), DeltaPrior("T3", t(r3)),
 ]
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
@@ -90,7 +97,7 @@ sampler, results, best_fit_observation = BayesJ.sample(
     param_wrapper=param_wrapper,
     pixel_edge_angle=pixel_edge_angle,
     centre_radius=centre_radius,
-    log_dir="../logs/ic/nfw",
+    log_dir="../logs/nfw_piecewise_2/",
     # resume="resume",
     ultranest_run_args=(
         max_num_improvement_loops=3,
