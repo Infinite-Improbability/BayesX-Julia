@@ -15,14 +15,17 @@ data = FITSData(
     0.492u"arcsecondᵃ"
 )
 
-response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
+# response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-pixel_edge_angle = 40.0u"arcsecondᵃ"
-exposure_time = 3.0e9u"s"
+energy_bins = range(0.7u"keV", 6.0u"keV", step=0.01u"keV")
+response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
+
+pixel_edge_angle = 20.0u"arcsecondᵃ"
+exposure_time = 3.0e6u"s"
 centre_radius = 0
 
 emission_model = BayesJ.prepare_model_mekal(
-    2.0e20u"cm^-2",
+    0.0e20u"cm^-2", # TODO: Disable absorption!
     energy_bins,
     z,
 )
@@ -60,8 +63,8 @@ t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
 d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
 
 r1 = 2000
-r2 = 2100
-r3 = 2200
+r2 = 2200
+r3 = 2400
 
 
 if BayesJ.isroot()
