@@ -70,7 +70,7 @@ function surface_brightness(
     sol = solve(problem, HCubatureJL(); reltol=1e-2)
     u = sol.u * 1u"m^-2/s"
     if all(isfinite, sol.u) == false
-        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." sol.u
+        @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." projected_radius sol.u
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
         @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc")
