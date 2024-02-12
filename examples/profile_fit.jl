@@ -7,26 +7,26 @@ using LinearAlgebra: I
 z = 0.1
 shape = (64, 64)
 
-data = FITSData(
-    "",
-    "",
-    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
-    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
-    0.492u"arcsecondᵃ"
-)
+# data = FITSData(
+#     "",
+#     "",
+#     "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
+#     "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
+#     0.492u"arcsecondᵃ"
+# )
 
 # response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-energy_bins = range(0.7u"keV", 6.0u"keV", step=0.01u"keV")
+energy_bins = range(0.7u"keV", 7.0u"keV", length=3)
 response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
-exposure_time = 3.0e8u"s"
+exposure_time = 3.0e9u"s"
 centre_radius = 0
-integration_limit = 1u"kpc"
+integration_limit = 875u"kpc"
 
 emission_model = BayesJ.prepare_model_mekal(
-    0.0e20u"cm^-2", # TODO: Disable absorption!
+    0.0u"cm^-2", # TODO: Disable absorption!
     energy_bins,
     z,
 )
@@ -64,7 +64,7 @@ end
 t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
 d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
 
-r1 = 900
+r1 = 1000
 r2 = 1100
 r3 = 1200
 
@@ -74,18 +74,39 @@ if BayesJ.isroot()
 
     halfx = size(observation, 2) ÷ 2
     halfy = size(observation, 3) ÷ 2
-    offset_x = r2 / ustrip(u"kpc", pixel_edge_length)
-    offset_y = r2 / ustrip(u"kpc", pixel_edge_length)
+    offset_x = r2 / ustrip(u"kpc", pixel_edge_length) + halfx
+    offset_y = r2 / ustrip(u"kpc", pixel_edge_length) + halfy
     rx = round(Int, offset_x)
     ry = round(Int, offset_y)
 
-    display(lines(observation[:, rx, ry], color=:green, yscale=Makie.pseudolog10))
+    f = Figure()
+    ax = Axis(f[1, 1], yscale=Makie.pseudolog10)
+    lines!(observation[:, rx, ry], color=:green)
+
+    display(f)
 end
 
 @mpiinfo "Target values" r2 t(r2) d(r2)
 
+
 priors = [
     DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
+    DeltaPrior("r10", 10.0), DeltaPrior("ρ10", d(10.0)), DeltaPrior("T10", t(10.0)),
+    DeltaPrior("r50", 50.0), DeltaPrior("ρ50", d(50.0)), DeltaPrior("T50", t(50.0)),
+    DeltaPrior("r100", 100.0), DeltaPrior("ρ100", d(100.0)), DeltaPrior("T100", t(100.0)),
+    DeltaPrior("r200", 200.0), DeltaPrior("ρ200", d(200.0)), DeltaPrior("T200", t(200.0)),
+    DeltaPrior("r300", 300.0), DeltaPrior("ρ300", d(300.0)), DeltaPrior("T300", t(300.0)),
+    DeltaPrior("r400", 400.0), DeltaPrior("ρ400", d(400.0)), DeltaPrior("T400", t(400.0)),
+    DeltaPrior("r500", 500.0), DeltaPrior("ρ500", d(500.0)), DeltaPrior("T500", t(500.0)),
+    DeltaPrior("r550", 550.0), DeltaPrior("ρ550", d(550.0)), DeltaPrior("T550", t(550.0)),
+    DeltaPrior("r600", 600.0), DeltaPrior("ρ600", d(600.0)), DeltaPrior("T600", t(600.0)),
+    DeltaPrior("r650", 650.0), DeltaPrior("ρ650", d(650.0)), DeltaPrior("T650", t(650.0)),
+    DeltaPrior("r700", 700.0), DeltaPrior("ρ700", d(700.0)), DeltaPrior("T700", t(700.0)),
+    DeltaPrior("r750", 750.0), DeltaPrior("ρ750", d(750.0)), DeltaPrior("T750", t(750.0)),
+    DeltaPrior("r800", 800.0), DeltaPrior("ρ800", d(800.0)), DeltaPrior("T800", t(800.0)),
+    DeltaPrior("r850", 850.0), DeltaPrior("ρ850", d(850.0)), DeltaPrior("T850", t(850.0)),
+    DeltaPrior("r900", 900.0), DeltaPrior("ρ900", d(900.0)), DeltaPrior("T900", t(900.0)),
+    DeltaPrior("r950", 950.0), DeltaPrior("ρ950", d(950.0)), DeltaPrior("T950", t(950.0)),
     DeltaPrior("r1", r1), DeltaPrior("ρ1", d(r1)), DeltaPrior("T1", t(r1)),
     DeltaPrior("r2", r2), DeltaPrior("ρ2", d(r2)), LogUniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
     DeltaPrior("r3", r3), DeltaPrior("ρ3", d(r3)), DeltaPrior("T3", t(r3)),

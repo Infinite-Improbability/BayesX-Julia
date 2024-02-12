@@ -212,6 +212,7 @@ function make_observation(
     # Offset of cluster centre from data array centre
     centre_offset = angle_to_length.(centre, z)
     centre_offset_pixels = centre_offset ./ pixel_edge_length
+    core_position = array_centre_pixels .+ centre_offset_pixels
 
     if any(centre_radius .> array_centre_pixels)
         @mpirankedwarn "Centre exclusion radius greater than observed radius in at least one direction" centre_radius array_centre_pixels
@@ -219,7 +220,7 @@ function make_observation(
 
     brightness_radii = range(
         centre_radius,
-        stop=hypot((array_centre_pixels .+ centre_offset_pixels .+ 1)...),
+        stop=hypot((core_position .+ 1)...),
         step=2.0
     )
     @mpirankeddebug "Creating brightness interpolation" length(brightness_radii)
@@ -257,7 +258,7 @@ function make_observation(
         mask = zeros(Bool, shape...)
     end
 
-    possible_indices = CartesianIndices(ceil.(Int, array_centre_pixels))
+    possible_indices = CartesianIndices(ceil.(Int, shape))
     possible_radii = unique((pixel_offset(ij, array_centre_pixels, centre_offset_pixels) for ij in possible_indices))
     possible_radii = filter!(r -> r >= centre_radius, possible_radii)
 
