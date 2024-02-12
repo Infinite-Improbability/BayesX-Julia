@@ -190,10 +190,15 @@ function sample(
 
     @argcheck all(isfinite, observed)
     @argcheck all(isfinite, observed_background)
+    @argcheck sum(observed) > 0
     @argcheck all(i -> i >= 0, observed)
     @argcheck all(i -> i >= 0, observed_background)
     @argcheck size(observed) == size(observed_background)
     @argcheck size(observed, 1) == size(response_function, 1)
+
+    if ((sum(observed_background) / bg_exposure_time) / (sum(observed) / obs_exposure_time)) > 0.9 # arbitary threshold
+        @mpiwarn "Observed count rate is very close to background count rate. There may be insufficent signal."
+    end
 
     @mpidebug "Preparing background model"
     predicted_obs_bg, predicted_bg_bg = prepare_background(
