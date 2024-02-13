@@ -10,7 +10,7 @@ data = FITSData(
     "../data/tng_s91_h57_4/bg/lynx_hdxi_bg_evts.fits",
     "../data/tng_s91_h57_4/response_files/lynx_hdxi/xrs_hdxi_3x10.arf",
     "../data/tng_s91_h57_4/response_files/lynx_hdxi/xrs_hdxi.rmf",
-    0.322u"arcsecondᵃ"
+    0.33u"arcsecondᵃ"
 )
 
 # Load abundances from tng metadata
@@ -31,37 +31,46 @@ gas_metals = [
 ]
 abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 
-redshift = 0.1
-centre_radius = 7
-bin_size = 128
-centre_radius_kpc = ustrip(u"kpc", centre_radius * bin_size * ustrip(u"radᵃ", data.pixel_edge_angle) * angular_diameter_dist(BayesJ.cosmo, redshift))
-inner_radius = centre_radius_kpc * 1.1
-r1 = (inner_radius + 1200.0) / 2
-BayesJ.BayesJ.@mpiinfo "Fixed inner radius from centre exclusion." centre_radius_kpc inner_radius r1
-
-# sample prior set for piecewise fit
-priors_piecewise = [
-    DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
-    DeltaPrior("r0", inner_radius), DeltaPrior("ρ0", 5.24e-28), DeltaPrior("T0", 2.074),
-    DeltaPrior("r1", r1), UniformPrior("ρ1", 1.e-28, 1.e-27), UniformPrior("T1", 1.407, 2.074),
-    DeltaPrior("r2", 1200.0), DeltaPrior("ρ2", 1.137e-28), DeltaPrior("T2", 1.407),
+priors_nfw = [
+    NormalPrior("x0", 0.0, 25.0), NormalPrior("y0", 0.0, 25.0),
+    UniformPrior("MT_200", 1.0e14, 4.0e14),
+    NormalPrior("fg_200", 0.13, 0.1),
+    DeltaPrior("c_200", 6.077),
+    NormalPrior("a", 1.0510, 0.06),
+    NormalPrior("b", 5.4905, 1.0),
+    NormalPrior("c", 0.3081, 0.02),
+    NormalPrior("c_500_GNFW", 1.177, 0.02)
 ]
+
+priors_einasto = [
+    NormalPrior("x0", 0.0, 25.0), NormalPrior("y0", 0.0, 25.0),
+    UniformPrior("MT_200", 1.0e14, 4.0e14),
+    NormalPrior("fg_200", 0.13, 0.1),
+    DeltaPrior("c_200", 6.077),
+    UniformPrior("n", 0.1, 10.0),
+    NormalPrior("a", 1.0510, 0.06),
+    NormalPrior("b", 5.4905, 1.0),
+    NormalPrior("c", 0.3081, 0.02),
+    NormalPrior("c_500_GNFW", 1.177, 0.02)
+]
+
+model_nfw(args...; kwargs...) = Model_NFW(args...; Δ=200, kwargs...)
+model_einasto(args...; kwargs...) = Model_Einasto(args...; Δ=200, kwargs...)
 
 sample(
     data,
-    (0.05u"keV", 2.5u"keV"),
-    Model_Piecewise,
-    priors_piecewise,
+    (0.7u"keV", 7.0u"keV"),
+    model_nfw,
+    priors_nfw,
     0.022e22u"cm^-2",
-    redshift,
+    0.1,
     (2048, 6144),
     (2048, 6144);
-    bin_size=bin_size,
-    centre_radius=centre_radius,
+    bin_size=128,
+    centre_radius=0,
     abundances=abundances,
-    use_interpolation=false,
     use_stepsampler=false,
-    log_dir="../logs/s91h57_edge",
+    log_dir="../logs/s91h57/nfw",
     resume="subfolder",
-    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100, show_status=true),
+    ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100),
 )

@@ -74,6 +74,8 @@ function load_events_from_fits(path::AbstractString)::Pair{<:Matrix,<:Unitful.Ti
         error("Unable to find 'PI' or 'PHA' channel column in events file.\nColumns are: $cols")
     end
 
+    @mpidebug "Found $(length(x)) events in $(path)."
+
     return [x y channels] => live_time * 1u"s" # TODO: manual units bad
 end
 
@@ -383,11 +385,14 @@ Returns an array of counts per bin with dimensions (channel, x, y).
 """
 function bin_events(::FITSData, events, channel_range::NTuple{2,<:Integer}, x_edges, y_edges)::Array{Int64}
     min_chan, max_chan = extrema(channel_range)
-    @mpidebug "Binning events" extrema(channel_range) extrema(x_edges) extrema(y_edges)
+    @mpidebug "Binning $(size(events, 1)) events" extrema(channel_range) extrema(x_edges) extrema(y_edges)
 
     events = events[minimum(x_edges).<events[:, 1].<maximum(x_edges), :]
+    @mpidebug "x clipping reduced events to $(size(events, 1))"
     events = events[minimum(y_edges).<events[:, 2].<maximum(y_edges), :]
+    @mpidebug "y clipping reduced events to $(size(events, 1))"
     events = events[min_chan.<events[:, 3].<max_chan, :]
+    @mpidebug "channel clipping reduced events to $(size(events, 1))"
 
     # Maximum doesn't like the Unitful array
     channels = trunc.(Int64, ustrip.(events[:, 3]))
