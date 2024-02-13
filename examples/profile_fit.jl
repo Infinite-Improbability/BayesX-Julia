@@ -26,7 +26,7 @@ centre_radius = 0
 integration_limit = 875u"kpc"
 
 emission_model = BayesJ.prepare_model_mekal(
-    0.0u"cm^-2", # TODO: Disable absorption!
+    0.0u"cm^-2",
     energy_bins,
     z,
 )
@@ -60,6 +60,7 @@ end
 
 @assert all(isfinite, observation)
 @assert all(isfinite, background)
+@assert !all(iszero, observation) "Maximum pcr is $(maximum(predicted_count_rate))"
 
 t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
 d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
@@ -67,7 +68,14 @@ d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
 r1 = 1000
 r2 = 1100
 r3 = 1200
+r4 = 1250
+r5 = 1300
+r6 = 1350
+r7 = 1400
+r8 = 1450
+r9 = 1500
 
+@mpiinfo "Target values" r2 t(r2) d(r2)
 
 if BayesJ.isroot()
     pixel_edge_length = BayesJ.angle_to_length(pixel_edge_angle, z)
@@ -79,15 +87,16 @@ if BayesJ.isroot()
     rx = round(Int, offset_x)
     ry = round(Int, offset_y)
 
+    flux = Vector{Cfloat}(undef, size(response_function, 2))
+    emission_model(flux, temperature(r2 * 1u"kpc"), density(r2 * 1u"kpc"))
+    @mpiinfo "Flux estimate" extrema(flux) flux
+    @assert sum(observation[:, rx, ry]) > 0 "maximum pcr is $(maximum(predicted_count_rate[:, rx, ry]))"
+
     f = Figure()
     ax = Axis(f[1, 1], yscale=Makie.pseudolog10)
     lines!(observation[:, rx, ry], color=:green)
-
     display(f)
 end
-
-@mpiinfo "Target values" r2 t(r2) d(r2)
-
 
 priors = [
     DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
@@ -110,6 +119,12 @@ priors = [
     DeltaPrior("r1", r1), DeltaPrior("ρ1", d(r1)), DeltaPrior("T1", t(r1)),
     DeltaPrior("r2", r2), DeltaPrior("ρ2", d(r2)), LogUniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
     DeltaPrior("r3", r3), DeltaPrior("ρ3", d(r3)), DeltaPrior("T3", t(r3)),
+    DeltaPrior("r4", r4), DeltaPrior("ρ4", d(r4)), DeltaPrior("T4", t(r4)),
+    DeltaPrior("r5", r5), DeltaPrior("ρ5", d(r5)), DeltaPrior("T5", t(r5)),
+    DeltaPrior("r6", r6), DeltaPrior("ρ6", d(r6)), DeltaPrior("T6", t(r6)),
+    DeltaPrior("r7", r7), DeltaPrior("ρ7", d(r7)), DeltaPrior("T7", t(r7)),
+    DeltaPrior("r8", r8), DeltaPrior("ρ8", d(r8)), DeltaPrior("T8", t(r8)),
+    DeltaPrior("r9", r9), DeltaPrior("ρ9", d(r9)), DeltaPrior("T9", t(r9)),
 ]
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
@@ -129,7 +144,7 @@ sampler, results, best_fit_observation = BayesJ.sample(
     param_wrapper=param_wrapper,
     pixel_edge_angle=pixel_edge_angle,
     centre_radius=centre_radius,
-    log_dir="../logs/nfw_piecewise_2/",
+    log_dir="../logs/pw_piecewise/",
     integration_limit=integration_limit,
     # resume="resume",
     ultranest_run_args=(
@@ -149,7 +164,7 @@ if BayesJ.isroot()
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [cluster_model(param_wrapper(p)[3:end]..., z=z) for p in rand_points]
-    radii = range(0.0u"kpc", r3 * 1.1u"kpc", length=1000)
+    radii = range(0.0u"kpc", r9 * 1u"kpc", length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
     temperatures = [extrema([model[1](r) for model in models]) for r in radii]
@@ -162,7 +177,7 @@ if BayesJ.isroot()
     lines!(radii_u, ustrip.(u"keV", best_fit_temperature.(radii)), label="Best fit (Piecewise)")
     lines!(radii_u, ustrip.(u"keV", mean_fit_temperature.(radii)), label="Mean fit (Piecewise)")
     band!(radii_u, ustrip.(u"keV", [t[1] for t in temperatures]), ustrip.(u"keV", [t[2] for t in temperatures]), label="68%", alpha=0.5)
-    axislegend()
+    axislegend(position=:lb)
     # ylims!(0.0, 5.0)
 
     ax2 = Axis(f[2, 1], title="Density", xlabel="Radius (kpc)", ylabel="Density (Msun/kpc^3)", yscale=Makie.pseudolog10)
