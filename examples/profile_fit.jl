@@ -5,7 +5,7 @@ using CairoMakie
 using LinearAlgebra: I
 
 z = 0.1
-shape = (64, 64)
+shape = (32, 32)
 
 # data = FITSData(
 #     "",
@@ -17,13 +17,13 @@ shape = (64, 64)
 
 # response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-energy_bins = range(0.7u"keV", 7.0u"keV", length=3)
+energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
 response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
-exposure_time = 3.0e9u"s"
+exposure_time = 3.0e8u"s"
 centre_radius = 0
-integration_limit = 875u"kpc"
+integration_limit = 10u"Mpc"
 
 emission_model = BayesJ.prepare_model_mekal(
     0.0u"cm^-2",
@@ -31,7 +31,7 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
+# cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
 
 temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
 
@@ -62,18 +62,12 @@ end
 @assert all(isfinite, background)
 @assert !all(iszero, observation) "Maximum pcr is $(maximum(predicted_count_rate))"
 
-t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
-d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
+t(r) = ustrip(u"keV", temperature(r))
+d(r) = ustrip(u"g/cm^3", density(r))
 
-r1 = 1000
-r2 = 1100
-r3 = 1200
-r4 = 1250
-r5 = 1300
-r6 = 1350
-r7 = 1400
-r8 = 1450
-r9 = 1500
+r1 = 500u"kpc"
+r2 = 600u"kpc"
+r3 = 700u"kpc"
 
 @mpiinfo "Target values" r2 t(r2) d(r2)
 
@@ -82,13 +76,13 @@ if BayesJ.isroot()
 
     halfx = size(observation, 2) ÷ 2
     halfy = size(observation, 3) ÷ 2
-    offset_x = r2 / ustrip(u"kpc", pixel_edge_length) + halfx
-    offset_y = r2 / ustrip(u"kpc", pixel_edge_length) + halfy
+    offset_x = ustrip(u"kpc/kpc", r2 / pixel_edge_length) + halfx
+    offset_y = ustrip(u"kpc/kpc", r2 / pixel_edge_length) + halfy
     rx = round(Int, offset_x)
     ry = round(Int, offset_y)
 
     flux = Vector{Cfloat}(undef, size(response_function, 2))
-    emission_model(flux, temperature(r2 * 1u"kpc"), density(r2 * 1u"kpc"))
+    emission_model(flux, temperature(r2), density(r2))
     @mpiinfo "Flux estimate" extrema(flux) flux
     @assert sum(observation[:, rx, ry]) > 0 "maximum pcr is $(maximum(predicted_count_rate[:, rx, ry]))"
 
@@ -100,43 +94,47 @@ end
 
 priors = [
     DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
-    DeltaPrior("r10", 10.0), DeltaPrior("ρ10", d(10.0)), DeltaPrior("T10", t(10.0)),
-    DeltaPrior("r50", 50.0), DeltaPrior("ρ50", d(50.0)), DeltaPrior("T50", t(50.0)),
-    DeltaPrior("r100", 100.0), DeltaPrior("ρ100", d(100.0)), DeltaPrior("T100", t(100.0)),
-    DeltaPrior("r200", 200.0), DeltaPrior("ρ200", d(200.0)), DeltaPrior("T200", t(200.0)),
-    DeltaPrior("r300", 300.0), DeltaPrior("ρ300", d(300.0)), DeltaPrior("T300", t(300.0)),
-    DeltaPrior("r400", 400.0), DeltaPrior("ρ400", d(400.0)), DeltaPrior("T400", t(400.0)),
-    DeltaPrior("r500", 500.0), DeltaPrior("ρ500", d(500.0)), DeltaPrior("T500", t(500.0)),
-    DeltaPrior("r550", 550.0), DeltaPrior("ρ550", d(550.0)), DeltaPrior("T550", t(550.0)),
-    DeltaPrior("r600", 600.0), DeltaPrior("ρ600", d(600.0)), DeltaPrior("T600", t(600.0)),
-    DeltaPrior("r650", 650.0), DeltaPrior("ρ650", d(650.0)), DeltaPrior("T650", t(650.0)),
-    DeltaPrior("r700", 700.0), DeltaPrior("ρ700", d(700.0)), DeltaPrior("T700", t(700.0)),
-    DeltaPrior("r750", 750.0), DeltaPrior("ρ750", d(750.0)), DeltaPrior("T750", t(750.0)),
-    DeltaPrior("r800", 800.0), DeltaPrior("ρ800", d(800.0)), DeltaPrior("T800", t(800.0)),
-    DeltaPrior("r850", 850.0), DeltaPrior("ρ850", d(850.0)), DeltaPrior("T850", t(850.0)),
-    DeltaPrior("r900", 900.0), DeltaPrior("ρ900", d(900.0)), DeltaPrior("T900", t(900.0)),
-    DeltaPrior("r950", 950.0), DeltaPrior("ρ950", d(950.0)), DeltaPrior("T950", t(950.0)),
-    DeltaPrior("r1", r1), DeltaPrior("ρ1", d(r1)), DeltaPrior("T1", t(r1)),
-    DeltaPrior("r2", r2), DeltaPrior("ρ2", d(r2)), LogUniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
-    DeltaPrior("r3", r3), DeltaPrior("ρ3", d(r3)), DeltaPrior("T3", t(r3)),
-    DeltaPrior("r4", r4), DeltaPrior("ρ4", d(r4)), DeltaPrior("T4", t(r4)),
-    DeltaPrior("r5", r5), DeltaPrior("ρ5", d(r5)), DeltaPrior("T5", t(r5)),
-    DeltaPrior("r6", r6), DeltaPrior("ρ6", d(r6)), DeltaPrior("T6", t(r6)),
-    DeltaPrior("r7", r7), DeltaPrior("ρ7", d(r7)), DeltaPrior("T7", t(r7)),
-    DeltaPrior("r8", r8), DeltaPrior("ρ8", d(r8)), DeltaPrior("T8", t(r8)),
-    DeltaPrior("r9", r9), DeltaPrior("ρ9", d(r9)), DeltaPrior("T9", t(r9)),
+    DeltaPrior("r2", ustrip(u"kpc", r2)), UniformPrior("ρ2", 0.5 * d(r3), 2 * d(r1)), UniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
 ]
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
 prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
 
-sampler, results, best_fit_observation = BayesJ.sample(
+function cluster_model(ri, ρ, T; kwargs...)
+    let temperature = temperature, density = density, r1 = r1, r3 = r3
+        temp, den = Model_Piecewise(ustrip(u"kpc", r1), d(r1), t(r1), ri, ρ, T, ustrip(u"kpc", r3), d(r3), t(r3))
+
+        function custom_temperature(r)
+            let r1 = r1, r3 = r3, temperature = temperature
+                if r1 < r < r3
+                    return temp(r)
+                else
+                    return temperature(r)
+                end
+            end
+        end
+
+        function custom_density(r)
+            let r1 = r1, r3 = r3, density = density
+                if r1 < r < r3
+                    return den(r)
+                else
+                    return density(r)
+                end
+            end
+        end
+
+        return custom_temperature, custom_density
+    end
+end
+
+sampler, results, _ = BayesJ.sample(
     observation + background,
     background,
     response_function,
     prior_transform,
     exposure_time,
-    exposure_time, # TODO: Make different
+    exposure_time,
     z;
     prior_names=prior_names,
     cluster_model=cluster_model,
@@ -164,7 +162,7 @@ if BayesJ.isroot()
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [cluster_model(param_wrapper(p)[3:end]..., z=z) for p in rand_points]
-    radii = range(0.0u"kpc", r9 * 1u"kpc", length=1000)
+    radii = range(0.0u"kpc", 1.2 * r2, length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
     temperatures = [extrema([model[1](r) for model in models]) for r in radii]
