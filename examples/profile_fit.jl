@@ -20,19 +20,16 @@ response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"k
 # energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
 # response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
 
-pixel_edge_angle = 20.0u"arcsecondᵃ"
-exposure_time = 3.0e8u"s"
+pixel_edge_angle = 10.0u"arcsecondᵃ"
+exposure_time = 3.0e6u"s"
 centre_radius = 0
 integration_limit = 10u"Mpc"
 
 emission_model = BayesJ.prepare_model_mekal(
-    0.0u"cm^-2",
+    2.e20u"cm^-2",
     energy_bins,
     z,
 )
-
-# cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
-
 temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
 
 predicted_count_rate = BayesJ.make_observation(
@@ -62,71 +59,21 @@ end
 @assert all(isfinite, background)
 @assert !all(iszero, observation) "Maximum pcr is $(maximum(predicted_count_rate))"
 
-t(r) = ustrip(u"keV", temperature(r))
-d(r) = ustrip(u"g/cm^3", density(r))
-
-r1 = 500u"kpc"
-r2 = 600u"kpc"
-r3 = 700u"kpc"
-
-@mpiinfo "Target values" r2 t(r2) d(r2)
-
-if BayesJ.isroot()
-    pixel_edge_length = BayesJ.angle_to_length(pixel_edge_angle, z)
-
-    halfx = size(observation, 2) ÷ 2
-    halfy = size(observation, 3) ÷ 2
-    offset_x = ustrip(u"kpc/kpc", r2 / pixel_edge_length) + halfx
-    offset_y = ustrip(u"kpc/kpc", r2 / pixel_edge_length) + halfy
-    rx = round(Int, offset_x)
-    ry = round(Int, offset_y)
-
-    flux = Vector{Cfloat}(undef, size(response_function, 2))
-    emission_model(flux, temperature(r2), density(r2))
-    @mpiinfo "Flux estimate" extrema(flux) flux
-    @assert sum(observation[:, rx, ry]) > 0 "maximum pcr is $(maximum(predicted_count_rate[:, rx, ry]))"
-
-    f = Figure()
-    ax = Axis(f[1, 1], yscale=Makie.pseudolog10)
-    lines!(observation[:, rx, ry], color=:green)
-    display(f)
-end
-
+cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
 priors = [
     DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
-    DeltaPrior("r2", ustrip(u"kpc", r2)), UniformPrior("ρ2", 0.5 * d(r3), 2 * d(r1)), UniformPrior("T2", 0.5 * t(r3), 2 * t(r1)),
+    DeltaPrior("r0", 0.0), LogUniformPrior("ρ0", 1.e-30, 1.e-24), UniformPrior("T0", 0.0, 10.0),
+    UniformPrior("r1", 0.0, 10.0), LogUniformPrior("ρ1", 1.e-30, 1.e-24), UniformPrior("T1", 0.0, 10.0),
+    UniformPrior("r2", 10.0, 100.0), LogUniformPrior("ρ2", 1.e-30, 1.e-24), UniformPrior("T2", 0.0, 10.0),
+    UniformPrior("r3", 100.0, 500.0), LogUniformPrior("ρ3", 1.e-30, 1.e-24), UniformPrior("T3", 0.0, 10.0),
+    UniformPrior("r4", 500.0, 1000.0), LogUniformPrior("ρ4", 1.e-30, 1.e-24), UniformPrior("T4", 0.0, 10.0),
+    UniformPrior("r5", 1000.0, 2000.0), LogUniformPrior("ρ5", 1.e-30, 1.e-24), UniformPrior("T5", 0.0, 10.0),
+    UniformPrior("r6", 2000.0, 3000.0), LogUniformPrior("ρ6", 1.e-30, 1.e-24), UniformPrior("T6", 0.0, 10.0),
+    UniformPrior("r7", 3000.0, 15000.0), DeltaPrior("ρ7", 0.0), DeltaPrior("T7", 0.0),
 ]
 
 prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
 prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
-
-function cluster_model(ri, ρ, T; kwargs...)
-    let temperature = temperature, density = density, r1 = r1, r3 = r3
-        temp, den = Model_Piecewise(ustrip(u"kpc", r1), d(r1), t(r1), ri, ρ, T, ustrip(u"kpc", r3), d(r3), t(r3))
-
-        function custom_temperature(r)
-            let r1 = r1, r3 = r3, temperature = temperature
-                if r1 < r < r3
-                    return temp(r)
-                else
-                    return temperature(r)
-                end
-            end
-        end
-
-        function custom_density(r)
-            let r1 = r1, r3 = r3, density = density
-                if r1 < r < r3
-                    return den(r)
-                else
-                    return density(r)
-                end
-            end
-        end
-
-        return custom_temperature, custom_density
-    end
-end
 
 sampler, results, _ = BayesJ.sample(
     observation + background,
