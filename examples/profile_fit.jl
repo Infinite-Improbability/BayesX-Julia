@@ -7,18 +7,18 @@ using LinearAlgebra: I
 z = 0.1
 shape = (32, 32)
 
-# data = FITSData(
-#     "",
-#     "",
-#     "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
-#     "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
-#     0.492u"arcsecondᵃ"
-# )
+data = FITSData(
+    "",
+    "",
+    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
+    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
+    0.492u"arcsecondᵃ"
+)
 
-# response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
+response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"keV")
 
-energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
-response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
+# energy_bins = range(0.7u"keV", 7.0u"keV", step=0.01u"keV")
+# response_function = 250u"cm^2" * Matrix(I, length(energy_bins) - 1, length(energy_bins) - 1)
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
 exposure_time = 3.0e8u"s"

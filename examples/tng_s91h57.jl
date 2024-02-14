@@ -34,7 +34,7 @@ abundances = convert_to_anders(gas_metals, gas_metal_fractions)
 priors_nfw = [
     NormalPrior("x0", 0.0, 25.0), NormalPrior("y0", 0.0, 25.0),
     UniformPrior("MT_200", 1.0e14, 4.0e14),
-    NormalPrior("fg_200", 0.13, 0.1),
+    NormalPrior("fg_200", 0.13, 0.01),
     DeltaPrior("c_200", 6.077),
     NormalPrior("a", 1.0510, 0.06),
     NormalPrior("b", 5.4905, 1.0),
@@ -45,7 +45,7 @@ priors_nfw = [
 priors_einasto = [
     NormalPrior("x0", 0.0, 25.0), NormalPrior("y0", 0.0, 25.0),
     UniformPrior("MT_200", 1.0e14, 4.0e14),
-    NormalPrior("fg_200", 0.13, 0.1),
+    NormalPrior("fg_200", 0.13, 0.01),
     DeltaPrior("c_200", 6.077),
     UniformPrior("n", 0.1, 10.0),
     NormalPrior("a", 1.0510, 0.06),
