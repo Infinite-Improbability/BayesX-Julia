@@ -220,7 +220,7 @@ function make_observation(
 
     brightness_radii = range(
         centre_radius,
-        stop=hypot((core_position .+ 2)...),
+        stop=hypot((array_centre_pixels .+ abs.(centre_offset_pixels))...) + 2,
         step=2.0
     )
     @mpirankeddebug "Creating brightness interpolation" length(brightness_radii)
