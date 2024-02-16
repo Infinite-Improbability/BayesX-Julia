@@ -79,7 +79,7 @@ function Model_Einasto(
     function pei_integrand(r, params)
         rs, n, rp, α, β, γ = params
         r^3 * (β * (r / rp)^α + γ) /
-        safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) /
+        safe_lower_gamma(3n, 2n * (r / rs)^(1 / n)) /
         (r / rp)^γ / (1 + (r / rp)^α)^((α + β - γ) / α)
     end
 
