@@ -75,24 +75,16 @@ function Model_NFW(
     """An integral over radius that is equal to the gas
     density to a proportionality constant"""
     function gnfw_gas_mass_integrand(
-        r_u::Unitful.Length{<:Real},
+        r::Unitful.Length{<:Real},
         r_s::Unitful.Length{<:Real}, # NFW
         r_p::Unitful.Length{<:Real}, # GNFW
         α,
         β,
         γ
     )::Unitful.Volume{Float64}
-        r::Float64 = ustrip(Float64, u"kpc", r_u)
-        rs::Float64 = ustrip(Float64, u"kpc", r_s)
-        rp::Float64 = ustrip(Float64, u"kpc", r_p)
 
-        s = 1u"kpc^3" * r^3 *
-            (β * (r / rs)^α + γ) /
-            (log1p(r / rs) - 1 / (1 + rs / r)) /
-            (r / rp)^γ /
-            (1 + (r / rp)^α)^((β - γ) / α)
-
-        @assert isfinite(s) "s is not finite with r = $r, rs = $rs, rp = $rp, α = $α, β = $β, γ = $γ"
+        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+        @assert isfinite(s) "s is not finite with r = $r, rs = $r_s, rp = $r_p, α = $α, β = $β, γ = $γ"
 
         return s
     end
