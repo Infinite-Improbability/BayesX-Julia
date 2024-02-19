@@ -56,34 +56,43 @@ function Model_NFW(
     """The radius dependent part of the gas density function"""
     function gnfw_gas_radial_term(
         r::Unitful.Length{<:Real},
-        r_s::Unitful.Length{<:Real}, # NFW
-        r_p::Unitful.Length{<:Real}, # GNFW
+        rs::Unitful.Length{<:Real}, # NFW
+        rp::Unitful.Length{<:Real}, # GNFW
         α,
         β,
         γ
     )::Unitful.Length{Float64}
-        r = uconvert(u"Mpc", r)
-        r_s = uconvert(u"Mpc", r_s)
-        r_p = uconvert(u"Mpc", r_p)
-        r / (log1p(r / r_s) - (1 + r_s / r)^(-1)) *
-        (r / r_p)^(-γ) *
-        (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
-        (β * (r / r_p)^α + γ)
+        r = uconvert(u"kpc", r)
+        rs = uconvert(u"kpc", rs)
+        rp = uconvert(u"kpc", rp)
+        r /
+        (log1p(r / rs) - (1 + rs / r)^(-1)) *
+        (r / rp)^(-γ) *
+        (1 + (r / rp)^α)^(-(α + β - γ) / α) *
+        (β * (r / rp)^α + γ)
     end
 
     """An integral over radius that is equal to the gas
     density to a proportionality constant"""
     function gnfw_gas_mass_integrand(
-        r::Unitful.Length{<:Real},
+        r_u::Unitful.Length{<:Real},
         r_s::Unitful.Length{<:Real}, # NFW
         r_p::Unitful.Length{<:Real}, # GNFW
         α,
         β,
         γ
     )::Unitful.Volume{Float64}
-        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+        r::Float64 = ustrip(Float64, u"kpc", r_u)
+        rs::Float64 = ustrip(Float64, u"kpc", r_s)
+        rp::Float64 = ustrip(Float64, u"kpc", r_p)
 
-        @assert isfinite(s) "Not finite with $r, $r_s, $r_p, $α, $β, $γ"
+        s = 1u"kpc^3" * r^3 *
+            (β * (r / rs)^α + γ) /
+            (log1p(r / rs) - 1 / (1 + rs / r)) /
+            (r / rp)^γ /
+            (1 + (r / rp)^α)^((β - γ) / α)
+
+        @assert isfinite(s) "s is not finite with r = $r, rs = $rs, rp = $rp, α = $α, β = $β, γ = $γ"
 
         return s
     end
@@ -104,6 +113,7 @@ function Model_NFW(
     )
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_Δ
+    @assert isfinite(Pei_GNFW)
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete"
 
