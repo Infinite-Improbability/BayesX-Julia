@@ -22,7 +22,7 @@ response_function, energy_bins, _ = BayesJ.load_response(data, 0.7u"keV", 7.0u"k
 
 pixel_edge_angle = 20.0u"arcsecondᵃ"
 exposure_time = 3.0e8u"s"
-centre_radius = 0
+centre_radius = 1
 integration_limit = 10u"Mpc"
 
 emission_model = BayesJ.prepare_model_mekal(
@@ -31,9 +31,40 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-# cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
+cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
 
-temperature, density = Model_NFW(3.e14, 0.13, 3.0, 1.0510, 5.4905, 0.3081, 1.177, z=z)
+temperature, density = Model_Vikhlinin2006(
+    4.705e-3,
+    0.247e-1,
+    94.6,
+    75.83,
+    0.916,
+    0.526,
+    3.607,
+    4.943,
+    1239.9,
+    3.61,
+    0.27,
+    57.0,
+    3.88,
+    1420.0,
+    0.12,
+    5.0,
+    10.0,
+    0.0,
+    z=z
+)
+
+# radii = 1:2000
+# t(r) = ustrip(u"keV", temperature(r * 1u"kpc"))
+# d(r) = ustrip(u"g/cm^3", density(r * 1u"kpc"))
+
+# f = Figure()
+# ax = Axis(f[1, 1], title="Temperature", xlabel="Radius (kpc)", ylabel="Temperature (keV)")
+# lines!(radii, t.(radii))
+# ax2 = Axis(f[2, 1], title="Density", xlabel="Radius (kpc)", ylabel="Density (g/cm^3)", yscale=log10)
+# lines!(radii, d.(radii))
+# display(f)
 
 predicted_count_rate = BayesJ.make_observation(
     temperature,
@@ -49,6 +80,7 @@ predicted_count_rate = BayesJ.make_observation(
     limit=integration_limit
 )
 
+replace!(predicted_count_rate, missing => 0.0)
 @assert all(isfinite, predicted_count_rate)
 
 observation = pois_rand.(predicted_count_rate)
@@ -162,7 +194,7 @@ if BayesJ.isroot()
 
     rand_points = [errlo + (errup - errlo) .* rand(Float64, length(errlo)) for i in 1:500]
     models = [cluster_model(param_wrapper(p)[3:end]..., z=z) for p in rand_points]
-    radii = range(0.0u"kpc", 1.2 * r2, length=1000)
+    radii = range(0.01u"kpc", 1.2 * r2, length=1000)
     radii_u = ustrip.(u"kpc", radii)
 
     temperatures = [extrema([model[1](r) for model in models]) for r in radii]
@@ -178,8 +210,8 @@ if BayesJ.isroot()
     axislegend(position=:lb)
     # ylims!(0.0, 5.0)
 
-    ax2 = Axis(f[2, 1], title="Density", xlabel="Radius (kpc)", ylabel="Density (Msun/kpc^3)", yscale=Makie.pseudolog10)
-    lines!(radii_u, ustrip.(u"Msun/kpc^3", density.(radii)), label="Original (NFW)")
+    ax2 = Axis(f[2, 1], title="Density", xlabel="Radius (kpc)", ylabel="Density (Msun/kpc^3)", yscale=Makie.pseudolog10) \
+          lines!(radii_u, ustrip.(u"Msun/kpc^3", density.(radii)), label="Original (NFW)")
     lines!(radii_u, ustrip.(u"Msun/kpc^3", best_fit_density.(radii)), label="Best fit (Piecewise)")
     lines!(radii_u, ustrip.(u"Msun/kpc^3", mean_fit_density.(radii)), label="Mean fit (Piecewise)")
     band!(radii_u, ustrip.(u"Msun/kpc^3", [t[1] for t in densities]), ustrip.(u"Msun/kpc^3", [t[2] for t in densities]), label="68%", alpha=0.5)
