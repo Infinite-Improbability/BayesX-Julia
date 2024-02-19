@@ -47,7 +47,7 @@ function Model_NFW(
     r_s = uconvert(u"Mpc", r_Δ / c_Δ_dm)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log(1 + c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
+    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log1p(c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
 
     # Set GNFW scale radius
     r_p = uconvert(u"Mpc", r_Δ / c_Δ_GNFW)
@@ -65,7 +65,7 @@ function Model_NFW(
         r = uconvert(u"Mpc", r)
         r_s = uconvert(u"Mpc", r_s)
         r_p = uconvert(u"Mpc", r_p)
-        r / (log(1 + r / r_s) - (1 + r_s / r)^(-1)) *
+        r / (log1p(r / r_s) - (1 + r_s / r)^(-1)) *
         (r / r_p)^(-γ) *
         (1 + (r / r_p)^α)^(-(α + β - γ) / α) *
         (β * (r / r_p)^α + γ)
@@ -122,7 +122,7 @@ function Model_NFW(
         r = abs(r)
         let ρ_s = ρ_s, r_s = r_s, r_p = r_p, α = α, β = β, γ = γ
             4π * μ * G * ρ_s * (r_s^3) *
-            ((log(1 + r / r_s) - (1 + r_s / r)^(-1)) / r) *
+            ((log1p(r / r_s) - (1 + r_s / r)^(-1)) / r) *
             (1 + (r / r_p)^α) * (β * (r / r_p)^α + γ)^(-1)
         end
     end

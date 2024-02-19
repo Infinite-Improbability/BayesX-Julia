@@ -38,14 +38,14 @@ const r500 = 885.727387822
 const c500 = r500 / rs
 
 const priors_nfw = [
-    NormalPrior("x0", 0.0, 25.0), NormalPrior("y0", 0.0, 25.0),
+    DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
     DeltaPrior("MT_500", 20445.219658806e10),
     DeltaPrior("fg_500", 0.13),
     DeltaPrior("c_500", c500),
-    DeltaPrior("a", 1.0510),
-    DeltaPrior("b", 5.4905),
-    DeltaPrior("c", 0.3081),
-    DeltaPrior("c_500_GNFW", 1.177)
+    NormalPrior("a", 1.0510, 0.06),
+    NormalPrior("b", 5.4905, 1.0),
+    NormalPrior("c", 0.3081, 0.02),
+    NormalPrior("c_500_GNFW", 1.177, 0.02)
 ]
 
 sample(
@@ -55,8 +55,8 @@ sample(
     priors_nfw,
     0.022e22u"cm^-2",
     0.1,
-    (1340, 3340),
-    (1370, 3400);
+    (1310, 3400),
+    (1340, 3430);
     bin_size=32,
     centre_radius=0,
     abundances=abundances,
