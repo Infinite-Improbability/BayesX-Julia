@@ -33,7 +33,7 @@ function Model_NFW(
     priorcheck(1 > fg_Δ > 0, -1e100(1 + abs(fg_Δ)))
     priorcheck(α > 0, -1e100(1 - α))
     priorcheck(c_Δ_GNFW > 0, -1e100(1 - c_Δ_GNFW))
-    priorcheck(β > c_Δ_GNFW, -1e100(1 + (c_Δ_GNFW - β)))
+    priorcheck(β > γ, -1e100(1 + (γ - β)))
     priorcheck(c_Δ_dm > 0, -1e100(1 - c_Δ_dm))
 
     # Calculate gas mass
