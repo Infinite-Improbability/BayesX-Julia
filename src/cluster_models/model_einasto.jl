@@ -71,7 +71,7 @@ function Model_Einasto(
     # radii = LogRange(radius_limits..., radius_steps)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log(1 + c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
+    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log1p(c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
 
     # Set GNFW scale radius
     r_p = uconvert(u"Mpc", r_Δ / c_Δ_GNFW)
@@ -79,7 +79,7 @@ function Model_Einasto(
     function pei_integrand(r, params)
         rs, n, rp, α, β, γ = params
         r^3 * (β * (r / rp)^α + γ) /
-        safe_lower_gamma(3 / n, 2 / n * (r / rs)^n) /
+        safe_lower_gamma(3n, 2n * (r / rs)^(1 / n)) /
         (r / rp)^γ / (1 + (r / rp)^α)^((α + β - γ) / α)
     end
 
