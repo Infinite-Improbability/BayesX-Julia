@@ -115,7 +115,7 @@ function Model_NFW(
     Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_Δ
     @assert isfinite(Pei_GNFW)
     @assert Pei_GNFW > 0u"Pa"
-    @mpirankeddebug "Pei calculation complete"
+    @mpirankeddebug "Pei calculation complete" uconvert(u"Msun/kpc/s^2", Pei_GNFW) ρ_s r_s Mg_Δ vol_int_Δ
 
     """Calculate gas density at some radius"""
     function gas_density(r::Unitful.Length{<:Real})::Unitful.Density{Float64}
