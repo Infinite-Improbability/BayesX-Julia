@@ -4,12 +4,14 @@ using Cosmology
 
 include("metallicity.jl")
 
+const base_path = ".."
+
 # Load data
 const data = FITSData(
-    "../data/tng_s91_h57_4/y/chandra_acisi_cy0_obs_evts.fits",
-    "../data/tng_s91_h57_4/bg/chandra_acisi_cy0_bg_evts.fits",
-    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
-    "../data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
+    "$(base_path)/data/tng_s91_h57_4/y/chandra_acisi_cy0_obs_evts.fits",
+    "$(base_path)/data/tng_s91_h57_4/bg/chandra_acisi_cy0_bg_evts.fits",
+    "$(base_path)/data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.arf",
+    "$(base_path)/data/tng_s91_h57_4/response_files/acisi/acisi_aimpt_cy0.rmf",
     0.492u"arcsecondᵃ"
 )
 
@@ -61,7 +63,7 @@ sample(
     centre_radius=0,
     abundances=abundances,
     use_stepsampler=false,
-    log_dir="../logs/s91h57/nfw",
+    log_dir="$(base_path)/logs/s91h57/nfw",
     resume="subfolder",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100),
 )

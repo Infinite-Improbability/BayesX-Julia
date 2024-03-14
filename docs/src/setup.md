@@ -1,6 +1,6 @@
 # Setup
 
-BayesJ is developed for Julia 1.9, which can be obtained from https://julialang.org/. If you're unfamiliar with Julia's package manager go read its [getting started guide](https://pkgdocs.julialang.org/v1/getting-started/) quickly.
+BayesJ is developed for Julia 1.9+, which can be obtained from https://julialang.org/. If you're unfamiliar with Julia's package manager go read its [getting started guide](https://pkgdocs.julialang.org/v1/getting-started/) quickly.
 
 ## Basic Installation
 Launch the Julia REPL with
