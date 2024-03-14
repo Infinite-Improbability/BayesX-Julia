@@ -4,6 +4,9 @@
 [![Documentation](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml/badge.svg)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml)
 
 Bayesian inference on galaxy clusters in X-ray.
+
+Based on the original Fortran version presented in [Olamaie 2015](https://doi.org/10.1093/mnras/stu2146).
+
 ## Setup
 
 BayesJ is an unregistered Julia package. Install it with
