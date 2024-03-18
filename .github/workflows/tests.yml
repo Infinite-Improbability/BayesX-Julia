@@ -8,6 +8,7 @@ on:
       - 'Manifest.toml'
       - 'Project.toml'
       - '.github/tests.yml'
+  workflow_dispatch:
 
 jobs:
   test:
