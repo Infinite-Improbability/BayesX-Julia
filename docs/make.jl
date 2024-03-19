@@ -1,4 +1,3 @@
-push!(LOAD_PATH, "src/")
 using Documenter, DocumenterCitations, BayesJ
 
 bib = CitationBibliography(
