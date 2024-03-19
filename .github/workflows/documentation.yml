@@ -31,6 +31,6 @@ jobs:
         env:
           PYTHON: ""
       - name: Build and deploy
-        run: julia --project=docs/ make.jl
+        run: julia --project=docs/ docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
