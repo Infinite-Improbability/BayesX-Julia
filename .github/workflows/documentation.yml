@@ -22,7 +22,7 @@ jobs:
           version: '1.10'
       - name: Add registry
         run: julia --project=docs/ -e 'using Pkg; Pkg.Registry.add("General"); Pkg.Registry.add(RegistrySpec(url = "https://github.com/astro-group-bristol/AstroRegistry"))'
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.julia
           key: docs-juliadepot

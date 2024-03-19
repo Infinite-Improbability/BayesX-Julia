@@ -25,14 +25,14 @@ jobs:
         #    os: ubuntu-latest
         #    experimental: true
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.julia-version }}
       - name: Add registry
         run: julia --project=@. setup_registry.jl
         working-directory: ./test
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           path: ~/.julia
           key: ${{ matrix.os }}-${{ matrix.julia-version }}-juliadepot
