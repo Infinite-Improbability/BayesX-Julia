@@ -139,4 +139,6 @@ function test_mekal()
     end
 end
 
+
+BayesJ.download_spectral_fitting_data(; progress=true, verbose=true)
 test_mekal()

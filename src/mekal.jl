@@ -175,6 +175,18 @@ function call_mekal(
     )
 end
 
+"""
+    download_spectral_fitting_data(; verbose=false, progress=true, kwargs...)
+
+Download SpectralFitting.jl model data.
+
+Keyword arguments passed through to `SpectralFitting.download_model_data`.
+"""
+function download_spectral_fitting_data(; verbose=false, progress=true, kwargs...)
+    SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=verbose, progress=progress, kwargs...)
+    SpectralFitting.download_model_data(XS_Mekal, verbose=verbose, progress=progress, kwargs...)
+end
+
 
 """
     prepare_model_mekal(nHcol, energy_bins, z, [abundances])
@@ -207,8 +219,8 @@ function prepare_model_mekal(
 
     if MPI.Comm_rank(comm) == 0
         @mpidebug "Checking for model data"
-        SpectralFitting.download_model_data(PhotoelectricAbsorption, verbose=false, progress=true)
-        SpectralFitting.download_model_data(XS_Mekal, verbose=false, progress=true)
+        download_spectral_fitting_data()
+        @mpidebug "Model data ready"
     end
     MPI.Barrier(comm)
 
