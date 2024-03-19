@@ -9,6 +9,7 @@ on:
       - 'src/**.jl'
       - 'docs/**'
       - '.github/documentation.yml'
+  workflow_dispatch:
 
 jobs:
   build:
