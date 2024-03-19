@@ -2,6 +2,7 @@
 
 [![Run tests](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml/badge.svg)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/tests.yml)
 [![Documentation](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml/badge.svg)](https://github.com/Infinite-Improbability/BayesX-Julia/actions/workflows/documentation.yml)
+[![codecov](https://codecov.io/github/Infinite-Improbability/BayesX-Julia/graph/badge.svg?token=ANS2NQLNZJ)](https://codecov.io/github/Infinite-Improbability/BayesX-Julia)
 
 Bayesian inference on galaxy clusters in X-ray.
 
