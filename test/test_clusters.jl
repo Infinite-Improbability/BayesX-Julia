@@ -242,12 +242,12 @@ function test_constant()
     @testset "Constant" begin
         ρ = 5u"g/cm^3"
         T = 10u"keV"
-        r = 0.5u"pc"
+        r = 0.5u"Mpc"
 
         t, d = Model_Constant(r, T, ρ)
 
         @testset "Check inside boundary radius" begin
-            for r in range(0u"pc", 0.49u"pc", 10)
+            for r in range(0u"Mpc", 0.49u"Mpc", 10)
                 @test t(r) == T
                 @test d(r) == ρ
             end
