@@ -238,6 +238,31 @@ function test_piecewise()
 
 end
 
+function test_constant()
+    @testset "Constant" begin
+        ρ = 5u"g/cm^3"
+        T = 10u"keV"
+        r = 0.5u"pc"
+
+        t, d = Model_Constant(r, T, ρ)
+
+        @testset "Check inside boundary radius" begin
+            for r in range(0u"pc", 0.49u"pc", 10)
+                @test t(r) == T
+                @test d(r) == ρ
+            end
+        end
+
+        @testset "Check outside boundary radius" begin
+            for r in range(r, 10u"Mpc", 10)
+                @test t(r) == 0.0u"keV"
+                @test d(r) == 0.0u"g/cm^3"
+            end
+        end
+        test_model(t,d)
+    end
+end
+
 @testset "Cluster Models" begin
     test_nfw()
     test_einasto()
