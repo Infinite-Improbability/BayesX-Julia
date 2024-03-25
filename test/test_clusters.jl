@@ -259,7 +259,19 @@ function test_constant()
                 @test d(r) == 0.0u"g/cm^3"
             end
         end
+
+        # Test T, d trends + surface brightness.
         test_model(t,d)
+        
+        # Unitless matches 
+        @testset "Unitless model call matches unitful call" begin
+            unitless_params = (0.5, 10, 5)
+            tunitless, dunitless = Model_Constant(unitless_params...)
+            for r in logrange(1u"pc", 1u"Mpc", 100)
+                @test t(r) == tunitless(r)
+                @test d(r) == dunitless(r)
+            end
+        end
     end
 end
 
