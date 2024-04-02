@@ -107,6 +107,12 @@ function test_nfw()
                 @test d(r) == dunitless(r)
             end
         end
+
+        @testset "Value checks" begin
+            r = 1u"pc"
+            @test t(r) == 4.702952394315461e-32u"kg*km^2*Mpc/pc/s^2"
+            @test d(r) == 2.5963827412568257e20u"Msun*Mpc^-3"
+        end
     end
 end
 
