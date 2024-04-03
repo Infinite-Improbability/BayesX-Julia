@@ -1,3 +1,10 @@
+module ModelNFW
+using ArgCheck
+using UnitfulAstro
+using Integrals
+include("../params.jl")
+import ..@mpirankeddebug, ..priorcheck, ..ρ_crit
+
 export Model_NFW
 
 """
@@ -158,4 +165,5 @@ function Model_NFW(
         z=z,
         Δ=Δ
     )
+end
 end
