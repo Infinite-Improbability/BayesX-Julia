@@ -7,6 +7,49 @@ import ..@mpirankeddebug, ..priorcheck, ..ρ_crit
 
 export Model_NFW
 
+# Some helper functions
+"""The radius dependent part of the gas density function"""
+function gnfw_gas_radial_term(
+    r::Unitful.Length{<:Real},
+    rs::Unitful.Length{<:Real}, # NFW
+    rp::Unitful.Length{<:Real}, # GNFW
+    α,
+    β,
+    γ
+)::Unitful.Length{Float64}
+    r = uconvert(u"kpc", r)
+    rs = uconvert(u"kpc", rs)
+    rp = uconvert(u"kpc", rp)
+    r /
+    (log1p(r / rs) - (1 + rs / r)^(-1)) *
+    (r / rp)^(-γ) *
+    (1 + (r / rp)^α)^(-(α + β - γ) / α) *
+    (β * (r / rp)^α + γ)
+end
+
+"""An integral over radius that is equal to the gas
+density to a proportionality constant"""
+function gnfw_gas_mass_integrand(
+    r::Unitful.Length{<:Real},
+    r_s::Unitful.Length{<:Real}, # NFW
+    r_p::Unitful.Length{<:Real}, # GNFW
+    α,
+    β,
+    γ
+)::Unitful.Volume{Float64}
+
+    s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
+    @assert isfinite(s) "s is not finite with r = $r, rs = $r_s, rp = $r_p, α = $α, β = $β, γ = $γ"
+
+    return s
+end
+function gnfw_gas_mass_integrand(
+    r::Unitful.Length{<:Real},
+    p::Tuple
+)
+    gnfw_gas_mass_integrand(r, p...)
+end
+
 """
     Model_NFW(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500)
 
@@ -58,49 +101,6 @@ function Model_NFW(
 
     # Set GNFW scale radius
     r_p = uconvert(u"Mpc", r_Δ / c_Δ_GNFW)
-
-    # Some helper functions
-    """The radius dependent part of the gas density function"""
-    function gnfw_gas_radial_term(
-        r::Unitful.Length{<:Real},
-        rs::Unitful.Length{<:Real}, # NFW
-        rp::Unitful.Length{<:Real}, # GNFW
-        α,
-        β,
-        γ
-    )::Unitful.Length{Float64}
-        r = uconvert(u"kpc", r)
-        rs = uconvert(u"kpc", rs)
-        rp = uconvert(u"kpc", rp)
-        r /
-        (log1p(r / rs) - (1 + rs / r)^(-1)) *
-        (r / rp)^(-γ) *
-        (1 + (r / rp)^α)^(-(α + β - γ) / α) *
-        (β * (r / rp)^α + γ)
-    end
-
-    """An integral over radius that is equal to the gas
-    density to a proportionality constant"""
-    function gnfw_gas_mass_integrand(
-        r::Unitful.Length{<:Real},
-        r_s::Unitful.Length{<:Real}, # NFW
-        r_p::Unitful.Length{<:Real}, # GNFW
-        α,
-        β,
-        γ
-    )::Unitful.Volume{Float64}
-
-        s = r^2 * gnfw_gas_radial_term(r, r_s, r_p, α, β, γ)
-        @assert isfinite(s) "s is not finite with r = $r, rs = $r_s, rp = $r_p, α = $α, β = $β, γ = $γ"
-
-        return s
-    end
-    function gnfw_gas_mass_integrand(
-        r::Unitful.Length{<:Real},
-        p::Tuple
-    )
-        gnfw_gas_mass_integrand(r, p...)
-    end
 
     # Calculate Pei, normalisation coefficent for GNFW pressure
     @mpirankeddebug "Integrating to find Pei"
