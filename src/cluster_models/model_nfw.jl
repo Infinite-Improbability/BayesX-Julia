@@ -50,6 +50,14 @@ function gnfw_gas_mass_integrand(
     gnfw_gas_mass_integrand(r, p...)
 end
 
+function r_delta(MT_Δ::Unitful.Mass, Δ, ρ_crit_z)
+    uconvert(u"Mpc", cbrt((3 * MT_Δ) / (4π * Δ * ρ_crit_z)))
+end
+
+function rho_s(ρ_crit_z, Δ, c_Δ_dm)
+    ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log1p(c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
+end
+
 """
     Model_NFW(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500)
 
@@ -93,11 +101,11 @@ function Model_NFW(
     ρ_crit_z = ρ_crit(z)
 
     # And get RΔ and NFW scale radius
-    r_Δ = uconvert(u"Mpc", cbrt((3 * MT_Δ) / (4π * Δ * ρ_crit_z)))
+    r_Δ = r_delta(MT_Δ, Δ, ρ_crit_z)
     r_s = uconvert(u"Mpc", r_Δ / c_Δ_dm)
 
     # Calculate NFW characteristic overdensity
-    ρ_s = ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log1p(c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
+    ρ_s = rho_s(ρ_crit_z, Δ, c_Δ_dm)
 
     # Set GNFW scale radius
     r_p = uconvert(u"Mpc", r_Δ / c_Δ_GNFW)
