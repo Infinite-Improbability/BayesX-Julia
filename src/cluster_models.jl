@@ -59,3 +59,5 @@ include("cluster_models/model_einasto.jl")
 include("cluster_models/model_vikhlinin2006.jl")
 include("cluster_models/model_constant.jl")
 include("cluster_models/model_piecewise.jl")
+using .ModelNFW
+export Model_NFW
