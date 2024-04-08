@@ -70,7 +70,7 @@ for (index, r) in enumerate(r_piecewise)
     NFW_priors = vcat(NFW_priors, new_elems)
 end
 
-# Plotting
+# Plotting variables
 radii = 1:500
 t(r) = ustrip(u"keV", temp_full(r * 1u"kpc"))
 d(r) = ustrip(u"g/cm^3", density_full(r * 1u"kpc"))
@@ -109,42 +109,47 @@ centre_radius = 4
 integration_limit = 10u"Mpc"
 
 pixel_size = ustrip(u"kpc", angle_to_length(pixel_edge_angle, z)) # Approx 24.95
-# println("Pixel size [kpc]: $pixel_size")
-# Now we can make an observation with the full model to see what it looks like
-predicted_count_rate = BayesJ.make_observation(
-        temp_full,
-        density_full,
-        z,
-        shape,
-        pixel_edge_angle,
-        emission_model,
-        exposure_time,
-        response_function,
-        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-        centre_radius,
-        limit=integration_limit,
-    )
-replace!(predicted_count_rate, missing=>0)
 
-Random.seed!(42)
-observation = pois_rand.(predicted_count_rate)
-bg_rate = rand() * min(1, maximum(predicted_count_rate))
-background = Array{Int64}(undef, size(observation)...)
-for i in eachindex(background)
-    background[i] = pois_rand(bg_rate) + 1
+# Now we can make an observation with the full model to see what it looks like
+function observations_from_profiles(t, d)
+    predicted_count_rate = BayesJ.make_observation(
+            temp_full,
+            density_full,
+            z,
+            shape,
+            pixel_edge_angle,
+            emission_model,
+            exposure_time,
+            response_function,
+            (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+            centre_radius,
+            limit=integration_limit,
+        )
+    replace!(predicted_count_rate, missing=>0)
+
+    # Random.seed!(42)
+    observation = pois_rand.(predicted_count_rate)
+    bg_rate = rand() * min(1, maximum(predicted_count_rate))
+    background = Array{Int64}(undef, size(observation)...)
+    for i in eachindex(background)
+        background[i] = pois_rand(bg_rate) + 1
+    end
+    observation += background
+    noise = observation - predicted_count_rate
+    return (predicted_count_rate, observation, background, noise)
 end
-observation += background
-noise = observation - predicted_count_rate
+
+expected_rate, observed_rate, background_rate, noise_rate = observations_from_profiles(temp_full, density_full)
 
 # Plot cluster counts
 f = Figure(size=(800,800))
 x = [pixel_size * (pix - (shape[1]+1)/2) for pix in 1:shape[1]]
 y = [pixel_size * (pix - (shape[2]+1)/2) for pix in 1:shape[2]]
-expected_counts = [sum(predicted_count_rate[:, Int(x), Int(y)]) for x in 1:shape[1], y in 1:shape[2]]
-observed_counts = [sum(observation[:, Int(x), Int(y)]) for x in 1:shape[1], y in 1:shape[2]]
+expected_counts = [sum(expected_rate[:, Int(x), Int(y)]) for x in 1:shape[1], y in 1:shape[2]]
+observed_counts = [sum(observed_rate[:, Int(x), Int(y)]) for x in 1:shape[1], y in 1:shape[2]]
 noise_counts = expected_counts - observed_counts
 
-ax = Axis(f[1, 1], title="Expected Counts", ylabel="Distance from center [kpc]", yticks=[round(y_val) for y_val in y[1:2:end]])
+ax = Axis(f[1, 1], title="Expected Counts", ylabel="Distance from center [kpc]", yticks=-400:50:400)
 hm = heatmap!(ax, x, y, expected_counts)
 Colorbar(f[1, 2], hm)
 
@@ -152,12 +157,12 @@ ax2 = Axis(f[1, 3], title="Sample Observation Counts")
 hm = heatmap!(ax2, x, y, observed_counts)
 Colorbar(f[1, 4], hm)
 
-ax3 = Axis(f[2, 1], title="Noise Counts", xlabel="Distance from center [kpc]", xticks=[round(x_val) for x_val in x[1:2:end]], xticklabelrotation=pi/2,
-    ylabel="Distance from center [kpc]", yticks=[round(y_val) for y_val in y[1:2:end]])
+ax3 = Axis(f[2, 1], title="Noise Counts", xlabel="Distance from center [kpc]", xticks=-400:50:400, xticklabelrotation=pi/2,
+    ylabel="Distance from center [kpc]", yticks=-400:50:400)
 hm = heatmap!(ax3, x, y, noise_counts)
 Colorbar(f[2, 2], hm)
 
-ax4 = Axis(f[2, 3], title="Signal/Noise", xlabel="Distance from center [kpc]", xticks=[round(x_val) for x_val in x[1:2:end]], xticklabelrotation=pi/2)
+ax4 = Axis(f[2, 3], title="Signal/Noise", xlabel="Distance from center [kpc]", xticks=-400:50:400, xticklabelrotation=pi/2)
 hm = heatmap!(ax4, x, y, observed_counts./noise_counts)
 Colorbar(f[2, 4], hm)
 hidexdecorations!(ax)
@@ -167,25 +172,35 @@ hideydecorations!(ax4)
 # save("../signal_noise_tests/cluster_counts.svg", f)
 
 # Plot spectrumn averaged within some annulus
-annulus_pixel_mask = similar(predicted_count_rate, Bool)
+annulus_pixel_mask = similar(expected_rate, Bool)
 for i in 1:shape[1], j in 1:shape[2]
     x_val = x[i]
     y_val = x[j]
     annulus_pixel_mask[:, i, j] .= hypot(x_val, y_val)>200 && hypot(x_val, y_val)<400 ? true : false
 end
-
 function annulus_spectrum(observation, mask)
     annulus_pixels = reshape(observation[mask], size(observation)[1], :)
     mean(annulus_pixels, dims=2)[:]
 end
-
+temp_uniform, density_uniform = Model_Constant(400u"kpc", t_0, ρ_0)
+expected_uniform, observed_uniform, background_uniform, noise_uniform = observations_from_profiles(temp_uniform, density_uniform)
 f = Figure(size=(800,800))
-
-ax = Axis(f[1, 1], title="Selected area for averaging", ylabel="Distance from center [kpc]", yticks=[round(y_val) for y_val in y[1:2:end]])
+ax = Axis(f[1, 1], title="Annulus", ylabel="Distance from center [kpc]", xlabel="Distance from center [kpc]", xticks=-400:50:400, 
+    yticks=-400:50:400, xticklabelrotation=pi/2)
 hm = heatmap!(ax, x, y, annulus_pixel_mask[1, :, :])
 Colorbar(f[1, 2], hm)
 
-ax = Axis(f[2, 1], title="Averaged annulus spectrum")
-lines!(ax, annulus_spectrum(observation, annulus_pixel_mask))
-display(f)
-save("../signal_noise_tests/annulus_spectra.svg", f)
+ax = Axis(f[2, 1], title="Averaged observation annulus spectrum", xlabel="Energy Bin", ylabel="Counts")
+lines!(ax, annulus_spectrum(expected_uniform, annulus_pixel_mask), label="Expected Uniform")
+lines!(ax, annulus_spectrum(observed_uniform, annulus_pixel_mask), label="Observation Uniform")
+lines!(ax, annulus_spectrum(expected_rate, annulus_pixel_mask), label="Expected NFW")
+lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask), label="Observation NFW")
+axislegend(ax)
+
+ax = Axis(f[1, 3], title="Averaged signal-noise annulus spectrum", xlabel="Energy Bin", ylabel="Counts")
+lines!(ax, annulus_spectrum(observed_uniform, annulus_pixel_mask)./annulus_spectrum(noise_uniform, annulus_pixel_mask), label="Uniform")
+lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask)./annulus_spectrum(noise_rate, annulus_pixel_mask), label="NFW")
+axislegend(ax)
+
+# display(f)
+# save("../signal_noise_tests/annulus_spectra.svg", f)
