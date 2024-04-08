@@ -50,7 +50,7 @@ for (index, r) in enumerate(r_piecewise)
     if index+1 != Int((n_points+1)/2)
         new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), DeltaPrior("ρ$index", ρ_0), DeltaPrior("T$index", t_0)]
     else
-        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), UniformPrior("ρ$index", 1e-40, 1e-34), UniformPrior("T$index", 1e-10, 1e-4),]
+        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), UniformPrior("ρ$index", 1e-30, 1e-24), UniformPrior("T$index", 1e-4, 1e4)]
     end
     constant_priors = vcat(constant_priors, new_elems)
 end
@@ -61,11 +61,13 @@ for (index, r) in enumerate(r_piecewise)
     global NFW_priors
     index -= 1
     if index+1 != Int((n_points+1)/2)
+        density = density_full(r_piecewise[index+1]u"kpc")
+        temp = temp_full(r_piecewise[index+1]u"kpc")
         new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), 
-            DeltaPrior("ρ$index", density_full(r_piecewise[index+1]u"kpc")), 
-            DeltaPrior("T$index", temp_full(r_piecewise[index+1]u"kpc"))]
+            DeltaPrior("ρ$index", ustrip(u"g/cm^3", density)), 
+            DeltaPrior("T$index", ustrip(u"keV", temp))]
     else
-        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), UniformPrior("ρ$index", 1e-40, 1e-34), UniformPrior("T$index", 1e-10, 1e-4),]
+        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), UniformPrior("ρ$index", 1e-30, 1e-24), UniformPrior("T$index", 1e-4, 1e4)]
     end
     NFW_priors = vcat(NFW_priors, new_elems)
 end
@@ -184,6 +186,8 @@ end
 
 # Plot spectrumn averaged within some annulus
 function plot_annulus_spectra(do_save=false)
+    x = [pixel_size * (pix - (shape[1]+1)/2) for pix in 1:shape[1]]
+    y = [pixel_size * (pix - (shape[2]+1)/2) for pix in 1:shape[2]]
     annulus_pixel_mask = similar(expected_rate, Bool)
     for i in 1:shape[1], j in 1:shape[2]
         x_val = x[i]
@@ -230,7 +234,7 @@ function run_model_fit(obs, bg, priors, log_dir=nothing)
     prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
 
     sampler, result, best_fit_observation = BayesJ.sample(
-        obs + bg,
+        obs,
         bg,
         response_function,
         prior_transform,
@@ -238,7 +242,7 @@ function run_model_fit(obs, bg, priors, log_dir=nothing)
         exposure_time, 
         z;
         prior_names=prior_names,
-        cluster_model=Model_Constant,
+        cluster_model=Model_Piecewise,
         emission_model=emission_model,
         param_wrapper=param_wrapper,
         pixel_edge_angle=pixel_edge_angle,
