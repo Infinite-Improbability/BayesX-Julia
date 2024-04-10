@@ -3,6 +3,7 @@ using Unitful, UnitfulAstro, DimensionfulAngles
 using BayesJ
 using CairoMakie
 using Statistics
+include("../src/mpi.jl")
 include("../src/params.jl")
 
 # Load Chandra cycle 0 response file
@@ -48,7 +49,7 @@ for (index, r) in enumerate(r_piecewise)
     global constant_priors
     index -= 1
     if index+1 != Int((n_points+1)/2)
-        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), DeltaPrior("ρ$index", ρ_0), DeltaPrior("T$index", t_0)]
+        new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), DeltaPrior("ρ$index", ustrip(u"g/cm^3", ρ_0)), DeltaPrior("T$index", ustrip(u"keV", t_0))]
     else
         new_elems = [DeltaPrior("r$index", r_piecewise[index+1]), UniformPrior("ρ$index", 1e-30, 1e-24), UniformPrior("T$index", 1e-4, 1e4)]
     end
@@ -228,6 +229,25 @@ plot_profiles()
 plot_cluster_counts()
 plot_annulus_spectra()
 
+# temp plot function 
+function plot_res(obs::Array, pred::Array, path::AbstractString)
+    if BayesJ.isroot()
+        if pred[:, 1, 1] != pred[:, 4, 4]
+            @warn "Something funky with the best fit array"
+        end
+        slice_obs = Vector{Float64}(obs[:, 4, 4])
+        slice_pred = Vector{Float64}(pred[:, 4, 4])
+
+        f = Figure()
+        ax = Axis(f[1, 1], xlabel="Channel", ylabel="Counts", yscale=Makie.pseudolog10)
+        lines!(slice_obs ./ maximum(slice_obs), label="Observation")
+        lines!(slice_pred ./ maximum(slice_pred), label="Best Fit")
+        axislegend()
+
+        save(joinpath(path, "spectra.svg"), f)
+    end
+end
+
 # Run model fitting and export
 function run_model_fit(obs, bg, priors, log_dir=nothing)
     prior_transform, param_wrapper = BayesJ.make_cube_transform(priors...)
@@ -260,7 +280,7 @@ function run_model_fit(obs, bg, priors, log_dir=nothing)
     try
         output_dir = sampler.logs["run_dir"]
         if output_dir isa AbstractString
-            plot(obs, best_fit_observation, joinpath(output_dir, "plots"))
+            plot_res(obs, best_fit_observation, joinpath(output_dir, "plots"))
         end
     catch e
         if !(e isa KeyError)
@@ -270,3 +290,16 @@ function run_model_fit(obs, bg, priors, log_dir=nothing)
     end
 end
 
+for i in 1:10
+    global expected_rate, observed_rate, background_rate, noise_rate
+    if isroot()
+        expected_rate, observed_rate, background_rate, noise_rate = observations_from_profiles(temp_full, density_full)
+    end
+    observed_rate = MPI.bcast(observed_rate, 0, comm)
+    background_rate = MPI.bcast(background_rate, 0, comm)
+    print("Rank: $(MPI.Comm_rank(comm)) has $(background_rate[1:10, 1, 1])")
+    run_model_fit(observed_rate, background_rate, NFW_priors, "../signal_noise_tests/NFW_annulus")
+    observed_rate = MPI.bcast(observed_rate, 0, comm)
+    background_rate = MPI.bcast(background_rate, 0, comm)
+    run_model_fit(observed_rate, background_rate, constant_priors, "../signal_noise_tests/constant_annulus")
+end
