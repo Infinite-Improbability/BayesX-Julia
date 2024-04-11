@@ -26,7 +26,7 @@ emission_model = BayesJ.prepare_model_mekal(
 
 # Set up the full info model
 temp_full, density_full = Model_NFW(
-    8e13,
+    8e15,
     0.13,
     3,
     1.0510,
@@ -35,9 +35,11 @@ temp_full, density_full = Model_NFW(
     1.177,
     z=z
 )
+
 r_0 = 300u"kpc"
 t_0 = uconvert(u"keV", temp_full(r_0))
 ρ_0 = uconvert(u"g/cm^3", density_full(r_0))
+temp_full, density_full = Model_Constant(r_0 + 100u"kpc", t_0, ρ_0)
 println("Temperature: $t_0, Density: $ρ_0")
 
 n_points = 9 # Make sure it's odd so we get r_0 as a point
@@ -73,18 +75,11 @@ for (index, r) in enumerate(r_piecewise)
     NFW_priors = vcat(NFW_priors, new_elems)
 end
 
-# Plotting variables
-radii = 1:500
-t(r) = ustrip(u"keV", temp_full(r * 1u"kpc"))
-d(r) = ustrip(u"g/cm^3", density_full(r * 1u"kpc"))
-t_piecewise(r_piecewise) = ustrip(u"keV", temp_full(r_piecewise * 1u"kpc"))
-d_piecewise(r_piecewise) = ustrip(u"g/cm^3", density_full(r_piecewise * 1u"kpc"))
-
 
 # For convenience we want the pixel width to be a factor of 100kpc. These params give ~24.95kpc, so center radius as 4 will block the 100kpc range.
 shape = (32, 32)
 pixel_edge_angle = 13.1u"arcsecondᵃ"
-exposure_time = 3.0e8u"s"
+exposure_time = 5.0e6u"s"
 centre_radius = 4
 integration_limit = 10u"Mpc"
 
@@ -109,23 +104,30 @@ function observations_from_profiles(t, d)
 
     # Random.seed!(42)
     observation = pois_rand.(predicted_count_rate)
-    bg_rate = rand() * min(1, maximum(predicted_count_rate))
+    bg_rate = 0.01*maximum(predicted_count_rate)
+    println("Background Rate $bg_rate")
     background = Array{Int64}(undef, size(observation)...)
     for i in eachindex(background)
         background[i] = pois_rand(bg_rate) + 1
     end
     observation += background
     noise = observation - predicted_count_rate
-    return (predicted_count_rate, observation, background, noise)
+    return (predicted_count_rate, observation, bg_rate, noise)
 end
 
 expected_rate, observed_rate, background_rate, noise_rate = observations_from_profiles(temp_full, density_full)
 
 # Plot temp, density profiles
 function plot_profiles(do_save=false)
+    # Plotting variables
+    radii = 1:500
+    t(r) = ustrip(u"keV", temp_full(r * 1u"kpc"))
+    d(r) = ustrip(u"g/cm^3", density_full(r * 1u"kpc"))
+    t_piecewise(r_piecewise) = ustrip(u"keV", temp_full(r_piecewise * 1u"kpc"))
+    d_piecewise(r_piecewise) = ustrip(u"g/cm^3", density_full(r_piecewise * 1u"kpc"))
+    
     f = Figure()
     # Temperature plot
-    # Label(f[1, 1, TopLeft()], "Temperature", font=:bold, padding = (0, 0, -30, 0))
     ax = Axis(f[1, 1], ylabel="Temperature [keV]")
     hidexdecorations!(ax, grid=false)
     lines!(radii, t.(radii), label="Full Model")
@@ -135,7 +137,7 @@ function plot_profiles(do_save=false)
 
     # Density plot
     Label(f[2, 1, TopLeft()], "Density", font=:bold, padding = (0, 0, -30, 0))
-    ax2 = Axis(f[2, 1], xlabel="Radius [kpc]", ylabel="Density [g/cm^3]", yscale=log10)
+    ax2 = Axis(f[2, 1], xlabel="Radius [kpc]", ylabel="Density [g/cm^3]")
     lines!(radii, d.(radii))
     scatter!(r_piecewise, fill(ustrip(u"g/cm^3", ρ_0), n_points))
     scatter!(r_piecewise, d_piecewise)
@@ -147,7 +149,7 @@ function plot_profiles(do_save=false)
     
     if do_save
         display(f)
-        save("../signal_noise_tests/model_profiles.svg", f)
+        save("../signal_noise_tests/model_profiles.png", f)
     end
 end
 
@@ -202,32 +204,32 @@ function plot_annulus_spectra(do_save=false)
     temp_uniform, density_uniform = Model_Constant(400u"kpc", t_0, ρ_0)
     expected_uniform, observed_uniform, background_uniform, noise_uniform = observations_from_profiles(temp_uniform, density_uniform)
     f = Figure(size=(800,800))
-    ax = Axis(f[1, 1], title="Annulus", ylabel="Distance from center [kpc]", xlabel="Distance from center [kpc]", xticks=-400:50:400, 
-        yticks=-400:50:400, xticklabelrotation=pi/2)
-    hm = heatmap!(ax, x, y, annulus_pixel_mask[1, :, :])
-    Colorbar(f[1, 2], hm)
+    # ax = Axis(f[1, 1], title="Annulus", ylabel="Distance from center [kpc]", xlabel="Distance from center [kpc]", xticks=-400:50:400, 
+    #     yticks=-400:50:400, xticklabelrotation=pi/2)
+    # hm = heatmap!(ax, x, y, annulus_pixel_mask[1, :, :])
+    # Colorbar(f[1, 2], hm)
 
-    ax = Axis(f[2, 1], title="Averaged observation annulus spectrum", xlabel="Energy Bin", ylabel="Counts")
+    ax = Axis(f[1, 1], title="Averaged observation annulus spectrum", xlabel="Channel", ylabel="Counts")
     lines!(ax, annulus_spectrum(expected_uniform, annulus_pixel_mask), label="Expected Uniform")
     lines!(ax, annulus_spectrum(observed_uniform, annulus_pixel_mask), label="Observation Uniform")
-    lines!(ax, annulus_spectrum(expected_rate, annulus_pixel_mask), label="Expected NFW")
-    lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask), label="Observation NFW")
+    # lines!(ax, annulus_spectrum(expected_rate, annulus_pixel_mask), label="Expected NFW")
+    # lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask), label="Observation NFW")
     axislegend(ax)
 
-    ax = Axis(f[1, 3], title="Averaged signal-noise annulus spectrum", xlabel="Energy Bin", ylabel="Counts")
+    ax = Axis(f[1, 2], title="Averaged signal/noise annulus spectrum", xlabel="Channel", ylabel="Ratio")
     lines!(ax, annulus_spectrum(observed_uniform, annulus_pixel_mask)./annulus_spectrum(noise_uniform, annulus_pixel_mask), label="Uniform")
-    lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask)./annulus_spectrum(noise_rate, annulus_pixel_mask), label="NFW")
+    # lines!(ax, annulus_spectrum(observed_rate, annulus_pixel_mask)./annulus_spectrum(noise_rate, annulus_pixel_mask), label="NFW")
     axislegend(ax)
 
     if do_save
         display(f)
-        save("../signal_noise_tests/annulus_spectra.svg", f)
+        save("../signal_noise_tests/annulus_spectra.png", f)
     end
 end 
 
-plot_profiles()
-plot_cluster_counts()
-plot_annulus_spectra()
+plot_profiles(true)
+plot_cluster_counts(true)
+plot_annulus_spectra(true)
 
 # temp plot function 
 function plot_res(obs::Array, pred::Array, path::AbstractString)
@@ -290,16 +292,16 @@ function run_model_fit(obs, bg, priors, log_dir=nothing)
     end
 end
 
-for i in 1:10
-    global expected_rate, observed_rate, background_rate, noise_rate
-    if isroot()
-        expected_rate, observed_rate, background_rate, noise_rate = observations_from_profiles(temp_full, density_full)
-    end
-    observed_rate = MPI.bcast(observed_rate, 0, comm)
-    background_rate = MPI.bcast(background_rate, 0, comm)
-    print("Rank: $(MPI.Comm_rank(comm)) has $(background_rate[1:10, 1, 1])")
-    run_model_fit(observed_rate, background_rate, NFW_priors, "../signal_noise_tests/NFW_annulus")
-    observed_rate = MPI.bcast(observed_rate, 0, comm)
-    background_rate = MPI.bcast(background_rate, 0, comm)
-    run_model_fit(observed_rate, background_rate, constant_priors, "../signal_noise_tests/constant_annulus")
-end
+# for i in 1:10
+#     global expected_rate, observed_rate, background_rate, noise_rate
+#     if isroot()
+#         expected_rate, observed_rate, background_rate, noise_rate = observations_from_profiles(temp_full, density_full)
+#     end
+#     observed_rate = MPI.bcast(observed_rate, 0, comm)
+#     background_rate = MPI.bcast(background_rate, 0, comm)
+#     print("Rank: $(MPI.Comm_rank(comm)) has $(background_rate[1:10, 1, 1])")
+#     run_model_fit(observed_rate, background_rate, NFW_priors, "../signal_noise_tests/NFW_annulus")
+#     observed_rate = MPI.bcast(observed_rate, 0, comm)
+#     background_rate = MPI.bcast(background_rate, 0, comm)
+#     run_model_fit(observed_rate, background_rate, constant_priors, "../signal_noise_tests/constant_annulus")
+# end
