@@ -2,6 +2,6 @@ module BayesJ
 
 __precompile__(false)
 
-include("run.jl")
+include("sample.jl")
 
 end

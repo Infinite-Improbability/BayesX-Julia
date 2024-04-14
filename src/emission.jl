@@ -23,7 +23,40 @@ struct ObservationError <: Exception
 end
 
 """
-    surface_brightness(projected_radius, temperature, density, z, limit, model, pixel_edge_angle)
+    emission_integrand!(flux::Vector{Float32}, los_offset::AbstractFloat, projected_radius::Unitful.Length, cluster_model::ClusterModel, emission_model!::Function)
+
+Integrand for surface brightness.
+
+The `projected_radius` denotes a point on the sky plane at given radius from the centre of the cluster. 
+`los_offset` shifts this distance along the line of sight such that √(projected_radius² + los_offset²) gives the 3D distance from the cluster core.
+
+The flux is calculated using the emission model, which takes the cluster model and the distance from the core to determine the appropriate gas properties.
+The result is updated inplace in the flux vector.
+"""
+function emission_integrand!(
+    flux::Vector{Float32},
+    los_offset::AbstractFloat,
+    projected_radius::AbstractFloat,
+    cluster_model::ClusterModel,
+    emission_model!::Function
+)
+    # Result is in m^-3/s
+    emission_model!(flux, cluster_model, Quantity(hypot(projected_radius, los_offset), u"m"))
+end
+
+"""
+    emission_integrand!(flux::Vector{Float32}, los_offset::AbstractFloat, params::Tuple{<:Real,ClusterModel,Function})
+
+Wrapper for [`emission_integrand`](@ref) for compatibility with Integrals.jl.
+
+Integration is performed over `los_offset`.
+"""
+function emission_integrand!(flux::Vector{Float32}, los_offset::AbstractFloat, params::Tuple{<:Real,ClusterModel,Function})
+    emission_integrand!(flux, los_offset, params[1], params[2], params[3])
+end
+
+"""
+    surface_brightness(projected_radius::Unitful.Length, cluster_model::ClusterModel, z::Real, limit::Unitful.Length, emission_model!, pixel_edge_angle)
 
 Calculate the observed surface_brightness at some projected radius on the sky.
 
@@ -41,11 +74,10 @@ The result returned is the expected count rate per unit observing area, as a vec
 """
 function surface_brightness(
     projected_radius::Unitful.Length,
-    temperature,
-    density,
-    z::Float64,
+    cluster_model::ClusterModel,
+    z::Real,
     limit::Unitful.Length,
-    model!::Function,
+    emission_model!::Function,
     pixel_edge_angle::DimensionfulAngles.Angle,
     flux::Vector{Float32}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
@@ -56,25 +88,20 @@ function surface_brightness(
 
     flux .= 0.0f0
 
-    function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Any,Any})
-        r = Quantity(hypot(params[1], l), u"m")
-
-        # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
-        # Result is in m^-3/s
-        model!(y, params[2](r), params[3](r))
-    end
-
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
-    ifunc = IntegralFunction(integrand, flux)
-    problem = IntegralProblem(ifunc, (0.0, lim), (pr, temperature, density))
+    ifunc = IntegralFunction(emission_integrand!, flux)
+    problem = IntegralProblem(ifunc, (0.0, lim), (pr, cluster_model, emission_model!))
+
     sol = solve(problem, HCubatureJL(); reltol=1e-2)
     u = sol.u * 1u"m^-2/s"
+
     if all(isfinite, sol.u) == false
         @mpirankedwarn "Integration returned non-finite values. Returning fallback likelihood." projected_radius sol.u
         throw(ObservationError(-1e100 * (length(sol.u) - count(isfinite.(sol.u)))))
     elseif all(iszero, sol.u)
-        @mpirankeddebug "Integration found point without emission" projected_radius temperature(0u"kpc") temperature(1u"kpc") temperature(10u"kpc") temperature(100u"kpc") density(0u"kpc") density(1u"kpc") density(10u"kpc") density(100u"kpc")
+        @mpirankeddebug "Integration found point without emission" projected_radius temperature(cluster_model, 0u"kpc") temperature(cluster_model, 1u"kpc") temperature(cluster_model, 10u"kpc") temperature(cluster_model, 100u"kpc") density(cluster_model, 0u"kpc") density(cluster_model, 1u"kpc") density(cluster_model, 10u"kpc") density(cluster_model, 100u"kpc")
     end
+
     return 2 * u * pixel_edge_angle^2 / Quantity(4π, u"srᵃ") / (1 + z)^2
 
     # sol is volume emissivity per face area of column
@@ -179,7 +206,7 @@ function pixel_offset(ij, array_centre_indices, centre_offset_pixels)::Float64
 end
 
 """
-    make_observation(temperature, density, z, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit=10u"Mpc")
+    make_observation(cluster_model::ClusterModel, z::Real, shape, pixel_edge_angle, emission_model, exposure_time, response_function, centre, centre_radius, mask=nothing, limit=10u"Mpc")
 
 Generate an image of the cluster given functions for the radial profile of gas temperature and electron density and assorted observational parameters.
 
@@ -190,8 +217,7 @@ Generate an image of the cluster given functions for the radial profile of gas t
 - The limit is passed through to [`surface_brightness`](@ref)
 """
 function make_observation(
-    temperature,
-    density,
+    cluster_model::ClusterModel,
     z::Real,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
@@ -233,8 +259,7 @@ function make_observation(
             u"m^(-2)/s",
             surface_brightness(
                 brightness_radii[i] * pixel_edge_length,
-                temperature,
-                density,
+                cluster_model,
                 z,
                 limit,
                 emission_model,
@@ -291,8 +316,7 @@ end
 Unitless wrapper for [`make_observation`](@ref)
 """
 function make_observation(
-    temperature,
-    density,
+    cluster_model::ClusterModel,
     z::Real,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
@@ -306,8 +330,7 @@ function make_observation(
 )::Array{Union{Float64,Missing},3} where {A<:DimensionfulAngles.Angle,T<:Unitful.Time}
     @mpidebug "Called make_observation wrapper"
     make_observation(
-        temperature,
-        density,
+        cluster_model,
         z,
         shape,
         pixel_edge_angle,

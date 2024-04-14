@@ -1,19 +1,9 @@
 using Cosmology
-using Unitful, DimensionfulAngles, Cosmology
+using Unitful, DimensionfulAngles, UnitfulAstro
 using PhysicalConstants.CODATA2018: m_p, G, k_B
 
 """
 Cosmology assumed by BayesX
-
-Defaults to:
-* h=0.69,
-* Neff=3.04,
-* OmegaK=0,
-* OmegaM=0.29,
-* OmegaR=nothing,
-* Tcmb=2.7255,
-* w0=-1,
-* wa=0
 """
 const cosmo = cosmology(
     h=0.6774,
@@ -43,3 +33,7 @@ function get_centre_indices(centre_x::A, centre_y::A, pixel_edge_angle::A, shape
 
     return (i, j)
 end
+
+@derived_dimension SurfaceDensity Unitful.𝐋^-2
+@derived_dimension NumberDensity Unitful.𝐋^-3
+@derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓

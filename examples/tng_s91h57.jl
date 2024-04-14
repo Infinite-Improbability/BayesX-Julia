@@ -53,7 +53,7 @@ const priors_nfw = [
 sample(
     data,
     (0.7u"keV", 7.0u"keV"),
-    Model_NFW,
+    NFWModel,
     priors_nfw,
     0.022e22u"cm^-2",
     0.1,
@@ -63,7 +63,7 @@ sample(
     centre_radius=0,
     abundances=abundances,
     use_stepsampler=false,
-    log_dir="$(base_path)/logs/s91h57/nfw",
+    log_dir=nothing,
     resume="subfolder",
     ultranest_run_args=(max_num_improvement_loops=3, min_num_live_points=100),
 )

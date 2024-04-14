@@ -1,7 +1,7 @@
 using Unitful, UnitfulAstro
 using ArgCheck
 
-export Model_Piecewise
+export PiecewiseModel
 
 function validate_interpolation_args(x::Vector{T}, y::Vector{U})::Bool where {T<:Number,U<:Number}
     return length(x) == length(y) && all(diff(x) .> zero(T))
@@ -47,24 +47,32 @@ function (li::LinearInterpolator)(x::Number)
 end
 
 """
-    Model_Piecewise(radius, density, temperature, radius, density, temperature, ...)
-
-Construct a piecewise model for the given data.
+    PiecewiseModel{density<:LinearInterpolator, temperature<:LinearInterpolator}
 
 The model is constructed by linearly interpolating the given data. See [`LinearInterpolator`](@ref)
 for details on the interpolation behaviour.
-
-Density is assumed to be in units of `g/cm^3`, temperature in units of `keV`, and radius in units of `kpc`.
 """
-function Model_Piecewise(args::Vararg{Real}; kwargs...)
+struct PiecewiseModel{D<:LinearInterpolator,T<:LinearInterpolator} <: ClusterModel
+    density::D
+    temperature::T
+end
+
+"""
+    PiecewiseModel(radius1, density1, temperature1, radius2, density2, temperature2, ...)
+
+Construct a [`PiecewiseModel`](@ref) from a sequence of nodes.
+
+Density is assumed to be in units of `Msun/kpc^3`, temperature in units of `keV`, and radius in units of `kpc`.
+"""
+function PiecewiseModel(args::Vararg{Real}; kwargs...)::PiecewiseModel
     @argcheck length(args) % 3 == 0 "Model_Piecewise args must be a multiple of three, in a sequence `r_i`, `ρ_i`, `T_i`"
 
     radii = collect(args[1:3:end]) * 1u"kpc"
-    densities = collect(args[2:3:end]) * 1u"g/cm^3"
+    densities = collect(args[2:3:end]) * 1u"Msun/kpc^3"
     temperatures = collect(args[3:3:end]) * 1u"keV"
 
     @argcheck all(radii .>= 0u"kpc") "Model_Piecewise radii must be non-negative"
-    @argcheck all(densities .>= 0u"g/cm^3") "Model_Piecewise densities must be non-negative"
+    @argcheck all(densities .>= 0u"Msun/kpc^3") "Model_Piecewise densities must be non-negative"
     @argcheck all(temperatures .>= 0u"keV") "Model_Piecewise temperatures must non-negative"
 
     sorted = sortperm(radii)
@@ -75,5 +83,9 @@ function Model_Piecewise(args::Vararg{Real}; kwargs...)
     density_interpolator = LinearInterpolator(radii, densities)
     temperature_interpolator = LinearInterpolator(radii, temperatures)
 
-    return temperature_interpolator, density_interpolator
+    return PiecewiseModel(density_interpolator, temperature_interpolator)
 end
+# TODO: Unitful version
+
+density(cm::PiecewiseModel, r::Unitful.Length{<:Real}) = cm.density(r)
+temperature(cm::PiecewiseModel, r::Unitful.Length{<:Real}) = cm.temperature(r)

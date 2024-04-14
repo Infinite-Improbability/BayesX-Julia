@@ -31,8 +31,6 @@ emission_model = BayesJ.prepare_model_mekal(
     z,
 )
 
-cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
-
 temperature, density = Model_Vikhlinin2006(
     4.705e-3,
     0.247e-1,
@@ -94,7 +92,7 @@ end
 @assert all(isfinite, background)
 @assert !all(iszero, observation) "Maximum pcr is $(maximum(predicted_count_rate))"
 
-cluster_model(args...; kwargs...) = Model_Piecewise(args...; kwargs...)
+cluster_model(args...; kwargs...) = PiecewiseModel(args...; kwargs...)
 priors = [
     DeltaPrior("x0", 0.0), DeltaPrior("y0", 0.0),
     DeltaPrior("r0", 0.0), LogUniformPrior("ρ0", 1.e-30, 1.e-24), UniformPrior("T0", 0.0, 10.0),
