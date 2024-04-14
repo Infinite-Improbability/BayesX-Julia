@@ -39,13 +39,12 @@ display(@benchmark emission_model($flux, $T, $ρ))
 
 # CONSTANT MODEL
 println("\n\nConstant Model")
-temperature_cnst, density_cnst = Model_Constant(r, T, ρ)
+cluster_model_cst = ConstantModel(r, ρ, T)
 display(
     @benchmark begin
         BayesJ.surface_brightness(
             $projected_radius,
-            $temperature_cnst,
-            $density_cnst,
+            $cluster_model_cst,
             $z,
             $integration_limit,
             $emission_model,
@@ -57,8 +56,7 @@ display(
 display(
     @benchmark begin
         BayesJ.make_observation(
-            $temperature_cnst,
-            $density_cnst,
+            $cluster_model_cst,
             $z,
             $shape,
             $pixel_edge_angle,
@@ -74,17 +72,17 @@ display(
 
 # PIECEWISE MODEL
 println("\n\nPiecewise Model")
-temperature_pw, density_pw = Model_Piecewise(
-    0.0, 1.e-23, 5.0,
-    10.0, 1.e-24, 4.0,
-    100.0, 1.e-25, 3.0,
-    1000.0, 0.0, 0.0
+cluster_model_pw = PiecewiseModel(
+    0.0, 5.0, 1.e8,
+    10.0, 4.0, 1.e7,
+    100.0, 3.0, 1.e6,
+    1000.0, 0.0, 0.0,
 )
 display(
     @benchmark begin
         BayesJ.surface_brightness(
             $projected_radius,
-            $temperature_pw,
+            $cluster_model_pw,
             $density_pw,
             $z,
             $integration_limit,
@@ -97,7 +95,7 @@ display(
 display(
     @benchmark begin
         BayesJ.make_observation(
-            $temperature_pw,
+            $cluster_model_pw,
             $density_pw,
             $z,
             $shape,

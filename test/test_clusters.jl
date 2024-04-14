@@ -5,87 +5,94 @@ using Unitful, UnitfulAstro, DimensionfulAngles
 logrange(x1, x2, n) = (10^y for y in range(log10(x1), log10(x2), length=n))
 logrange(x1::Unitful.Length, x2::Unitful.Length, n) = (1u"kpc" * 10^y for y in range(log10(ustrip(u"kpc", x1)), log10(ustrip(u"kpc", x2)), length=n))
 
-function test_model(temperature, density)
-    @testset "Temperature and density functions" begin
+function test_model(cluster_model::ClusterModel)
+    @testset "Temperature at various radii" begin
+        for r in logrange(1u"pc", 1u"Mpc", 100)
+            t = temperature(cluster_model, r)
 
-        @testset "Testing at assorted radii" begin
-            for r in logrange(1u"pc", 1u"Mpc", 100)
-                t = temperature(r)
-                d = density(r)
-
-                @test dimension(t) == dimension(1u"keV")
-                @test dimension(d) == dimension(1u"kg/m^3")
-
-                @test isa(ustrip(u"keV", t), Real)
-                @test isa(ustrip(u"kg/m^3", d), Real)
-
-                @test isfinite(t)
-                @test isfinite(d)
-
-                @test t >= 0u"keV"
-                @test d >= 0u"kg/m^3"
-
-                # @test t == temperature(-r)
-                # @test d == density(-r)
-
-                @test t == temperature(eval(r))
-                @test d == density(eval(r))
-
-            end
-        end
-
-        @testset "Surface Brightness" begin
-            z = 0.5
-            energy_range = (0.1:7)u"keV"
-            emission_model = BayesJ.prepare_model_mekal(
-                2.2e20u"cm^-2",
-                energy_range,
-                z,
-            )
-            flux = zeros(Float32, length(energy_range) - 1)
-
-            @testset "Zero at distance" begin
-                s_distant = BayesJ.surface_brightness(
-                    100u"Mpc",
-                    temperature,
-                    density,
-                    z,
-                    Quantity(1000.0, u"Mpc"),
-                    emission_model,
-                    0.492u"arcsecondᵃ",
-                    flux
-                )
-
-
-                @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
-                # if !(all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant))
-                #     display(s_distant)
-                # end
-            end
-
-            @testset "Finite at centre" begin
-                s_zero = BayesJ.surface_brightness(
-                    0u"Mpc",
-                    temperature,
-                    density,
-                    z,
-                    Quantity(10.0, u"Mpc"),
-                    emission_model,
-                    0.492u"arcsecondᵃ",
-                    flux
-                )
-
-                @test all(isfinite, s_zero)
-            end
+            @test dimension(t) == dimension(1u"keV")
+            @test isa(ustrip(u"keV", t), Real)
+            @test isfinite(t)
+            @test t >= 0u"keV"
+            # @test t == temperature(-r)
+            # Testing result stays consistent
+            # Eval to prevent the compiler playing any tricks
+            @test t == temperature(cluster_model, eval(r))
 
         end
-
-        # @testset "Behaviour at high radius" begin
-        #     @test uconvert(u"keV", temperature(1000u"Mpc")) < 1e-10u"keV"
-        #     @test uconvert(u"kg/m^3", density(1000u"Mpc")) ≈ 0u"kg/m^3"
-        # end
     end
 
+    @testset "Density at various radii" begin
+        for r in logrange(1u"pc", 1u"Mpc", 100)
+            d = density(cluster_model, r)
+
+            @test dimension(d) == dimension(1u"kg/m^3")
+            @test isa(ustrip(u"kg/m^3", d), Real)
+            @test isfinite(d)
+            @test d >= 0u"kg/m^3"
+            # @test d == density(-r)
+            @test d == density(cluster_model, eval(r))
+        end
+    end
+
+    @testset "Surface Brightness" begin
+        z = 0.5
+        energy_range = (0.1:7)u"keV"
+        emission_model = BayesJ.prepare_model_mekal(
+            2.2e20u"cm^-2",
+            energy_range,
+            z,
+        )
+        flux = zeros(Float32, length(energy_range) - 1)
+
+        @testset "Zero at distance" begin
+            s_distant = BayesJ.surface_brightness(
+                100u"Mpc",
+                cluster_model,
+                z,
+                Quantity(1000.0, u"Mpc"),
+                emission_model,
+                0.492u"arcsecondᵃ",
+                flux
+            )
+
+
+            @test all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant)
+            # if !(all(i -> isapprox(i, 0u"cm^-2/s", atol=1e-10u"cm^-2/s"), s_distant))
+            #     display(s_distant)
+            # end
+        end
+
+        @testset "Finite at centre" begin
+            s_zero = BayesJ.surface_brightness(
+                0u"Mpc",
+                cluster_model,
+                z,
+                Quantity(10.0, u"Mpc"),
+                emission_model,
+                0.492u"arcsecondᵃ",
+                flux
+            )
+
+            @test all(isfinite, s_zero)
+        end
+
+    end
+
+    # @testset "Behaviour at high radius" begin
+    #     @test uconvert(u"keV", temperature(1000u"Mpc")) < 1e-10u"keV"
+    #     @test uconvert(u"kg/m^3", density(1000u"Mpc")) ≈ 0u"kg/m^3"
+    # end
+
+end
+
+function unitless_test(model::C, unitless::C) where {C<:ClusterModel}
+    @testset "Unitless model call matches unitful call" begin
+        for r in logrange(1u"pc", 1u"Mpc", 100)
+            @test temperature(model, r) == temperature(unitless, r)
+            @test density(model, r) == density(unitless, r)
+        end
+    end
 end
 
 function test_nfw()
@@ -96,17 +103,11 @@ function test_nfw()
         gnfw = [1.0510, 5.4905, 0.3081, 1.177] # Universal values from Arnaud 2010
         z = 0.5
 
-        t, d = Model_NFW(mass, fg, c_dm, gnfw..., z=z)
+        model = NFWModel(mass, fg, c_dm, gnfw..., z=z)
+        test_model(model)
 
-        test_model(t, d)
-
-        @testset "Unitless model call matches unitful call" begin
-            tunitless, dunitless = Model_NFW(ustrip(u"Msun", mass), fg, c_dm, gnfw..., z=z)
-            for r in logrange(1u"pc", 1u"Mpc", 100)
-                @test t(r) == tunitless(r)
-                @test d(r) == dunitless(r)
-            end
-        end
+        unitless = NFWModel(ustrip(u"Msun", mass), fg, c_dm, gnfw..., z=z)
+        unitless_test(model, unitless)
     end
 end
 
@@ -120,22 +121,16 @@ function test_einasto()
 
         for n in 0.3:0.5:10
             @testset "n=$n" begin
-                t, d = Model_Einasto(mass, fg, c_dm, n, gnfw..., z=z)
+                model = EinastoModel(mass, fg, c_dm, n, gnfw..., z=z)
+                test_model(model)
 
-                test_model(t, d)
-
-                @testset "Unitless model call matches unitful call" begin
-                    tunitless, dunitless = Model_Einasto(ustrip(u"Msun", mass), fg, c_dm, n, gnfw..., z=z)
-                    for r in logrange(1u"pc", 1u"Mpc", 100)
-                        @test t(r) == tunitless(r)
-                        @test d(r) == dunitless(r)
-                    end
-                end
+                unitless = EinastoModel(ustrip(u"Msun", mass), fg, c_dm, n, gnfw..., z=z)
+                unitless_test(model, unitless)
             end
         end
 
-        # @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 2.1, gnfw..., z=z)
-        @test_throws BayesJ.PriorError Model_Einasto(mass, fg, c_dm, 53 / 3, gnfw..., z=z)
+        # @test_throws BayesJ.PriorError EinastoModel(mass, fg, c_dm, 2.1, gnfw..., z=z)
+        @test_throws BayesJ.PriorError EinastoModel(mass, fg, c_dm, 53 / 3, gnfw..., z=z)
     end
 end
 
@@ -165,30 +160,21 @@ function test_vikhlinin2006()
             1239.9u"kpc",
             3.61u"keV",
             0.27,
-            57u"kpc",
+            57.0u"kpc",
             3.88,
             1.42u"Mpc",
             0.12,
             5.00,
             10.0,
-            1.e-9,
         ) # Universal values from Arnaud 2010
         unitless_params = Tuple(strip_units(i) for i in params)
         z = 0.5
 
-        t, d = Model_Vikhlinin2006(params..., z=z)
-        # display(t(100u"kpc"))
-        # display(d(100u"kpc"))
+        model = Vikhlinin2006Model(params..., z=z)
+        test_model(model)
 
-        test_model(t, d)
-
-        @testset "Unitless model call matches unitful call" begin
-            tunitless, dunitless = Model_Vikhlinin2006(unitless_params..., z=z)
-            for r in logrange(1u"pc", 1u"Mpc", 100)
-                @test t(r) == tunitless(r)
-                @test d(r) == dunitless(r)
-            end
-        end
+        unitless = Vikhlinin2006Model(unitless_params..., z=z)
+        unitless_test(model, unitless)
     end
 
 end
@@ -205,34 +191,33 @@ function test_piecewise()
 
         z = 0.5
 
-        t, d = Model_Piecewise(params..., z=z)
-
-        test_model(t, d)
+        model = PiecewiseModel(params..., z=z)
+        test_model(model)
 
         @testset "Interpolation" begin
             # TEMPERATURE
             # Values at interpolation points
-            @test t(Quantity(params[1], u"kpc")) == Quantity(params[3], u"keV")
-            @test t(Quantity(params[4], u"kpc")) == Quantity(params[6], u"keV")
-            @test t(Quantity(params[7], u"kpc")) == Quantity(params[9], u"keV")
-            @test t(Quantity(params[10], u"kpc")) == Quantity(params[12], u"keV")
+            @test temperature(model, Quantity(params[1], u"kpc")) == Quantity(params[3], u"keV")
+            @test temperature(model, Quantity(params[4], u"kpc")) == Quantity(params[6], u"keV")
+            @test temperature(model, Quantity(params[7], u"kpc")) == Quantity(params[9], u"keV")
+            @test temperature(model, Quantity(params[10], u"kpc")) == Quantity(params[12], u"keV")
             # Boundary behaviour
-            @test t(Quantity(params[1], u"kpc") - 1u"kpc") == Quantity(params[3], u"keV")
-            @test t(Quantity(params[10], u"kpc") + 1u"kpc") == Quantity(0, u"keV")
+            @test temperature(model, Quantity(params[1], u"kpc") - 1u"kpc") == Quantity(params[3], u"keV")
+            @test temperature(model, Quantity(params[10], u"kpc") + 1u"kpc") == Quantity(0, u"keV")
             # Interpolation
-            @test t(Quantity(params[1] + params[4], u"kpc") / 2) == Quantity((params[3] + params[6]) / 2, u"keV")
+            @test temperature(model, Quantity(params[1] + params[4], u"kpc") / 2) == Quantity((params[3] + params[6]) / 2, u"keV")
 
             # DENSITY
             # Values at interpolation points
-            @test d(Quantity(params[1], u"kpc")) == Quantity(params[2], u"g/cm^3")
-            @test d(Quantity(params[4], u"kpc")) == Quantity(params[5], u"g/cm^3")
-            @test d(Quantity(params[7], u"kpc")) == Quantity(params[8], u"g/cm^3")
-            @test d(Quantity(params[10], u"kpc")) == Quantity(params[11], u"g/cm^3")
+            @test density(model, Quantity(params[1], u"kpc")) == Quantity(params[2], u"Msun/kpc^3")
+            @test density(model, Quantity(params[4], u"kpc")) == Quantity(params[5], u"Msun/kpc^3")
+            @test density(model, Quantity(params[7], u"kpc")) == Quantity(params[8], u"Msun/kpc^3")
+            @test density(model, Quantity(params[10], u"kpc")) == Quantity(params[11], u"Msun/kpc^3")
             # Boundary behaviour
-            @test d(Quantity(params[1], u"kpc") - 1u"kpc") == Quantity(params[2], u"g/cm^3")
-            @test d(Quantity(params[10], u"kpc") + 1u"kpc") == Quantity(0, u"g/cm^3")
+            @test density(model, Quantity(params[1], u"kpc") - 1u"kpc") == Quantity(params[2], u"Msun/kpc^3")
+            @test density(model, Quantity(params[10], u"kpc") + 1u"kpc") == Quantity(0, u"Msun/kpc^3")
             # Interpolation
-            @test d(Quantity(params[1] + params[4], u"kpc") / 2) == Quantity((params[2] + params[5]) / 2, u"g/cm^3")
+            @test density(model, Quantity(params[1] + params[4], u"kpc") / 2) == Quantity((params[2] + params[5]) / 2, u"Msun/kpc^3")
         end
     end
 

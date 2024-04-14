@@ -74,7 +74,7 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
             exposure_time, # TODO: Make different
             z;
             prior_names=prior_names,
-            cluster_model=Model_Constant,
+            cluster_model=ConstantModel,
             emission_model=emission_model,
             param_wrapper=param_wrapper,
             pixel_edge_angle=pixel_edge_angle,
@@ -112,11 +112,10 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
         return lower_bound, upper_bound, mean_lower, mean_upper
     end
 
-    temperature, density = Model_Constant(r, T, ρ)
+    cluster_model = ModelConstant(r, T, ρ)
 
     predicted_count_rate = BayesJ.make_observation(
-        temperature,
-        density,
+        cluster_model,
         z,
         shape,
         pixel_edge_angle,
@@ -142,9 +141,10 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
     #     BayesJ.DeltaPrior("x0", 0.0),
     #     BayesJ.DeltaPrior("y0", 0.0),
     #     BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-    #     BayesJ.DeltaPrior("T", ustrip(u"keV", T)),
     #     BayesJ.LogUniformPrior("ρ", 1.0e-29, 1.0e-23),
+    #     BayesJ.DeltaPrior("T", ustrip(u"keV", T)),
     # ]
+    #
     # lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "density"))
     # if lb[1] < ρu < ub[1]
     #     BayesJ.@mpiinfo "Density fit passed" lb[1] ρu ub[1]
@@ -157,9 +157,10 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
     #     BayesJ.DeltaPrior("x0", 0.0),
     #     BayesJ.DeltaPrior("y0", 0.0),
     #     BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-    #     BayesJ.UniformPrior("T", 0.0, 8.0),
     #     BayesJ.DeltaPrior("ρ", ustrip(u"g/cm^3", ρ)),
+    #     BayesJ.UniformPrior("T", 0.0, 8.0),
     # ]
+    #
     # lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "temperature"))
     # if lb[1] < tu < ub[1]
     #     BayesJ.@mpiinfo "Temperature fit passed" lb[1] tu ub[1]
@@ -172,14 +173,14 @@ function test_constant_consistency(T::Unitful.Energy, ρ::Unitful.Density)
         BayesJ.DeltaPrior("x0", 0.0),
         BayesJ.DeltaPrior("y0", 0.0),
         BayesJ.DeltaPrior("r", ustrip(u"Mpc", r)),
-        BayesJ.UniformPrior("T", 0.0, 8.0),
         BayesJ.LogUniformPrior("ρ", 1.0e-29, 1.0e-23),
+        BayesJ.UniformPrior("T", 0.0, 8.0),
     ]
     lb, ub, ml, mu = run_sampler(observation, background, priors, joinpath(base_log_dir, "temperature_density"))
-    if lb[1] < tu < ub[1] && lb[2] < ρu < ub[2]
-        BayesJ.@mpiinfo "Temperature and density fit passed" lb[1] tu ub[1] lb[2] ρu ub[2]
+    if lb[1] < ρu < ub[1] && lb[2] < tu < ub[2]
+        BayesJ.@mpiinfo "Temperature and density fit passed" lb[1] ρu ub[1] lb[2] tu ub[2]
     else
-        BayesJ.@mpiwarn "Temperature and density fit failed" lb[1] tu ub[1] lb[2] ρu ub[2]
+        BayesJ.@mpiwarn "Temperature and density fit failed" lb[1] ρu ub[1] lb[2] tu ub[2]
     end
 end
 

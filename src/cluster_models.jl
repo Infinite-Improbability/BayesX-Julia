@@ -2,10 +2,29 @@ using ArgCheck
 using Unitful, UnitfulAstro, DimensionfulAngles
 using Integrals
 
-export priorcheck, PriorError
+export priorcheck, PriorError, ClusterModel, temperature, density
 
 include("params.jl")
-include("emission.jl")
+
+abstract type ClusterModel end
+
+"""
+    temperature(::ClusterModel, r::Unitful.Length<:Real)
+
+Temperature of the cluster ICM at specified radius
+"""
+function temperature(::ClusterModel, r::Unitful.Length{<:Real})
+    error("Temperature function not implemented for this model")
+end
+
+"""
+    density(::ClusterModel, r::Unitful.Length<:Real)
+
+Density of the cluster ICM at specified radius
+"""
+function density(::ClusterModel, r::Unitful.Length{<:Real})
+    error("Density function not implemented for this model")
+end
 
 """
     p_crit(z)
@@ -54,8 +73,10 @@ function priorcheck(condition, likelihood)
     end
 end
 
-include("cluster_models/model_nfw.jl")
-include("cluster_models/model_einasto.jl")
-include("cluster_models/model_vikhlinin2006.jl")
-include("cluster_models/model_constant.jl")
-include("cluster_models/model_piecewise.jl")
+# TODO: Break prior checks out into functions for each model?
+
+include("cluster_models/NFWModel.jl")
+include("cluster_models/EinastoModel.jl")
+include("cluster_models/Vikhlinin2006Model.jl")
+include("cluster_models/ConstantModel.jl")
+include("cluster_models/PiecewiseModel.jl")

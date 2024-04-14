@@ -13,10 +13,6 @@ using LibXSPEC_jll
 
 export prepare_model_mekal, prepare_model_mekal_interpolation
 
-@derived_dimension SurfaceDensity Unitful.𝐋^-2
-@derived_dimension NumberDensity Unitful.𝐋^-3
-@derived_dimension NumberDensityRate Unitful.𝐋^-3 / Unitful.𝐓
-
 """Mekal model using SpectralFitting.jl framework. Kept around so we can borrow the model data downloading functions."""
 @xspecmodel :C_mekal struct XS_Mekal{T,F} <: SpectralFitting.AbstractSpectralModel{T,SpectralFitting.Additive}
     "Normalisation"
@@ -275,6 +271,10 @@ function prepare_model_mekal(
             end
         end
     end
+    function volume_emissivity!(flux::Vector{Cfloat}, cm::ClusterModel, radius::Unitful.Length)
+        volume_emissivity!(flux, temperature(cm, radius), density(cm, radius))
+    end
+
     return volume_emissivity!
 
 
