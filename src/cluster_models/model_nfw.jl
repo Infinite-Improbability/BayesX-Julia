@@ -58,6 +58,10 @@ function rho_s(ρ_crit_z, Δ, c_Δ_dm)
     ρ_crit_z * (Δ / 3) * c_Δ_dm^3 / (log1p(c_Δ_dm) - c_Δ_dm / (1 + c_Δ_dm))
 end
 
+function pei(ρ_s, r_s, Mg_Δ, vol_int_Δ)
+    (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_Δ
+end
+
 """
     Model_NFW(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500)
 
@@ -119,7 +123,7 @@ function Model_NFW(
         (r_s, r_p, α, β, γ)
     )
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1e-3u"Mpc^4").u
-    Pei_GNFW::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρ_s * r_s^3 * Mg_Δ / vol_int_Δ
+    Pei_GNFW::Unitful.Pressure{Float64} = pei(ρ_s, r_s, Mg_Δ, vol_int_Δ)
     @assert isfinite(Pei_GNFW)
     @assert Pei_GNFW > 0u"Pa"
     @mpirankeddebug "Pei calculation complete" uconvert(u"Msun/kpc/s^2", Pei_GNFW) ρ_s r_s Mg_Δ vol_int_Δ
