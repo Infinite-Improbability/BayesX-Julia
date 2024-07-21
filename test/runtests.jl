@@ -18,3 +18,7 @@ end
 if default || all_tests || "clusters" in ARGS
     include("test_clusters.jl")
 end
+
+if default || all_tests || "background" in ARGS
+    include("test_background.jl")
+end
