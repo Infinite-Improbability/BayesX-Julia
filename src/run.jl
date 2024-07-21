@@ -64,8 +64,8 @@ function predict_counts_with_params(
 end
 
 function prepare_background(
-    observed::AbstractArray{<:Integer,3},
-    observed_background::AbstractArray{<:Integer,3},
+    observed::AbstractArray{<:Number,3},
+    observed_background::AbstractArray{<:Number,3},
     obs_exposure_time::Unitful.Time,
     bg_exposure_time::Unitful.Time,
 )::NTuple{2,Vector{Float64}}
@@ -165,8 +165,8 @@ radius which return their respective quantities with units.
  
 """
 function sample(
-    observed::T,
-    observed_background::T,
+    observed::AbstractArray,
+    observed_background::AbstractArray,
     response_function::AbstractMatrix,
     transform::Function,
     obs_exposure_time::Unitful.Time,
@@ -185,7 +185,7 @@ function sample(
     resume="subfolder",
     plateau_tests=0,
     ultranest_run_args=NamedTuple()
-) where {T<:AbstractArray}
+)
     @mpidebug "Preparing for ultranest"
 
     @argcheck all(isfinite, observed)

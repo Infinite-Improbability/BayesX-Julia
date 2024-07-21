@@ -51,7 +51,7 @@ As Γ(n) = (n-1)! we can use SpecialFunctions.jl loggamma function to quickly ca
 
 It is intended to be broadcast across all values of the data array.
 """
-log_factorial(n::N) where {N<:Integer} = loggamma(n + 1)
+log_factorial(n::N) where {N<:Number} = loggamma(n + 1)
 
 """
 Abstract supertype for priors. Should implement:
