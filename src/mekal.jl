@@ -237,7 +237,12 @@ function prepare_model_mekal(
     # But the cluster isn't
     # This means we need to apply redshift to the observed energy bins and
     # time dilation to the count rate
+
+    # the original bins are at the observer and E_obs = E_emit / (1+z)
+    # to get the bins at the source for mekal we multiply by 1+z
     energy_bins = energy_bins * (1 + z) # redshift
+
+    # absorption is applied to the source counts
     absorption ./= (1 + z) # time dilation
 
     # Convert energy range into format expected by mekal
