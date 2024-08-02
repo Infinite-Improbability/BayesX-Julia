@@ -199,8 +199,10 @@ This is because Ultranest can run with delta priors but outputs error warnings i
 
 Returns `transform_cube` and `reconstruct_args` as a tuple.
 """
-function make_cube_transform(priors::Prior...)::NTuple{2,Function}
+function make_cube_transform(center_priors::Vector{<:Prior}, src_priors::Vector{<:Prior}, 
+    bg_priors::Vector{<:Prior})::NTuple{2,Function}
 
+    priors = [center_priors..., src_priors..., bg_priors...]
     delta_priors = DeltaPrior[]
     variable_priors = Prior[]
     is_delta = Bool[]
@@ -281,7 +283,7 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
             dv_i = 0 # delta prior index
             un_i = 0 # unfixed prior index
 
-            Tuple(
+            full_set = Tuple(
                 i ? begin # if delta insert next value from delta values
                     dv_i += 1
                     dv[dv_i]
@@ -291,12 +293,15 @@ function make_cube_transform(priors::Prior...)::NTuple{2,Function}
                 end
                 for i in id
             )
+            # Split the full set of priors into the three types.
+            return full_set[1:2], full_set[3:(length(src_priors) + 2)], full_set[(length(src_priors) + 3):end]
         end
     end
 
     # Verify that our reconstructed results match the expected values
-    @assert reconstruct_args([transform(p, 0.5) for p in variable_priors]) == Tuple(transform(p, 0.5) for p in priors)
-
+    @assert reconstruct_args([transform(p, 0.5) for p in variable_priors])[1] == Tuple(transform(p, 0.5) for p in center_priors)
+    @assert reconstruct_args([transform(p, 0.5) for p in variable_priors])[2] == Tuple(transform(p, 0.5) for p in src_priors)
+    @assert reconstruct_args([transform(p, 0.5) for p in variable_priors])[3] == Tuple(transform(p, 0.5) for p in bg_priors)
     return transform_wrapper, reconstruct_args
 end
 

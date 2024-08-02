@@ -25,9 +25,9 @@ include("blobs.jl")
 function predict_counts_with_params(
     full_params::P;
     cluster_model::Function,
+    background_model::Function,
     emission_model::Function,
     redshift::Real,
-    predicted_bg_over_obs_time::B,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::DimensionfulAngles.Angle,
     observation_exposure_time::Unitful.Time,
@@ -35,9 +35,10 @@ function predict_counts_with_params(
     centre_radius::Integer,
     mask::M,
     integration_limit::Unitful.Length
-)::Array{Union{Float64,Missing},3} where {P<:Union{AbstractVector,Tuple},B<:Union{AbstractArray,Real},M<:Union{Nothing,AbstractMatrix{Bool}}}
-    centre = full_params[1:2]
-    model_parameters = full_params[3:end]
+)::Array{Union{Float64,Missing},3} where {P<:Union{AbstractVector,Tuple},M<:Union{Nothing,AbstractMatrix{Bool}}}
+    centre = full_params[1]
+    model_parameters = full_params[2]
+    background_parameters = full_params[3]
 
     gas_temperature, gas_density = cluster_model(
         model_parameters...;
@@ -59,8 +60,10 @@ function predict_counts_with_params(
         limit=integration_limit
     )
 
+    predicted_bg = background_model(background_parameters...)
+
     # this intrinsically broadcasts along the energy axis
-    predicted .+ predicted_bg_over_obs_time
+    predicted .+ predicted_bg
 end
 
 function prepare_background(
@@ -166,14 +169,13 @@ radius which return their respective quantities with units.
 """
 function sample(
     observed::AbstractArray,
-    observed_background::AbstractArray,
     response_function::AbstractMatrix,
     transform::Function,
     obs_exposure_time::Unitful.Time,
-    bg_exposure_time::Unitful.Time,
     redshift::Real;
     prior_names::AbstractVector{<:AbstractString},
     cluster_model::Function,
+    background_model::Function,
     emission_model::Function,
     param_wrapper::Function,
     pixel_edge_angle::DimensionfulAngles.Angle=0.492u"arcsecondᵃ",
@@ -189,32 +191,13 @@ function sample(
     @mpidebug "Preparing for ultranest"
 
     @argcheck all(isfinite, observed)
-    @argcheck all(isfinite, observed_background)
     @argcheck sum(observed) > 0
     @argcheck all(i -> i >= 0, observed)
-    @argcheck all(i -> i >= 0, observed_background)
-    @argcheck size(observed) == size(observed_background)
     @argcheck size(observed, 1) == size(response_function, 1)
-
-    if ((sum(observed_background) / bg_exposure_time) / (sum(observed) / obs_exposure_time)) > 0.9 # arbitary threshold
-        @mpiwarn "Observed count rate is very close to background count rate. There may be insufficent signal."
-    end
-
-    @mpidebug "Preparing background model"
-    predicted_obs_bg, predicted_bg_bg = prepare_background(
-        observed,
-        observed_background,
-        obs_exposure_time,
-        bg_exposure_time
-    )
-
-    log_obs_factorial = log_factorial.(observed) + log_factorial.(observed_background)
-    @assert all(isfinite, log_obs_factorial)
 
     shape = (size(observed, 2), size(observed, 3))
 
     @mpidebug "Observation has shape $(size(observed))"
-    @mpidebug "Background has shape $(size(observed_background))"
     @mpidebug "Response matrix has shape $(size(response_function))"
 
     if isnothing(mask)
@@ -234,22 +217,19 @@ function sample(
         @mpiinfo "Core exclusion radius is $centre_radius pixels or $(angle_to_length(centre_radius * pixel_edge_angle, redshift))."
     end
 
-    # The likelihood calculated from the background is constant
-    # We might as well precalculate it
-    # If we ever want to fit the background we can change it again.
-    background_likelihood = @. observed_background * log(predicted_bg_bg) - predicted_bg_bg
-    constant_likelihood = background_likelihood - log_obs_factorial
+    constant_likelihood = -log_factorial.(observed)
+    @assert all(isfinite, constant_likelihood)
 
     # generate count rates matrix for given parameters
     function predict_counts(params::AbstractVector{Float64})
-        let cluster_model = cluster_model, emission_model = emission_model, redshift = redshift, predicted_obs_bg = predicted_obs_bg, shape = shape, pixel_edge_angle = pixel_edge_angle, obs_exposure_time = obs_exposure_time, response_function = response_function, centre_radius = centre_radius, mask = mask, integration_limit = integration_limit
+        let cluster_model = cluster_model, background_model=background_model, emission_model = emission_model, redshift = redshift, shape = shape, pixel_edge_angle = pixel_edge_angle, obs_exposure_time = obs_exposure_time, response_function = response_function, centre_radius = centre_radius, mask = mask, integration_limit = integration_limit
             full_params = param_wrapper(params)
             predict_counts_with_params(
                 full_params;
                 cluster_model=cluster_model,
+                background_model=background_model,
                 emission_model=emission_model,
                 redshift=redshift,
-                predicted_bg_over_obs_time=predicted_obs_bg,
                 shape=shape,
                 pixel_edge_angle=pixel_edge_angle,
                 observation_exposure_time=obs_exposure_time,
@@ -363,8 +343,8 @@ function sample(
                         constant_likelihood
                     ),
                     get_centre_indices(
-                        param_wrapper(best_fit)[1] * 1u"arcsecondᵃ",
-                        param_wrapper(best_fit)[2] * 1u"arcsecondᵃ",
+                        param_wrapper(best_fit)[1][1] * 1u"arcsecondᵃ",
+                        param_wrapper(best_fit)[1][2] * 1u"arcsecondᵃ",
                         pixel_edge_angle,
                         tuple(shape...)
                     ),
