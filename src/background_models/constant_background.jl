@@ -11,7 +11,8 @@ function Uniform_Background(background_rate::Number, num_channels::Integer; kwar
 
     background = Array{Float64}(undef, num_channels)
     for i in eachindex(background)
-        background[i] = pois_rand(background_rate) + 1
+        background[i] = background_rate
     end
+    replace!(background, 0u"s^-1" => 1.e-7)
     return background
 end
