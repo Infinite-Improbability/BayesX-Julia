@@ -13,6 +13,5 @@ function Uniform_Background(background_rate::Number, num_channels::Integer; kwar
     for i in eachindex(background)
         background[i] = background_rate
     end
-    replace!(background, 0u"s^-1" => 1.e-7)
     return background
 end

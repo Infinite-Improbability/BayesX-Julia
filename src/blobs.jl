@@ -259,7 +259,7 @@ end
 
 
 function run_blob_analysis(
-    observation::Array{<:Integer,3},
+    observation::Array{<:Number,3},
     log_likelihood::Array{<:Union{Missing,<:Real},3},
     ij::NTuple{2,<:Real},
     # r200::Unitful.Length,
