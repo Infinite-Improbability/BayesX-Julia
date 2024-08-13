@@ -43,22 +43,24 @@ function predict_counts_with_params(
         model_parameters...;
         z=redshift
     )
-
-    predicted = make_observation(
-        gas_temperature,
-        gas_density,
-        redshift,
-        shape,
-        pixel_edge_angle,
-        emission_model,
-        observation_exposure_time,
-        response_function,
-        centre,
-        centre_radius,
-        mask=mask,
-        limit=integration_limit
-    )
-
+    pred_taken = @elapsed begin                            
+        predicted = make_observation(
+            gas_temperature,
+            gas_density,
+            redshift,
+            shape,
+            pixel_edge_angle,
+            emission_model,
+            observation_exposure_time,
+            response_function,
+            centre,
+            centre_radius,
+            mask=mask,
+            limit=integration_limit
+        )
+    end
+    @info "ObservationTimer: $pred_taken seconds"
+    
     # this intrinsically broadcasts along the energy axis
     predicted .+ predicted_bg_over_obs_time
 end
@@ -265,11 +267,15 @@ function sample(
     function likelihood_wrapper(params::AbstractVector{Float64})::Float64
         let observed = observed, constant_likelihood = constant_likelihood
             try
-                return log_likelihood(
-                    observed,
-                    predict_counts(params),
-                    constant_likelihood,
-                )
+                full_taken = @elapsed begin
+                    lg = log_likelihood(
+                        observed,
+                        predict_counts(params),
+                        constant_likelihood,
+                    )
+                end
+                @info "FullTimer: $full_taken seconds"
+                return lg
             catch e
                 if e isa PriorError || e isa ObservationError
                     @mpidebug "Prior or observation error" e params
