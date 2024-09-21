@@ -60,5 +60,6 @@ include("cluster_models/model_vikhlinin2006.jl")
 include("cluster_models/model_constant.jl")
 include("cluster_models/model_piecewise.jl")
 include("background_models/uniform_background.jl")
+include("background_models/exact_background.jl")
 using .ModelNFW
 export Model_NFW
