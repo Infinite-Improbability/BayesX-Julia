@@ -4,7 +4,7 @@ export Uniform_Background
 """
     Uniform_Background(background_rate:Number, num_channels:Integer; kwargs...)
 
-Creates a poisson sampled uniform energy spectrum for the background. Intended for testing purposes.
+    Fills a 1D spectrum to use for the background counts in each channel. Intended for testing purposes.
 """
 function Uniform_Background(background_rate::Number, num_channels::Integer; kwargs...)
     @assert background_rate >= 0
