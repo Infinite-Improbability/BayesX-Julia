@@ -151,7 +151,7 @@ function plateau_test(
 end
 
 """
-    sample(observed,observed_background, response_function, transform, obs_exposure_time, bg_exposure_time, redshift; prior_names, cluster_model, emission_model, param_wrapper, pixel_edge_angle)
+    sample(observed, response_function, transform, obs_exposure_time, redshift; prior_names, cluster_model, nackground_model, emission_model, param_wrapper, pixel_edge_angle)
 
 Configure some necessary variables and launch ultranest.
 
@@ -396,7 +396,10 @@ function sample(
     data::Dataset,
     energy_limits::NTuple{2,<:Unitful.Energy},
     cluster_model::Function,
-    priors::AbstractVector{<:Prior},
+    # priors::Vector{Vector{<:Prior}},
+    center_priors::Vector{<:Prior},
+    model_priors::Vector{<:Prior},
+    background_priors::Vector{<:Prior},
     nHcol::SurfaceDensity,
     redshift::Real,
     x::NTuple{2,<:Real},
@@ -408,8 +411,6 @@ function sample(
     abundances=ones(15),
     kwargs...
 )
-    @argcheck [p.name for p in priors[1:2]] == ["x0", "y0"] || [p.name for p in priors[1:2]] == ["x", "y"]
-
     @mpiinfo "Loading response function"
     response_function, energy_range, channel_range = load_response(data, energy_limits...)
 
@@ -428,12 +429,13 @@ function sample(
     obs = bin_events(data, observation.first, channel_range, x_edges, y_edges)
     @mpidebug "Binning background data"
     bg = bin_events(data, observed_background.first, channel_range, x_edges, y_edges)
+    bg_model(scale) = Exact_Background(bg, scale)
 
     pixel_edge_angle = bin_size * data.pixel_edge_angle
 
     @mpidebug "Making transform"
-    prior_names = [p.name for p in priors if !isa(p, DeltaPrior)]
-    transform, param_wrapper = make_cube_transform(priors...)
+    prior_names = [p.name for p in vcat(center_priors, model_priors, background_priors) if !isa(p, DeltaPrior)]
+    transform, param_wrapper = make_cube_transform(center_priors, model_priors, background_priors)
 
     @mpiinfo "Generating emissions model"
     if use_interpolation
@@ -449,14 +451,13 @@ function sample(
 
     sample(
         obs,
-        bg,
         response_function,
         transform,
         observation.second,
-        observed_background.second,
         redshift;
         prior_names=prior_names,
         cluster_model=cluster_model,
+        background_model=bg_model,
         emission_model=emission_model,
         param_wrapper=param_wrapper,
         pixel_edge_angle=pixel_edge_angle,
