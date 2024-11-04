@@ -33,3 +33,4 @@ testbed/*
 data/*
 todo.md
 .vscode/settings.json
+shell.nix
