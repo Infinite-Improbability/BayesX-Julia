@@ -49,7 +49,7 @@ function surface_brightness(
     pixel_edge_angle::DimensionfulAngles.Angle,
     flux::Vector{Float32}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
-    @argcheck limit > 0u"Mpc"
+    @argcheck limit > 0u"kpc"
 
     lim = ustrip(Float64, u"m", limit)
     pr = ustrip(Float64, u"m", projected_radius)
@@ -57,7 +57,7 @@ function surface_brightness(
     flux .= 0.0f0
 
     function integrand(y::Vector{Float32}, l::AbstractFloat, params::Tuple{Float64,Any,Any})
-        r = Quantity(hypot(params[1], l), u"m")
+        r = Quantity(hypot(params[1], l), u"kpc")
 
         # Testing shows that swapping to explicitly Mpc^-3 s^-1 makes ~1e-14 % difference to final counts
         # Result is in m^-3/s
