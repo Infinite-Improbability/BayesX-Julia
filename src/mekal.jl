@@ -4,6 +4,7 @@
 so = stdout
 redirect_stdout(devnull)
 using SpectralFitting
+using XSPECModels
 redirect_stdout(so)
 
 using Interpolations
