@@ -9,7 +9,7 @@ Generate a cluster profile based on the NFW mass density and GNFW gas density pr
 Uses the model from [olamaieSimpleParametricModel2012](@cite),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 """
-struct NFWModel{L<:Unitful.Length} <: ClusterModel
+struct NFWModel{L<:Union{Unitful.Length,Real}} <: ClusterModel
     ρs
     rs::L
     rp::L
@@ -20,7 +20,11 @@ struct NFWModel{L<:Unitful.Length} <: ClusterModel
 end
 # Normalise units on init
 
-"""The radius dependent part of the gas density function"""
+"""The radius dependent part of the gas density function.
+
+`r`, `rs` and `rp` are assumed to be in the same units if none are given.
+Results are in the same units, with dimension of length.
+"""
 function gnfw_radial_term(r, rs, rp, α, β, γ)
     r /
     (log1p(r / rs) - (1 + rs / r)^(-1)) *
@@ -28,7 +32,8 @@ function gnfw_radial_term(r, rs, rp, α, β, γ)
     (1 + (r / rp)^α)^(-(α + β - γ) / α) *
     (β * (r / rp)^α + γ)
 end
-gnfw_radial_term(cm::NFWModel, r::Unitful.Length{<:Real})::Unitful.Length{Float64} = gnfw_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
+gnfw_radial_term(cm::NFWModel{<:Unitful.Length}, r::Unitful.Length{<:Real}) = gnfw_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
+gnfw_radial_term(cm::NFWModel{<:Real}, r::R) where {R<:Real} = gnfw_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
 
 """
 function gnfw_mass_integrand(cm::NFWModel, r::Unitful.Length{<:Real})::Unitful.Volume{Float64}
@@ -93,23 +98,23 @@ function NFWModel(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z,
 
     # TODO: Iterative corrections to estimate that include gas density (see Javid et al. 2019)
 
-    return NFWModel(ρs, rs, rp, α, β, γ, P0)
+    return NFWModel(ρs, ustrip(u"kpc", rs), ustrip(u"kpc", rp), α, β, γ, P0)
 end
 NFWModel(MT_Δ::Real, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500) = NFWModel(MT_Δ * 1u"Msun", fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z=z, Δ=Δ)
 
-function density(cm::NFWModel, r::Unitful.Length{<:Real})
-    r = abs(r)
+function density(cm::NFWModel, r::Unitful.Length{R}) where {R<:Real}
+    r::R = abs(ustrip(R, u"kpc", r))
 
     (μ_e / μ) * (1 / (4π * G)) *
     (cm.P0 / cm.ρs) * (1 / cm.rs^3) *
-    gnfw_radial_term(cm, r)
+    gnfw_radial_term(cm, r) * 1u"kpc^-2"
 end
 
-function temperature(cm::NFWModel, r::Unitful.Length{<:Real})
-    r = abs(r)
+function temperature(cm::NFWModel, r::Unitful.Length{R}) where {R<:Real}
+    r::R = abs(ustrip(R, u"kpc", r))
 
     4π * μ * G * cm.ρs * (cm.rs^3) *
     ((log1p(r / cm.rs) - (1 + cm.rs / r)^(-1)) / r) *
     (1 + (r / cm.rp)^cm.α) *
-    (cm.β * (r / cm.rp)^cm.α + cm.γ)^(-1)
+    (cm.β * (r / cm.rp)^cm.α + cm.γ)^(-1) * 1u"kpc^2"
 end
