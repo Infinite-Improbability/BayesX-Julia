@@ -13,16 +13,22 @@ mekal = prepare_model_mekal(
 )
 response_function = Matrix{Float64}(I, length(energy_range) - 1, length(energy_range) - 1) * 1u"cm^2"
 
-b1 = @benchmark (BayesJ.make_observation(
-    temperature,
-    density,
-    redshift,
-    (30, 30),
-    0.492u"arcsecondᵃ",
-    mekal,
-    3000u"s",
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    1,
-));
-display(b1);
+function make_obs_wrapper()
+    BayesJ.make_observation(
+        temperature,
+        density,
+        redshift,
+        (30, 30),
+        0.492u"arcsecondᵃ",
+        mekal,
+        3000u"s",
+        response_function,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        1,
+    )
+end
+
+make_obs_wrapper(); # force compilation
+
+display(@benchmark make_obs_wrapper());
+@profview make_obs_wrapper();
