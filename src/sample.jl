@@ -19,6 +19,7 @@ include("mpi.jl")
 include("io.jl")
 include("cluster_models.jl")
 include("emission.jl")
+include("mekal.jl")
 include("likelihood.jl")
 include("background.jl")
 include("blobs.jl")
@@ -26,7 +27,7 @@ include("blobs.jl")
 function predict_counts_with_params(
     full_params::P;
     cluster_model::Type{<:ClusterModel},
-    emission_model::Function,
+    emission_model::EmissionModel,
     redshift::Real,
     predicted_bg_over_obs_time::B,
     shape::NTuple{2,<:Integer},
@@ -141,7 +142,7 @@ function sample(
     redshift::Real;
     prior_names::AbstractVector{<:AbstractString},
     cluster_model::Type{<:ClusterModel},
-    emission_model::Function,
+    emission_model::EmissionModel,
     param_wrapper::Function,
     pixel_edge_angle::DimensionfulAngles.Angle=0.492u"arcsecondᵃ",
     centre_radius::Integer=0,
@@ -424,7 +425,7 @@ function sample(
 
     @mpiinfo "Generating emissions model"
     if use_interpolation
-        emission_model = prepare_model_mekal_interpolation(nHcol, energy_range, redshift, abundances)
+        error("Interpolation disabled")
     else
         emission_model = prepare_model_mekal(nHcol, energy_range, redshift, abundances)
     end

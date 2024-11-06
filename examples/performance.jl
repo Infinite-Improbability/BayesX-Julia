@@ -31,5 +31,4 @@ end
 make_obs_wrapper(); # force compilation
 
 display(@benchmark make_obs_wrapper())
-# @profview make_obs_wrapper();
 @profview make_obs_wrapper();

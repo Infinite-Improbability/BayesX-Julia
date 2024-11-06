@@ -2,9 +2,9 @@ using Integrals
 using LinearAlgebra: dot
 using DimensionfulAngles
 
-include("mekal.jl")
-
 export HydrogenDensity
+
+abstract type EmissionModel end
 
 # Abundances of elements, relative to values from Table 2, Anders & Grevesse (1989) https://doi.org/10.1016/0016-7037(89)90286-X
 # H, He, C, N, O, Ne, Na, Mg, Al, Si, S, Ar, Ca, Fe and Ni
@@ -38,10 +38,10 @@ function emission_integrand!(
     los_offset::AbstractFloat,
     projected_radius::AbstractFloat,
     cluster_model::ClusterModel,
-    emission_model!::Function
+    emission_model::EmissionModel
 )
     # Result is in m^-3/s
-    emission_model!(flux, cluster_model, Quantity(hypot(projected_radius, los_offset), u"m"))
+    volume_emissivity!(flux, emission_model, cluster_model, Quantity(hypot(projected_radius, los_offset), u"m"))
 end
 
 """
@@ -51,7 +51,7 @@ Wrapper for [`emission_integrand`](@ref) for compatibility with Integrals.jl.
 
 Integration is performed over `los_offset`.
 """
-function emission_integrand!(flux::Vector{Float32}, los_offset::AbstractFloat, params::Tuple{<:Real,ClusterModel,Function})
+function emission_integrand!(flux::Vector{Float32}, los_offset::AbstractFloat, params::Tuple{<:Real,ClusterModel,EmissionModel})
     emission_integrand!(flux, los_offset, params[1], params[2], params[3])
 end
 
@@ -77,7 +77,7 @@ function surface_brightness(
     cluster_model::ClusterModel,
     z::Real,
     limit::Unitful.Length,
-    emission_model!::Function,
+    emission_model::EmissionModel,
     pixel_edge_angle::DimensionfulAngles.Angle,
     flux::Vector{Float32}
 )::Vector{Quantity{Float64,Unitful.𝐋^(-2) / Unitful.𝐓}}
@@ -90,7 +90,7 @@ function surface_brightness(
 
     # Only integrate from 0 to limit because it is faster and equal to 1/2 integral from -limit to limit
     ifunc = IntegralFunction(emission_integrand!, flux)
-    problem = IntegralProblem(ifunc, (0.0, lim), (pr, cluster_model, emission_model!))
+    problem = IntegralProblem(ifunc, (0.0, lim), (pr, cluster_model, emission_model))
 
     sol = solve(problem, HCubatureJL(); reltol=1e-2)
     u = sol.u * 1u"m^-2/s"
@@ -191,7 +191,6 @@ function hydrogen_number_density(gas_density::Unitful.Density, relative_abundanc
     nucleon_total = (1.0, 4.0, 12.0, 14.0, 16.0, 20.0, 23.0, 24.0, 27.0, 28.0, 32.0, 40.0, 40.0, 56.0, 59.0)
     return gas_density / (m_p * dot(Ni_per_NH, nucleon_total))
 end
-# @deprecate hydrogen_number_density(gas_density::Unitful.Density, relative_abundance::AbstractVector{<:Real}) HydrogenDensity(relative_abundance)(gas_density::Unitful.Density)
 
 """
     pixel_offset(ij, array_centre_indices, centre_offset_pixels)
@@ -221,7 +220,7 @@ function make_observation(
     z::Real,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
-    emission_model,
+    emission_model::EmissionModel,
     exposure_time::T,
     response_function::AbstractArray{<:Unitful.Area,2},
     centre::NTuple{2,<:DimensionfulAngles.Angle},
@@ -320,7 +319,7 @@ function make_observation(
     z::Real,
     shape::NTuple{2,<:Integer},
     pixel_edge_angle::A,
-    emission_model,
+    emission_model::EmissionModel,
     exposure_time::T,
     response_function,
     centre::NTuple{2,Real},

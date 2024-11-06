@@ -99,7 +99,6 @@ function call_mekal(
     n_energy_bins::Integer,
     min_energy::V, #keV
     max_energy::V, #keV
-    bin_sizes::V,
     temperature::Cfloat, # keV
     nH::Cfloat, # cm^-3
 ) where {V<:AbstractVector{Cfloat}}
@@ -139,13 +138,7 @@ function call_mekal(
         10.0f0::Ref{Cfloat}, # ne
     )::Cvoid
 
-    # We cancel out the 2.53e-3 coefficent applied by MEKAL as it outputs a spectrum in photons/cm^2/s/keV
-    # Then we apply the 3.03e-9 coefficent which cancels out the distance-scaled emitting volume `cem` 
-    # This converts our results to photons/m^3/s/keV
-    # So finally we multiply by the width of our energy bins to get photons/m^3/s/bin
-    @simd for i in 1:n_energy_bins
-        @inbounds flux[i] = flux[i] * bin_sizes[i] * mekal_factor
-    end
+
 end
 function call_mekal(
     flux::AbstractVector{F},
@@ -159,7 +152,6 @@ function call_mekal(
     n_energy_bins = length(energy_range) - 1
     min_energy = ustrip.(Cfloat, u"keV", energy_range[1:end-1])
     max_energy = ustrip.(Cfloat, u"keV", energy_range[2:end])
-    bin_sizes = max_energy - min_energy
 
     call_mekal(
         convert(Vector{Cfloat}, flux),
@@ -167,7 +159,6 @@ function call_mekal(
         n_energy_bins,
         min_energy,
         max_energy,
-        bin_sizes,
         convert(Cfloat, temperature), convert(Cfloat, nH)
     )
 end
@@ -184,6 +175,35 @@ function download_spectral_fitting_data(; verbose=false, progress=true, kwargs..
     SpectralFitting.download_model_data(XS_Mekal, verbose=verbose, progress=progress, kwargs...)
 end
 
+
+struct MEKAL <: EmissionModel
+    n_energy_bins::Int
+    min_energy::Vector{Cfloat}
+    max_energy::Vector{Cfloat}
+    mekal_conversion::Vector{Cfloat}
+    abundances::Vector{Cfloat}
+    nH::HydrogenDensity
+end
+
+function volume_emissivity!(
+    flux::Vector{Cfloat},
+    mekal::MEKAL,
+    cluster_model::ClusterModel,
+    radius::Unitful.Length
+)
+    call_mekal(
+        flux,
+        mekal.abundances,
+        mekal.n_energy_bins,
+        mekal.min_energy,
+        mekal.max_energy,
+        ustrip(Cfloat, u"keV", temperature(cluster_model, radius)),
+        ustrip(Cfloat, u"cm^-3", mekal.nH(density(cluster_model, radius)))
+    )
+    @simd for i in eachindex(mekal.n_energy_bins)
+        @inbounds flux[i] = flux[i] * mekal.mekal_conversion[i]
+    end
+end
 
 """
     prepare_model_mekal(nHcol, energy_bins, z, [abundances])
@@ -243,6 +263,13 @@ function prepare_model_mekal(
     max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
     bin_sizes = max_energy - min_energy
 
+    # We cancel out the 2.53e-3 coefficent applied by MEKAL as it outputs a spectrum in photons/cm^2/s/keV
+    # Then we apply the 3.03e-9 coefficent which cancels out the distance-scaled emitting volume `cem` 
+    # This converts our results to photons/m^3/s/keV
+    # So finally we multiply by the width of our energy bins to get photons/m^3/s/bin
+    # And we also apply the effects bundled under absorption
+    mekal_conversion = absorption .* bin_sizes * mekal_factor
+
     nH = HydrogenDensity(abundances)
 
     # Use the values relative to Anders and Grevesse
@@ -251,102 +278,82 @@ function prepare_model_mekal(
     # TODO: Rewrite inner function to use struct, like we've done with hydrogen_number_density
     # That should retain performance without needing to use let so much.
 
-    function volume_emissivity!(
-        flux::Vector{Cfloat},
-        t::U,
-        ρ::N
-    ) where {U<:Unitful.Energy,N<:Unitful.Density}
-        let n_energy_bins = n_energy_bins, min_energy = min_energy, max_energy = max_energy, bin_sizes = bin_sizes, absorption = absorption, abundances_float = abundances_float, nH = nH
-            call_mekal(
-                flux,
-                abundances_float,
-                n_energy_bins,
-                min_energy,
-                max_energy,
-                bin_sizes,
-                ustrip(Cfloat, u"keV", t),
-                ustrip(Cfloat, u"cm^-3", nH(ρ))
-            )
-            @simd for i in 1:n_energy_bins
-                @inbounds flux[i] = flux[i] * absorption[i]
-            end
-        end
-    end
-    function volume_emissivity!(flux::Vector{Cfloat}, cm::ClusterModel, radius::Unitful.Length)
-        volume_emissivity!(flux, temperature(cm, radius), density(cm, radius))
-    end
-
-    return volume_emissivity!
-
-
-end
-
-"""
-prepare_model_mekal_interpolation(nHcol, energy_bins, z, [abundances, temperatures, hydrogen_densities])
-
-Generate an interpolation function to calculate emission with MEKAL.
-
-This wraps [`prepare_model_mekal`](@ref) to generate an interpolation function over the model. 
-Interpolation points are determined from `temperatures` and `hydrogen_densities`.
-
-Interpolation has a significant performance improvement over calling the model directly.
-No redshift is currently applied to energy bins - they should be assumed to be in the source frame.
-It may be wise to adjust this but then `surface_brightness` will need adjustment so it doesn't apply the
-correction twice.
-"""
-function prepare_model_mekal_interpolation(
-    nHcol::SurfaceDensity,
-    energy_bins::AbstractVector{T},
-    z::Real,
-    abundances::AbstractVector{A}=ones(15);
-    temperatures::AbstractRange{U}=range(0u"keV", 9u"keV", 1000),
-    gas_densities::AbstractRange{V}=range(0u"g/cm^3", m_p * 1u"cm^-3", 1000),
-) where {A<:Real,T<:Unitful.Energy,U<:Unitful.Energy,V<:Unitful.Density}
-
-    # Get wrapper around standard MEKAL call
-    base_model = prepare_model_mekal(nHcol, energy_bins, z, abundances)
-
-    # setup output array
-    flux::Vector{Float32} = zeros(Float32, length(energy_bins) - 1)
-    function calc_flux(T, nH)
-        base_model(flux, T, nH)
-        return flux
-    end
-
-    # Generate source flux
-    total_points = length(temperatures) * length(gas_densities)
-    @mpidebug "Setting MEKAL evaluation points" size(temperatures) size(gas_densities) total_points
-    points = [(t, nH) for t in temperatures, nH in gas_densities]
-    @mpidebug "Invoking MEKAL"
-    emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
-        x -> calc_flux(x[1], x[2]),
-        points
+    return MEKAL(
+        n_energy_bins,
+        min_energy,
+        max_energy,
+        mekal_conversion,
+        abundances_float,
+        nH
     )
-    @assert all(all.(isfinite, emission))
-
-    @mpidebug "Generating interpolation"
-    interpol = Interpolations.scale(interpolate!(emission, BSpline(Linear())), temperatures, gas_densities)
-    @mpidebug "Emission interpolation generation complete."
-
-    function volume_emissivity!(
-        flux::Vector{Cfloat},
-        t::U,
-        ρ::N
-    ) where {U<:Unitful.Energy,N<:Unitful.Density}
-        let interpol = interpol, base_model = base_model
-            try
-                # return interpolation if possible
-                flux .= interpol(t, ρ)
-            catch e
-                # otherwise fall back to direct call
-                if isa(e, BoundsError)
-                    base_model(flux, t, ρ)
-                else
-                    rethrow(e)
-                end
-            end
-        end
-    end
-
-    return volume_emissivity!
 end
+
+# """
+# prepare_model_mekal_interpolation(nHcol, energy_bins, z, [abundances, temperatures, hydrogen_densities])
+
+# Generate an interpolation function to calculate emission with MEKAL.
+
+# This wraps [`prepare_model_mekal`](@ref) to generate an interpolation function over the model. 
+# Interpolation points are determined from `temperatures` and `hydrogen_densities`.
+
+# Interpolation has a significant performance improvement over calling the model directly.
+# No redshift is currently applied to energy bins - they should be assumed to be in the source frame.
+# It may be wise to adjust this but then `surface_brightness` will need adjustment so it doesn't apply the
+# correction twice.
+# """
+# function prepare_model_mekal_interpolation(
+#     nHcol::SurfaceDensity,
+#     energy_bins::AbstractVector{T},
+#     z::Real,
+#     abundances::AbstractVector{A}=ones(15);
+#     temperatures::AbstractRange{U}=range(0u"keV", 9u"keV", 1000),
+#     gas_densities::AbstractRange{V}=range(0u"g/cm^3", m_p * 1u"cm^-3", 1000),
+# ) where {A<:Real,T<:Unitful.Energy,U<:Unitful.Energy,V<:Unitful.Density}
+
+#     # Get wrapper around standard MEKAL call
+#     base_model = prepare_model_mekal(nHcol, energy_bins, z, abundances)
+
+#     # setup output array
+#     flux::Vector{Float32} = zeros(Float32, length(energy_bins) - 1)
+#     function calc_flux(T, nH)
+#         base_model(flux, T, nH)
+#         return flux
+#     end
+
+#     # Generate source flux
+#     total_points = length(temperatures) * length(gas_densities)
+#     @mpidebug "Setting MEKAL evaluation points" size(temperatures) size(gas_densities) total_points
+#     points = [(t, nH) for t in temperatures, nH in gas_densities]
+#     @mpidebug "Invoking MEKAL"
+#     emission = @showprogress 1 "Pregenerating emissions with MEKAL" map(
+#         x -> calc_flux(x[1], x[2]),
+#         points
+#     )
+#     @assert all(all.(isfinite, emission))
+
+#     @mpidebug "Generating interpolation"
+#     interpol = Interpolations.scale(interpolate!(emission, BSpline(Linear())), temperatures, gas_densities)
+#     @mpidebug "Emission interpolation generation complete."
+
+#     function volume_emissivity!(
+#         flux::Vector{Cfloat},
+#         t::U,
+#         ρ::N
+#     ) where {U<:Unitful.Energy,N<:Unitful.Density}
+#         let interpol = interpol, base_model = base_model
+#             try
+#                 # return interpolation if possible
+#                 flux .= interpol(t, ρ)
+#             catch e
+#                 # otherwise fall back to direct call
+#                 if isa(e, BoundsError)
+#                     base_model(flux, t, ρ)
+#                 else
+#                     rethrow(e)
+#                 end
+#             end
+#         end
+#     end
+
+#     return volume_emissivity!
+# end
