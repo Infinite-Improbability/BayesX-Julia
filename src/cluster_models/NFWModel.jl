@@ -9,14 +9,16 @@ Generate a cluster profile based on the NFW mass density and GNFW gas density pr
 Uses the model from [olamaieSimpleParametricModel2012](@cite),
 which is based on the NFW dark matter density profile and the GNFW gas pressure profile.
 """
-struct NFWModel{L<:Union{Unitful.Length,Real}} <: ClusterModel
-    ρs
-    rs::L
-    rp::L
-    α
-    β
-    γ
-    P0
+struct NFWModel{R<:Real} <: ClusterModel
+    ρs::R
+    rs::R
+    rp::R
+    α::R
+    β::R
+    γ::R
+    P0::R
+    density_coefficents::R
+    temperature_coefficents::R
 end
 # Normalise units on init
 
@@ -27,13 +29,23 @@ Results are in the same units, with dimension of length.
 """
 function gnfw_radial_term(r, rs, rp, α, β, γ)
     r /
-    (log1p(r / rs) - (1 + rs / r)^(-1)) *
-    (r / rp)^(-γ) *
+    (log1p(r / rs) - 1 / (1 + rs / r)) /
+    (r / rp)^γ *
     (1 + (r / rp)^α)^(-(α + β - γ) / α) *
     (β * (r / rp)^α + γ)
 end
 gnfw_radial_term(cm::NFWModel{<:Unitful.Length}, r::Unitful.Length{<:Real}) = gnfw_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
 gnfw_radial_term(cm::NFWModel{<:Real}, r::R) where {R<:Real} = gnfw_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
+
+function temperature_radial_term(r, rs, rp, α, β, γ)
+    (log1p(r / rs) - 1 / (1 + rs / r)) *
+    (1 + (r / rp)^α) /
+    (β * (r / rp)^α + γ) /
+    r
+end
+temperature_radial_term(cm::NFWModel{<:Unitful.Length}, r::Unitful.Length{<:Real}) = temperature_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
+temperature_radial_term(cm::NFWModel{<:Real}, r::R) where {R<:Real} = temperature_radial_term(r, cm.rs, cm.rp, cm.α, cm.β, cm.γ)
+
 
 """
 function gnfw_mass_integrand(cm::NFWModel, r::Unitful.Length{<:Real})::Unitful.Volume{Float64}
@@ -91,30 +103,29 @@ function NFWModel(MT_Δ::Unitful.Mass, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z,
         (rs, rp, α, β, γ)
     )
     vol_int_Δ = solve(integral, QuadGKJL(); reltol=1e-3, abstol=1u"kpc^4").u
-    P0::Unitful.Pressure{Float64} = (μ / μ_e) * G * ρs * rs^3 * Mg_Δ / vol_int_Δ
+    P0::Unitful.Pressure{Float64} = μ / μ_e * G * ρs * rs^3 * Mg_Δ / vol_int_Δ
     @assert isfinite(P0)
     @assert P0 > 0u"Msun/kpc/s^2"
     @mpirankeddebug "P0 calculation complete" uconvert(u"Msun/kpc/s^2", P0) ρ_s rs Mg_Δ vol_int_Δ
 
     # TODO: Iterative corrections to estimate that include gas density (see Javid et al. 2019)
 
-    return NFWModel(ρs, ustrip(u"kpc", rs), ustrip(u"kpc", rp), α, β, γ, P0)
+    density_coefficents = ustrip(Float64, u"Msun/kpc^4", μ_e / μ / 4π / G * P0 / ρs / rs^3)
+    temperature_coefficents = ustrip(Float64, u"Msun*kpc^3/s^2", 4π * μ * G * ρs * rs^3)
+
+    ρsu::Float64 = ustrip(Float64, u"Msun/kpc^3", ρs)
+    rsu::Float64 = ustrip(Float64, u"kpc", rs)
+    rpu::Float64 = ustrip(Float64, u"kpc", rp)
+    P0u::Float64 = ustrip(Float64, u"Msun/kpc/s^2", P0)
+
+    return NFWModel(ρsu, rsu, rpu, α, β, γ, P0u, density_coefficents, temperature_coefficents)
 end
 NFWModel(MT_Δ::Real, fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z, Δ=500) = NFWModel(MT_Δ * 1u"Msun", fg_Δ, c_Δ_dm, α, β, γ, c_Δ_GNFW; z=z, Δ=Δ)
 
-function density(cm::NFWModel, r::Unitful.Length{R}) where {R<:Real}
-    r::R = abs(ustrip(R, u"kpc", r))
-
-    (μ_e / μ) * (1 / (4π * G)) *
-    (cm.P0 / cm.ρs) * (1 / cm.rs^3) *
-    gnfw_radial_term(cm, r) * 1u"kpc^-2"
+function density(cm::NFWModel{<:Real}, r::Unitful.Length{<:Real})
+    Quantity(cm.density_coefficents * gnfw_radial_term(cm, abs(ustrip(Float64, u"kpc", r))), u"Msun/kpc^3")
 end
 
-function temperature(cm::NFWModel, r::Unitful.Length{R}) where {R<:Real}
-    r::R = abs(ustrip(R, u"kpc", r))
-
-    4π * μ * G * cm.ρs * (cm.rs^3) *
-    ((log1p(r / cm.rs) - (1 + cm.rs / r)^(-1)) / r) *
-    (1 + (r / cm.rp)^cm.α) *
-    (cm.β * (r / cm.rp)^cm.α + cm.γ)^(-1) * 1u"kpc^2"
+function temperature(cm::NFWModel{<:Real}, r::Unitful.Length{<:Real})
+    Quantity(cm.temperature_coefficents * temperature_radial_term(cm, abs(ustrip(Float64, u"kpc", r))), u"Msun*kpc^2/s^2")
 end

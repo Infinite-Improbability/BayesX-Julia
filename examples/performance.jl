@@ -32,4 +32,4 @@ make_obs_wrapper(); # force compilation
 
 display(@benchmark make_obs_wrapper())
 # @profview make_obs_wrapper();
-@profview_allocs make_obs_wrapper();
+@profview make_obs_wrapper();

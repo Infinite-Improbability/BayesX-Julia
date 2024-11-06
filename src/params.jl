@@ -16,10 +16,14 @@ const cosmo = cosmology(
     wa=0) # todo: make configurable
 
 """Mean mass per gas particle = 0.6mₚ"""
-const μ = 0.6 * m_p
+const μu = 0.6
+const μ = μu * m_p
 
 """Mean gas mass per electron = 1.14mₚ"""
-const μ_e = 1.14 * m_p
+const μ_eu = 1.14
+const μ_e = μ_eu * m_p
+
+const Gu = ustrip(Float64, u"kpc^3/Msun/s^2", G)
 
 function angle_to_length(θ::A, redshift) where {A<:DimensionfulAngles.Angle}
     return ustrip(u"radᵃ", θ) * angular_diameter_dist(cosmo, redshift)
