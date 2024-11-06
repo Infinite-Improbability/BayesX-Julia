@@ -2,6 +2,7 @@ using BenchmarkTools
 using Unitful, UnitfulAstro, DimensionfulAngles
 using BayesJ
 using LinearAlgebra: I
+using Profile
 
 redshift = 0.1
 nfw = NFWModel(3e14u"Msun", 0.13, 4.0, 1.0620, 5.4807, 0.3292, 1.156, z=redshift)
@@ -13,15 +14,22 @@ mekal = prepare_model_mekal(
 )
 response_function = Matrix{Float64}(I, length(energy_range) - 1, length(energy_range) - 1) * 1u"cm^2"
 
-b1 = @benchmark (BayesJ.make_observation(
-    nfw,
-    redshift,
-    (30, 30),
-    0.492u"arcsecondᵃ",
-    mekal,
-    3000u"s",
-    response_function,
-    (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
-    1,
-));
-display(b1);
+function make_obs_wrapper()
+    BayesJ.make_observation(
+        nfw,
+        redshift,
+        (30, 30),
+        0.492u"arcsecondᵃ",
+        mekal,
+        3000u"s",
+        response_function,
+        (0u"arcsecondᵃ", 0u"arcsecondᵃ"),
+        1,
+    )
+end
+
+make_obs_wrapper(); # force compilation
+
+display(@benchmark make_obs_wrapper())
+# @profview make_obs_wrapper();
+@profview_allocs make_obs_wrapper();
