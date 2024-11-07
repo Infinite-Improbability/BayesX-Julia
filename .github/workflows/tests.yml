@@ -20,10 +20,10 @@ jobs:
         julia-version: ['1.10']
         os: [ubuntu-latest]
         experimental: [false]
-        #include:
-        #  - julia-version: '1.10'
-        #    os: ubuntu-latest
-        #    experimental: true
+        include:
+         - julia-version: '1.11'
+           os: ubuntu-latest
+           experimental: true
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
