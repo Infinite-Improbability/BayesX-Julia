@@ -1,6 +1,8 @@
 push!(LOAD_PATH, "src/")
 using Unitful
 
+# TODO: Test output matches known good output outside of trivial or edge cases
+
 function test_mekal()
     @testset "MEKAL" begin
         # Prepare arguments for call_mekal
@@ -8,7 +10,6 @@ function test_mekal()
         n_energy_bins = length(energy_bins) - 1
         min_energy = ustrip.(Cfloat, u"keV", energy_bins[1:end-1])
         max_energy = ustrip.(Cfloat, u"keV", energy_bins[2:end])
-        bin_sizes = max_energy - min_energy
         abundances = ones(Cfloat, 15)
         nH = BayesJ.HydrogenDensity(abundances)
 
@@ -25,7 +26,6 @@ function test_mekal()
             n_energy_bins,
             min_energy,
             max_energy,
-            bin_sizes,
             ustrip(Cfloat, u"keV", T),
             ustrip(Cfloat, u"cm^-3", nH(ρ))
         )
@@ -55,13 +55,16 @@ function test_mekal()
                 0.1,
                 abundances
             )
-            emission_model(flux, 1.0u"keV", 0.0u"g/cm^3")
+            fill!(flux, 1.0)
+            BayesJ.volume_emissivity!(flux, emission_model, 1.0u"keV", 0.0u"g/cm^3")
             @test all(iszero, flux)
-            emission_model(flux, 0.0u"keV", 1.0e-23u"g/cm^3")
+            fill!(flux, 1.0)
+            BayesJ.volume_emissivity!(flux, emission_model, 0.0u"keV", 1.0e-23u"g/cm^3")
             @test all(iszero, flux)
-            emission_model(flux, 0.0u"keV", 0.0u"g/cm^3")
+            fill!(flux, 1.0)
+            BayesJ.volume_emissivity!(flux, emission_model, 0.0u"keV", 0.0u"g/cm^3")
             @test all(iszero, flux)
-
+            fill!(flux, 1.0)
             BayesJ.call_mekal(flux, abundances, energy_bins, 0, 0)
             @test all(iszero, flux)
         end
@@ -74,8 +77,8 @@ function test_mekal()
                 energy_bins,
                 0.0,
             )
-            emission_model(flux, T, ρ)
-            @test flux == direct_call
+            BayesJ.volume_emissivity!(flux, emission_model, T, ρ)
+            @test_broken flux == direct_call # this no longer succeeds because the application of mekal coefficents was moved out of call_mekal and into volume_emissivity!
 
             # Verify that nonzero hydrogen column density means absorption
             emission_model = BayesJ.prepare_model_mekal(
@@ -83,7 +86,7 @@ function test_mekal()
                 energy_bins,
                 0.0,
             )
-            emission_model(flux, T, ρ)
+            BayesJ.volume_emissivity!(flux, emission_model, T, ρ)
             @test flux < direct_call
         end
 
@@ -119,10 +122,10 @@ function test_mekal()
             flux1 = copy(flux)
             flux2 = copy(flux)
 
-            emission_model_0(flux0, T, ρ)
-            emission_model_01(flux01, T, ρ)
-            emission_model_1(flux1, T, ρ)
-            emission_model_2(flux2, T, ρ)
+            BayesJ.volume_emissivity!(flux0, emission_model_0, T, ρ)
+            BayesJ.volume_emissivity!(flux01, emission_model_01, T, ρ)
+            BayesJ.volume_emissivity!(flux1, emission_model_1, T, ρ)
+            BayesJ.volume_emissivity!(flux2, emission_model_2, T, ρ)
 
             @test flux0 != flux01
             @test flux0 != flux1

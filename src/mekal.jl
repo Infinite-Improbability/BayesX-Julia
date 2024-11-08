@@ -70,7 +70,7 @@ Attempts were made to invoke MEKAL through XSPEC's wrapper functions but I found
 though some were necessary and are reimplemented in `surface_brightness`. MEKAL's operations are more clearly physically motivated.
 """
 function call_mekal(
-    flux::Vector{Cfloat},
+    flux::AbstractVector{Cfloat},
     abundances::Vector{Cfloat},
     n_energy_bins::Integer,
     min_energy::V, #keV
@@ -162,7 +162,27 @@ struct MEKAL <: EmissionModel
 end
 
 function volume_emissivity!(
-    flux::Vector{Cfloat},
+    flux::AbstractVector{Cfloat},
+    mekal::MEKAL,
+    temperature::Unitful.Energy,
+    density::Unitful.Density
+)
+    call_mekal(
+        flux,
+        mekal.abundances,
+        mekal.n_energy_bins,
+        mekal.min_energy,
+        mekal.max_energy,
+        ustrip(Cfloat, u"keV", temperature),
+        ustrip(Cfloat, u"cm^-3", mekal.nH(density))
+    )
+    @simd for i in eachindex(mekal.n_energy_bins)
+        @inbounds flux[i] = flux[i] * mekal.mekal_conversion[i]
+    end
+end
+
+function volume_emissivity!(
+    flux::AbstractVector{Cfloat},
     mekal::MEKAL,
     cluster_model::ClusterModel,
     radius::Unitful.Length
